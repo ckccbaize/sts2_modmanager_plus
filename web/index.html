@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>STS2 模组管理器</title>
+  <meta name="description" content="Slay the Spire 2 Mod Manager - 杀戮尖塔2模组管理器">
+  <link rel="icon" type="image/svg+xml" href="../icon.svg">
+
+  <!-- CSS -->
+  <link rel="stylesheet" href="css/variables.css">
+  <link rel="stylesheet" href="css/base.css">
+  <link rel="stylesheet" href="css/layout.css">
+  <link rel="stylesheet" href="css/components.css">
+  <link rel="stylesheet" href="css/animations.css">
+  <link rel="stylesheet" href="css/mods.css">
+  <link rel="stylesheet" href="css/bundles.css">
+  <link rel="stylesheet" href="css/saves.css">
+  <link rel="stylesheet" href="css/nexus.css">
+  <link rel="stylesheet" href="css/downloads.css">
+  <link rel="stylesheet" href="css/settings.css">
+  <link rel="stylesheet" href="css/responsive.css">
+</head>
+<body>
+  <div class="app-container">
+    <!-- Title Bar -->
+    <div class="title-bar">
+      <div class="title-bar__icon">⚔️</div>
+      <span class="title-bar__title" data-i18n="app_name">杀戮尖塔2模组管理器</span>
+      <div class="title-bar__actions">
+        <span class="version-label">v2.9.5</span>
+      </div>
+    </div>
+
+    <!-- Tab Navigation -->
+    <nav class="tab-nav">
+      <button class="tab-btn active" data-tab="mods" data-i18n="mods">模组</button>
+      <button class="tab-btn" data-tab="bundles" data-i18n="bundle_tab">整合包</button>
+      <button class="tab-btn" data-tab="saves" data-i18n="saves">存档</button>
+      <button class="tab-btn" data-tab="nexus" data-i18n="nexus_mods">N网模组</button>
+      <button class="tab-btn" data-tab="downloads" data-i18n="downloads">下载管理</button>
+      <button class="tab-btn" data-tab="settings" data-i18n="settings">设置</button>
+    </nav>
+
+    <!-- Content Area -->
+    <main class="content-area">
+      <!-- MODS PAGE -->
+      <div id="page-mods" class="page active">
+        <!-- Mod Toolbar -->
+        <div class="mod-toolbar">
+          <div class="input-search">
+            <span class="search-icon">🔍</span>
+            <input type="text" id="mod-search" class="search-input" data-i18n-placeholder="search_hint" placeholder="搜索模组...">
+          </div>
+          <div class="dropdown" id="sort-dropdown">
+            <button class="btn btn-ghost btn-sm" id="sort-trigger">
+              <span data-i18n="sort_by_name">名称</span> ▾
+            </button>
+            <div class="dropdown-menu" id="sort-menu">
+              <div class="dropdown-item active" data-sort="name" data-i18n="sort_by_name">名称</div>
+              <div class="dropdown-item" data-sort="install_time" data-i18n="sort_by_time">安装时间</div>
+              <div class="dropdown-item" data-sort="version" data-i18n="sort_by_version">版本</div>
+              <div class="dropdown-item" data-sort="author" data-i18n="sort_by_author">作者</div>
+            </div>
+          </div>
+          <div class="tag-group" id="category-tags">
+            <button class="tag active" data-category="all" data-i18n="all">全部</button>
+            <button class="tag" data-category="gameplay" data-i18n="affects_gameplay">游戏性</button>
+            <button class="tag" data-category="cosmetic" data-i18n="cosmetic">美化</button>
+          </div>
+          <div class="toolbar-spacer"></div>
+          <button class="btn btn-ghost btn-icon" id="btn-refresh-mods" data-i18n-title="refresh"><svg width="16" height="16" viewBox="0 0 16 16" class="icon-refresh"><path d="M13.5 8A5.5 5.5 0 1 1 8 2.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" fill="none"/><path d="M8 0.5L10.5 2.5L8 4.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg></button>
+          <span class="batch-mode-hint" style="display:none">✓ <span data-i18n="batch_mode_hint">已选中 0 个</span></span>
+          <button class="btn btn-ghost" id="btn-batch-toggle" data-i18n="batch_mode" title="Ctrl+点击单选 | Ctrl+A全选 | Esc退出多选模式">多选</button>
+          <button class="btn btn-primary" id="btn-install-mod" data-i18n="install_mod">+ 安装模组</button>
+          <button class="btn btn-ghost" id="btn-uninstall" data-i18n="uninstall_mod">卸载</button>
+          <button class="btn btn-ghost" id="btn-batch-enable" data-i18n="batch_enable">批量启用</button>
+          <button class="btn btn-ghost" id="btn-batch-disable" data-i18n="batch_disable">批量停用</button>
+          <button class="btn btn-ghost" id="btn-select-all" data-i18n="select_all">全选</button>
+        </div>
+
+        <!-- Tag Presets Bar -->
+        <div class="tag-presets-bar" id="tag-presets">
+          <!-- Tags will be rendered by JS -->
+        </div>
+
+        <!-- Split Layout: Mod List + Details -->
+        <div class="split-layout">
+          <!-- Left: Mod List -->
+          <div class="split-left">
+            <div class="list-container" id="mod-list">
+              <!-- Mod items rendered by JS -->
+            </div>
+            <div class="drop-zone" id="mod-drop-zone" style="display:none;">
+              <span>📦 <span data-i18n="drag_zip_hint">拖拽ZIP文件到此处</span></span>
+            </div>
+          </div>
+          <!-- Right: Details -->
+          <div class="split-right">
+            <div class="panel mod-details-panel" id="mod-details">
+              <div class="panel-body" id="mod-details-content">
+                <div class="empty-state">
+                  <div class="empty-icon">📋</div>
+                  <p data-i18n="details">点击左侧列表中的模组查看详情</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- BUNDLES PAGE -->
+      <div id="page-bundles" class="page">
+        <div class="split-layout" style="grid-template-columns: 280px 1fr;">
+          <div class="split-left">
+            <div class="panel">
+              <div class="panel-header">
+                <span data-i18n="bundle_tab">整合包</span>
+                <div class="panel-actions">
+                  <button class="btn btn-sm btn-ghost" id="btn-import-bundle" data-i18n="import_bundle">导入</button>
+                  <button class="btn btn-sm btn-ghost" id="btn-bundle-url" data-i18n="download_bundle">URL导入</button>
+                  <button class="btn btn-sm btn-ghost" id="btn-export-bundle" data-i18n="export_bundle">导出</button>
+                </div>
+              </div>
+              <div class="panel-body">
+                <div class="list-container" id="bundle-list">
+                  <!-- Bundle items rendered by JS -->
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="split-right">
+            <div class="panel" id="bundle-details">
+              <div class="panel-body">
+                <div class="empty-state">
+                  <div class="empty-icon">📦</div>
+                  <p data-i18n="no_bundle_hint">选择一个整合包查看详情</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- SAVES PAGE -->
+      <div id="page-saves" class="page">
+        <div class="save-toolbar">
+          <button class="btn btn-ghost" id="btn-import-save" data-i18n="import">导入</button>
+          <button class="btn btn-ghost" id="btn-export-save" data-i18n="export">导出</button>
+          <button class="btn btn-ghost" id="btn-backup-save" data-i18n="backup">备份</button>
+          <button class="btn btn-ghost" id="btn-restore-save" data-i18n="restore">恢复</button>
+          <button class="btn btn-primary" id="btn-overwrite-save" data-i18n="overwrite">覆盖</button>
+        </div>
+        <div class="split-layout" style="grid-template-columns: 420px 1fr;">
+          <div class="split-left" id="save-list-panel">
+            <div class="panel">
+              <div class="panel-header">
+                <span data-i18n="save_list">存档列表</span>
+                <button class="btn btn-sm btn-icon" id="btn-collapse-saves" title="折叠">◁</button>
+              </div>
+              <div class="panel-body">
+                <div class="list-container" id="save-list">
+                  <!-- Save items rendered by JS -->
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="split-right">
+            <div class="panel" id="save-details">
+              <div class="panel-body">
+                <div class="empty-state">
+                  <div class="empty-icon">💾</div>
+                  <p>选择一个存档查看详情</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- NEXUS MODS PAGE - BrowserHost navigates directly -->
+      <div id="page-nexus" class="page" style="display:none;">
+        <!-- Placeholder - BrowserHost handles navigation to Nexus -->
+        <div class="empty-state" style="padding:60px 40px;">
+          <div class="empty-icon">🌐</div>
+          <p data-i18n="nexus_loading">正在加载 Nexus Mods...</p>
+        </div>
+      </div>
+
+      <!-- DOWNLOADS PAGE -->
+      <div id="page-downloads" class="page">
+        <div class="downloads-container">
+          <div class="downloads-section">
+            <div class="section-header">
+              <span data-i18n="current_downloads">当前下载</span>
+              <button class="btn btn-ghost btn-sm" id="btn-open-download-folder" data-i18n="open_folder">打开文件夹</button>
+            </div>
+            <div class="list-container" id="active-downloads">
+              <div class="empty-state" style="padding:40px">
+                <div class="empty-icon">📥</div>
+                <p data-i18n="no_download_task">暂无下载任务</p>
+              </div>
+            </div>
+          </div>
+          <div class="separator"></div>
+          <div class="downloads-section">
+            <div class="section-header">
+              <span data-i18n="download_history">下载历史</span>
+              <button class="btn btn-ghost btn-sm" id="btn-clear-history" data-i18n="clear_history">清空历史</button>
+            </div>
+            <div class="list-container" id="download-history">
+              <!-- History items rendered by JS -->
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- SETTINGS PAGE -->
+      <div id="page-settings" class="page">
+        <div class="settings-container" id="settings-content">
+          <!-- Settings rendered by JS -->
+        </div>
+      </div>
+    </main>
+
+    <!-- Footer -->
+    <div class="footer">
+      <div class="footer-left">
+        <span class="status-label" id="status-label">0 <span data-i18n="enable">已启用</span> / 0 <span data-i18n="mod_count">总数</span></span>
+      </div>
+      <div class="footer-center" id="launch-area">
+        <!-- Tesla Launch Bar rendered by JS -->
+      </div>
+      <div class="footer-right">
+        <!-- reserved for future use -->
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal Container (for dynamic modals) -->
+  <div id="modal-container"></div>
+
+  <!-- Install Progress Overlay -->
+  <div class="loading-overlay" id="loading-overlay" style="display:none">
+    <div class="loading-content">
+      <div class="spinner" style="width:40px;height:40px"></div>
+      <p id="loading-text" data-i18n="installing_mod">正在安装模组...</p>
+      <div class="progress" style="width:200px;margin-top:12px">
+        <div class="progress-fill" id="loading-progress" style="width:0%"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Install Progress Modal -->
+  <div id="install-progress-modal">
+    <div class="install-progress-card">
+      <div class="ipm-header">
+        <div class="ipm-header-icon">📦</div>
+        <div class="ipm-header-text">
+          <p class="ipm-title" id="ipm-title" data-i18n="installing_mod">正在安装模组...</p>
+          <p class="ipm-subtitle" id="ipm-subtitle"></p>
+        </div>
+      </div>
+      <div class="ipm-body" id="ipm-body">
+        <!-- Progress content injected by JS -->
+      </div>
+      <div class="ipm-footer" id="ipm-footer" style="display:none">
+        <button class="btn btn-ghost" id="ipm-btn-cancel" data-i18n="cancel">取消</button>
+        <button class="btn btn-primary" id="ipm-btn-close" style="display:none" data-i18n="confirm">确认</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- JS -->
+  <script src="js/data/locales.js"></script>
+  <script src="js/data/mock-mods.js"></script>
+  <script src="js/data/mock-saves.js"></script>
+  <script src="js/data/mock-bundles.js"></script>
+  <script src="js/utils.js"></script>
+  <script src="js/store.js"></script>
+  <script src="js/api.js"></script>
+  <script src="js/i18n.js"></script>
+  <script src="js/router.js"></script>
+  <script src="js/notifications.js"></script>
+  <script src="js/mods.js"></script>
+  <script src="js/bundles.js"></script>
+  <script src="js/saves.js"></script>
+  <script src="js/nexus.js"></script>
+  <script src="js/downloads.js"></script>
+  <script src="js/settings.js"></script>
+  <script src="js/launch.js"></script>
+  <script src="js/tutorial.js"></script>
+  <script src="js/animations.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>

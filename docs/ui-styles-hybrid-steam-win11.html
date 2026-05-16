@@ -1,0 +1,640 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Steam × Windows 11 混合风格</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI Variable', 'Segoe UI', -apple-system, sans-serif;
+            background: #0d1117;
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 40px;
+        }
+
+        .preview-container {
+            width: 900px;
+            max-width: 100%;
+        }
+
+        .header-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            color: #8b949e;
+            font-size: 13px;
+        }
+
+        .back-btn {
+            color: #58a6ff;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        /* ===== MAIN WINDOW ===== */
+        .window {
+            background: linear-gradient(180deg, #1b2838 0%, #12171e 100%);
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.5), 0 0 0 1px rgba(255,255,255,0.05);
+        }
+
+        /* Title Bar */
+        .title-bar {
+            background: rgba(21, 31, 46, 0.95);
+            backdrop-filter: blur(20px);
+            padding: 10px 16px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid rgba(86, 131, 172, 0.2);
+        }
+
+        .title-bar-left {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .app-icon {
+            width: 24px;
+            height: 24px;
+            background: linear-gradient(135deg, #66c0f9, #1b2838);
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+        }
+
+        .app-title {
+            font-size: 13px;
+            color: #c7d5e0;
+            font-weight: 500;
+        }
+
+        .title-bar-right {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        /* Search */
+        .search-container {
+            background: rgba(42, 71, 94, 0.6);
+            border: 1px solid rgba(86, 131, 172, 0.3);
+            border-radius: 20px;
+            padding: 6px 14px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            transition: 0.2s;
+        }
+
+        .search-container:focus-within {
+            background: rgba(42, 71, 94, 0.8);
+            border-color: rgba(102, 192, 249, 0.5);
+        }
+
+        .search-icon {
+            color: #66c0f9;
+            font-size: 12px;
+        }
+
+        .search-input {
+            background: transparent;
+            border: none;
+            color: #fff;
+            font-size: 12px;
+            width: 180px;
+            outline: none;
+        }
+
+        .search-input::placeholder {
+            color: rgba(197, 213, 224, 0.5);
+        }
+
+        /* Action Buttons */
+        .action-btns {
+            display: flex;
+            gap: 8px;
+        }
+
+        .action-btn {
+            background: rgba(42, 71, 94, 0.6);
+            border: 1px solid rgba(86, 131, 172, 0.3);
+            border-radius: 6px;
+            padding: 6px 14px;
+            color: #a3c9e7;
+            font-size: 11px;
+            cursor: pointer;
+            transition: 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .action-btn:hover {
+            background: rgba(86, 131, 172, 0.3);
+            border-color: rgba(102, 192, 249, 0.5);
+        }
+
+        .action-btn.primary {
+            background: linear-gradient(90deg, #47bfff, #2a475e);
+            border-color: #47bfff;
+            color: #fff;
+        }
+
+        .action-btn.primary:hover {
+            background: linear-gradient(90deg, #66cdff, #47bfff);
+        }
+
+        /* Tab Bar */
+        .tab-bar {
+            background: rgba(21, 31, 46, 0.8);
+            display: flex;
+            padding: 0 16px;
+            border-bottom: 1px solid rgba(86, 131, 172, 0.15);
+        }
+
+        .tab-item {
+            padding: 12px 18px;
+            font-size: 12px;
+            color: #8b98a0;
+            cursor: pointer;
+            border-bottom: 2px solid transparent;
+            transition: 0.2s;
+        }
+
+        .tab-item:hover {
+            color: #c7d5e0;
+        }
+
+        .tab-item.active {
+            color: #fff;
+            border-bottom-color: #66c0f9;
+        }
+
+        /* Main Content */
+        .main-content {
+            display: flex;
+            padding: 16px;
+            gap: 16px;
+            min-height: 400px;
+        }
+
+        /* Mod List */
+        .mod-list {
+            width: 280px;
+            flex-shrink: 0;
+        }
+
+        .list-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+        }
+
+        .list-title {
+            font-size: 11px;
+            color: #8b98a0;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .list-count {
+            font-size: 11px;
+            color: #66c0f9;
+        }
+
+        /* Mod Item */
+        .mod-item {
+            background: rgba(255,255,255,0.03);
+            border-radius: 6px;
+            padding: 12px 14px;
+            margin-bottom: 6px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            transition: 0.2s;
+            border: 1px solid transparent;
+        }
+
+        .mod-item:hover {
+            background: rgba(255,255,255,0.06);
+        }
+
+        .mod-item.selected {
+            background: linear-gradient(90deg, rgba(102, 192, 249, 0.15), transparent);
+            border-color: rgba(102, 192, 249, 0.3);
+        }
+
+        .mod-icon {
+            width: 40px;
+            height: 40px;
+            border-radius: 6px;
+            background: linear-gradient(135deg, #66c0f9, #1b567a);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+            flex-shrink: 0;
+        }
+
+        .mod-icon.gameplay {
+            background: linear-gradient(135deg, #f472b6, #be185d);
+        }
+
+        .mod-info {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .mod-name {
+            font-size: 13px;
+            color: #e5e5e5;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .mod-meta {
+            font-size: 11px;
+            color: #8b98a0;
+            margin-top: 2px;
+        }
+
+        .mod-toggle {
+            width: 36px;
+            height: 20px;
+            background: rgba(42, 71, 94, 0.8);
+            border-radius: 10px;
+            position: relative;
+            cursor: pointer;
+            transition: 0.2s;
+            flex-shrink: 0;
+        }
+
+        .mod-toggle.on {
+            background: #66c0f9;
+        }
+
+        .mod-toggle::after {
+            content: '';
+            position: absolute;
+            width: 16px;
+            height: 16px;
+            background: #fff;
+            border-radius: 50%;
+            top: 2px;
+            left: 2px;
+            transition: 0.2s;
+        }
+
+        .mod-toggle.on::after {
+            left: 18px;
+        }
+
+        /* Detail Panel */
+        .detail-panel {
+            flex: 1;
+            background: rgba(0,0,0,0.2);
+            border-radius: 8px;
+            padding: 20px;
+            border: 1px solid rgba(86, 131, 172, 0.15);
+        }
+
+        .detail-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 16px;
+        }
+
+        .detail-title {
+            font-size: 22px;
+            color: #66c0f9;
+            font-weight: 500;
+        }
+
+        .detail-version {
+            font-size: 12px;
+            color: #8b98a0;
+            background: rgba(42, 71, 94, 0.6);
+            padding: 4px 10px;
+            border-radius: 4px;
+        }
+
+        .detail-badges {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 12px;
+        }
+
+        .detail-badge {
+            background: linear-gradient(135deg, #66c0f9, #1b567a);
+            border-radius: 4px;
+            padding: 4px 10px;
+            font-size: 10px;
+            color: #fff;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .detail-badge.gameplay {
+            background: linear-gradient(135deg, #f472b6, #be185d);
+        }
+
+        .detail-info {
+            font-size: 12px;
+            color: #8b98a0;
+            margin-bottom: 16px;
+            line-height: 1.8;
+        }
+
+        .detail-desc {
+            font-size: 13px;
+            color: #c7d5e0;
+            line-height: 1.7;
+            margin-bottom: 20px;
+        }
+
+        .detail-actions {
+            display: flex;
+            gap: 10px;
+        }
+
+        .btn-enable {
+            background: linear-gradient(90deg, #47bfff, #2a475e);
+            border: none;
+            border-radius: 4px;
+            padding: 10px 24px;
+            color: #fff;
+            font-size: 12px;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+
+        .btn-enable:hover {
+            background: linear-gradient(90deg, #66cdff, #47bfff);
+            box-shadow: 0 0 20px rgba(102, 192, 249, 0.3);
+        }
+
+        .btn-secondary {
+            background: transparent;
+            border: 1px solid rgba(86, 131, 172, 0.4);
+            border-radius: 4px;
+            padding: 10px 20px;
+            color: #a3c9e7;
+            font-size: 12px;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+
+        .btn-secondary:hover {
+            background: rgba(86, 131, 172, 0.2);
+        }
+
+        /* Empty State */
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: #8b98a0;
+        }
+
+        .empty-icon {
+            font-size: 48px;
+            margin-bottom: 16px;
+            opacity: 0.5;
+        }
+
+        .empty-text {
+            font-size: 14px;
+        }
+
+        /* Footer */
+        .footer {
+            background: rgba(21, 31, 46, 0.6);
+            padding: 10px 16px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-top: 1px solid rgba(86, 131, 172, 0.15);
+            font-size: 11px;
+            color: #8b98a0;
+        }
+
+        .footer-left {
+            display: flex;
+            gap: 16px;
+        }
+
+        .footer-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .footer-item span:first-child {
+            color: #66c0f9;
+        }
+
+        .footer-right {
+            color: #66c0f9;
+        }
+
+        /* ===== STYLE LABELS ===== */
+        .style-info {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 16px;
+            padding: 16px;
+            background: rgba(255,255,255,0.03);
+            border-radius: 8px;
+            border: 1px solid rgba(255,255,255,0.05);
+        }
+
+        .style-labels {
+            display: flex;
+            gap: 12px;
+        }
+
+        .style-label {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 12px;
+            color: #8b949e;
+        }
+
+        .style-label .steam { color: #66c0f9; }
+        .style-label .win11 { color: #60cdff; }
+
+        .style-desc {
+            font-size: 12px;
+            color: #6e7681;
+        }
+    </style>
+</head>
+<body>
+    <div class="preview-container">
+        <div class="header-row">
+            <div class="back-btn">← 返回选择</div>
+            <div>混合风格预览</div>
+        </div>
+
+        <div class="window">
+            <!-- Title Bar -->
+            <div class="title-bar">
+                <div class="title-bar-left">
+                    <div class="app-icon">⚔️</div>
+                    <div class="app-title">模组管理器</div>
+                </div>
+                <div class="title-bar-right">
+                    <div class="search-container">
+                        <span class="search-icon">🔍</span>
+                        <input type="text" class="search-input" placeholder="搜索模组...">
+                    </div>
+                    <div class="action-btns">
+                        <div class="action-btn">安装</div>
+                        <div class="action-btn primary">刷新</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tab Bar -->
+            <div class="tab-bar">
+                <div class="tab-item active">全部模组</div>
+                <div class="tab-item">已启用</div>
+                <div class="tab-item">游戏性</div>
+                <div class="tab-item">美化</div>
+                <div class="tab-item">整合包</div>
+            </div>
+
+            <!-- Main Content -->
+            <div class="main-content">
+                <!-- Mod List -->
+                <div class="mod-list">
+                    <div class="list-header">
+                        <div class="list-title">模组列表</div>
+                        <div class="list-count">12 个模组</div>
+                    </div>
+
+                    <div class="mod-item selected">
+                        <div class="mod-icon">🏃</div>
+                        <div class="mod-info">
+                            <div class="mod-name">BetterTrails</div>
+                            <div class="mod-meta">kjasdh • v1.2.3</div>
+                        </div>
+                        <div class="mod-toggle on"></div>
+                    </div>
+
+                    <div class="mod-item">
+                        <div class="mod-icon gameplay">⚔️</div>
+                        <div class="mod-info">
+                            <div class="mod-name">ExtraRelics</div>
+                            <div class="mod-meta">gamedev • v2.1.0</div>
+                        </div>
+                        <div class="mod-toggle"></div>
+                    </div>
+
+                    <div class="mod-item">
+                        <div class="mod-icon">🎴</div>
+                        <div class="mod-info">
+                            <div class="mod-name">CardUI Expansion</div>
+                            <div class="mod-meta">modder01 • v1.5.2</div>
+                        </div>
+                        <div class="mod-toggle on"></div>
+                    </div>
+
+                    <div class="mod-item">
+                        <div class="mod-icon">✨</div>
+                        <div class="mod-info">
+                            <div class="mod-name">RelicFX</div>
+                            <div class="mod-meta">relicfan • v1.0.1</div>
+                        </div>
+                        <div class="mod-toggle"></div>
+                    </div>
+
+                    <div class="mod-item">
+                        <div class="mod-icon gameplay">💀</div>
+                        <div class="mod-info">
+                            <div class="mod-name">DamageNumbers+</div>
+                            <div class="mod-meta">combat_dev • v1.2.0</div>
+                        </div>
+                        <div class="mod-toggle"></div>
+                    </div>
+                </div>
+
+                <!-- Detail Panel -->
+                <div class="detail-panel">
+                    <div class="detail-header">
+                        <div class="detail-title">BetterTrails</div>
+                        <div class="detail-version">v1.2.3</div>
+                    </div>
+
+                    <div class="detail-badges">
+                        <div class="detail-badge">美化</div>
+                        <div class="detail-badge">兼容 v2.0+</div>
+                    </div>
+
+                    <div class="detail-info">
+                        作者: kjasdh<br>
+                        上传: 2024-12-15<br>
+                        下载: 15,432
+                    </div>
+
+                    <div class="detail-desc">
+                        优化角色的战斗拖尾特效，让战斗画面更加流畅绚丽。支持自定义颜色、线条数量和淡出效果。与游戏原有风格完美融合。还包含额外的粒子效果定制选项。
+                    </div>
+
+                    <div class="detail-actions">
+                        <button class="btn-enable">启用模组</button>
+                        <button class="btn-secondary">卸载</button>
+                        <button class="btn-secondary">查看文件</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Footer -->
+            <div class="footer">
+                <div class="footer-left">
+                    <div class="footer-item">
+                        <span>3</span> 个已启用
+                    </div>
+                    <div class="footer-item">
+                        <span>2</span> 个待更新
+                    </div>
+                </div>
+                <div class="footer-right">
+                    最后更新: 5分钟前
+                </div>
+            </div>
+        </div>
+
+        <div class="style-info">
+            <div class="style-labels">
+                <div class="style-label">
+                    <span class="steam">STEAM</span> 深蓝渐变 + 蓝色高光
+                </div>
+                <div class="style-label">
+                    <span class="win11">WIN11</span> 亚克力模糊 + 圆角
+                </div>
+            </div>
+            <div class="style-desc">
+                保留Steam的深蓝配色，融入Win11的现代圆角和毛玻璃效果
+            </div>
+        </div>
+    </div>
+</body>
+</html>

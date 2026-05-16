@@ -1,0 +1,305 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>启动按钮 - 创意测试</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI Variable', 'Segoe UI', -apple-system, sans-serif;
+            background: linear-gradient(180deg, #1b2838 0%, #12171e 100%);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 40px;
+        }
+
+        h1 {
+            color: #c7d5e0;
+            font-weight: 300;
+            letter-spacing: 2px;
+            margin-bottom: 40px;
+        }
+
+        .subtitle {
+            color: #8b98a0;
+            font-size: 13px;
+            margin-bottom: 60px;
+        }
+
+        /* ===== CIRCULAR LAUNCH BUTTON ===== */
+        .launch-container {
+            position: relative;
+            width: 120px;
+            height: 120px;
+            margin-bottom: 40px;
+        }
+
+        .launch-btn {
+            position: absolute;
+            width: 80px;
+            height: 80px;
+            left: 20px;
+            top: 20px;
+            background: linear-gradient(135deg, #66c0f9, #2a475e);
+            border: 2px solid rgba(102, 192, 249, 0.5);
+            border-radius: 50%;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 20px rgba(102, 192, 249, 0.3),
+                        inset 0 2px 10px rgba(255, 255, 255, 0.1);
+            z-index: 10;
+        }
+
+        .launch-btn:hover {
+            transform: scale(1.1);
+            box-shadow: 0 6px 30px rgba(102, 192, 249, 0.5),
+                        inset 0 2px 10px rgba(255, 255, 255, 0.2);
+        }
+
+        .launch-btn:active {
+            transform: scale(0.95);
+        }
+
+        .launch-btn.launching {
+            animation: pulse 0.5s ease-in-out infinite;
+        }
+
+        .play-icon {
+            width: 0;
+            height: 0;
+            border-left: 16px solid #fff;
+            border-top: 10px solid transparent;
+            border-bottom: 10px solid transparent;
+            margin-left: 4px;
+            transition: all 0.3s ease;
+        }
+
+        .launch-btn:hover .play-icon {
+            border-left-color: #66c0f9;
+            transform: translateX(2px);
+        }
+
+        /* Orbital sub-buttons */
+        .orbital-btn {
+            position: absolute;
+            width: 36px;
+            height: 36px;
+            background: rgba(42, 71, 94, 0.9);
+            border: 1px solid rgba(102, 192, 249, 0.3);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
+            cursor: pointer;
+            opacity: 0;
+            transform: scale(0);
+            transition: all 0.3s ease;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+        }
+
+        .orbital-btn.visible {
+            opacity: 1;
+            transform: scale(1);
+        }
+
+        .orbital-btn.top { left: 42px; top: -5px; }
+        .orbital-btn.left { left: -5px; top: 42px; }
+        .orbital-btn.right { left: 89px; top: 42px; }
+
+        .launch-container:hover .orbital-btn {
+            opacity: 1;
+            transform: scale(1);
+        }
+
+        .launch-container:hover .orbital-btn.top {
+            top: -12px;
+            transition-delay: 0s;
+        }
+
+        .launch-container:hover .orbital-btn.left {
+            left: -12px;
+            transition-delay: 0.05s;
+        }
+
+        .launch-container:hover .orbital-btn.right {
+            left: 89px;
+            top: 42px;
+        }
+
+        .orbital-btn:hover {
+            background: rgba(102, 192, 249, 0.3);
+            border-color: #66c0f9;
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+        }
+
+        .launch-label {
+            color: #66c0f9;
+            font-size: 11px;
+            text-align: center;
+            margin-top: 10px;
+        }
+
+        .status-text {
+            color: #8b98a0;
+            font-size: 12px;
+            margin-top: 20px;
+            min-height: 20px;
+        }
+
+        /* ===== SQUARE VERSION ===== */
+        .square-version {
+            display: flex;
+            gap: 40px;
+            margin-top: 40px;
+            padding-top: 40px;
+            border-top: 1px solid rgba(86, 131, 172, 0.15);
+        }
+
+        .square-btn {
+            width: 48px;
+            height: 48px;
+            background: linear-gradient(135deg, #66c0f9, #2a475e);
+            border: 2px solid rgba(102, 192, 249, 0.5);
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            box-shadow: 0 4px 15px rgba(102, 192, 249, 0.2);
+        }
+
+        .square-btn:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 8px 25px rgba(102, 192, 249, 0.4);
+        }
+
+        .square-btn:active {
+            transform: translateY(0);
+        }
+
+        .square-btn .play-icon {
+            border-left-width: 12px;
+            border-top-width: 8px;
+            border-bottom-width: 8px;
+        }
+
+        .square-label {
+            color: #8b98a0;
+            font-size: 10px;
+            text-align: center;
+            margin-top: 8px;
+        }
+
+        .versions {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .instructions {
+            color: #8b98a0;
+            font-size: 12px;
+            margin-top: 60px;
+            max-width: 400px;
+            text-align: center;
+            line-height: 1.6;
+        }
+    </style>
+</head>
+<body>
+    <h1>⚔️ 启动按钮</h1>
+    <p class="subtitle">点击测试动画效果</p>
+
+    <!-- Circular version -->
+    <div class="launch-container">
+        <div class="orbital-btn top">V</div>
+        <div class="orbital-btn left">M</div>
+        <div class="orbital-btn right">MP</div>
+        <div class="launch-btn" onclick="launch()">
+            <div class="play-icon"></div>
+        </div>
+    </div>
+    <div class="launch-label">点击启动游戏</div>
+    <div class="status-text" id="status">点击按钮开始游戏</div>
+
+    <p class="instructions">
+        圆形按钮：鼠标悬停展开3个小按钮（Vanilla/Modded/Multiplayer）<br>
+        点击主按钮启动游戏，点击小按钮选择启动模式
+    </p>
+
+    <!-- Square versions for other positions -->
+    <div class="square-version">
+        <div class="versions">
+            <div class="square-btn" onclick="launch()">
+                <div class="play-icon"></div>
+            </div>
+            <div class="square-label">右下角</div>
+        </div>
+        <div class="versions">
+            <div class="square-btn" style="width:36px;height:36px;background:rgba(42,71,94,0.8);border:1px solid rgba(102,192,249,0.3);" onclick="launch()">
+                <div class="play-icon" style="border-left-width:10px;border-top-width:6px;border-bottom-width:6px;"></div>
+            </div>
+            <div class="square-label">小尺寸</div>
+        </div>
+        <div class="versions">
+            <div class="square-btn" style="width:56px;height:56px;border-radius:8px;" onclick="launch()">
+                <div class="play-icon" style="border-left-width:18px;border-top-width:12px;border-bottom-width:12px;"></div>
+            </div>
+            <div class="square-label">圆角矩形</div>
+        </div>
+    </div>
+
+    <script>
+        let launching = false;
+
+        function launch() {
+            if (launching) return;
+
+            const btn = document.querySelector('.launch-btn');
+            const status = document.getElementById('status');
+            const playIcon = document.querySelector('.launch-btn .play-icon');
+
+            // Start launching
+            launching = true;
+            btn.classList.add('launching');
+            status.innerHTML = '正在启动 Steam...';
+            status.style.color = '#66c0f9';
+
+            // Simulate launch process
+            setTimeout(() => {
+                status.innerHTML = '正在连接 Steam 客户端...';
+            }, 800);
+
+            setTimeout(() => {
+                status.innerHTML = '正在启动游戏...';
+            }, 1600);
+
+            setTimeout(() => {
+                btn.classList.remove('launching');
+                status.innerHTML = '✅ 游戏已启动！';
+                status.style.color = '#4ade80';
+
+                // Reset after delay
+                setTimeout(() => {
+                    launching = false;
+                    status.innerHTML = '点击按钮开始游戏';
+                    status.style.color = '#8b98a0';
+                }, 2000);
+            }, 2400);
+        }
+    </script>
+</body>
+</html>

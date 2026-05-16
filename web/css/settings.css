@@ -1,0 +1,421 @@
+/* ==========================================================================
+   settings.css — Settings Page
+   Slay the Spire 2 Mod Manager — Steam × Windows 11 Dark Theme
+   ========================================================================== */
+
+@import "variables.css";
+
+/* =========================================================================
+   SETTINGS CONTAINER
+   Centered column with max-width for readability.
+   ========================================================================= */
+
+.settings-container {
+    max-width: 700px;
+    margin: 0 auto;
+    padding: var(--sp-lg) 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+}
+
+/* =========================================================================
+   SETTINGS SECTION
+   Card-like grouping with header and body.
+   ========================================================================= */
+
+.settings-section {
+    background-color: var(--bg-surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    margin-bottom: var(--sp-xl);
+    overflow: hidden;
+}
+
+.settings-section:last-child {
+    margin-bottom: 0;
+}
+
+.settings-section-header {
+    display: flex;
+    align-items: center;
+    gap: var(--sp-md);
+    padding: var(--sp-md) var(--sp-lg);
+    font-size: var(--font-md);
+    font-weight: var(--weight-bold);
+    color: var(--text-primary);
+    border-bottom: 1px solid var(--border);
+    border-left: 3px solid var(--accent);
+    background-color: rgba(102, 192, 249, 0.03);
+}
+
+.settings-section-body {
+    padding: var(--sp-md) var(--sp-lg);
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+}
+
+/* =========================================================================
+   SETTINGS ROW
+   Label + control in a horizontal flex row.
+   ========================================================================= */
+
+.settings-row {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: var(--sp-md);
+    padding: var(--sp-md) 0;
+    min-height: 44px;
+}
+
+.settings-row + .settings-row {
+    border-top: 1px solid var(--border);
+}
+
+.settings-label-area {
+    flex: 1 1 0;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.settings-label {
+    font-size: var(--font-sm);
+    font-weight: var(--weight-medium);
+    color: var(--text-primary);
+}
+
+.settings-desc {
+    font-size: var(--font-xs);
+    color: var(--text-muted);
+    line-height: var(--leading-normal);
+}
+
+.settings-control {
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    gap: var(--sp-sm);
+}
+
+/* =========================================================================
+   PATH ROW
+   Input + browse + auto-detect buttons in a flex row.
+   ========================================================================= */
+
+.settings-path-row {
+    display: flex;
+    flex-direction: column;
+    gap: var(--sp-sm);
+    padding: var(--sp-md) 0;
+}
+
+.settings-path-row + .settings-path-row {
+    border-top: 1px solid var(--border);
+}
+
+.settings-path-label {
+    font-size: var(--font-sm);
+    font-weight: var(--weight-medium);
+    color: var(--text-primary);
+}
+
+.settings-path-desc {
+    font-size: var(--font-xs);
+    color: var(--text-muted);
+}
+
+.settings-path-controls {
+    display: flex;
+    gap: var(--sp-sm);
+}
+
+.settings-path-controls .input {
+    flex: 1 1 0;
+    min-width: 0;
+}
+
+.settings-path-controls .btn {
+    flex-shrink: 0;
+}
+
+/* =========================================================================
+   TOGGLE ROW
+   Label + toggle switch.
+   ========================================================================= */
+
+.settings-toggle-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--sp-md);
+    padding: var(--sp-md) 0;
+    min-height: 44px;
+}
+
+.settings-toggle-row + .settings-toggle-row {
+    border-top: 1px solid var(--border);
+}
+
+/* =========================================================================
+   SLIDER ROW
+   Label + range slider + value display.
+   ========================================================================= */
+
+.settings-slider-row {
+    display: flex;
+    flex-direction: column;
+    gap: var(--sp-sm);
+    padding: var(--sp-md) 0;
+}
+
+.settings-slider-row + .settings-slider-row {
+    border-top: 1px solid var(--border);
+}
+
+.settings-slider-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.settings-slider-label {
+    font-size: var(--font-sm);
+    font-weight: var(--weight-medium);
+    color: var(--text-primary);
+}
+
+.settings-slider-value {
+    font-size: var(--font-sm);
+    font-weight: var(--weight-semibold);
+    color: var(--accent);
+    min-width: 40px;
+    text-align: right;
+}
+
+.settings-slider-input {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 100%;
+    height: 4px;
+    background: var(--border);
+    border-radius: var(--radius-pill);
+    outline: none;
+    cursor: pointer;
+}
+
+.settings-slider-input::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 16px;
+    height: 16px;
+    border-radius: var(--radius-circle);
+    background: var(--accent);
+    cursor: pointer;
+    box-shadow: 0 0 6px var(--accent-glow);
+    transition: box-shadow var(--transition-fast);
+}
+
+.settings-slider-input::-webkit-slider-thumb:hover {
+    box-shadow: 0 0 12px var(--accent-glow);
+}
+
+.settings-slider-input::-moz-range-thumb {
+    width: 16px;
+    height: 16px;
+    border-radius: var(--radius-circle);
+    background: var(--accent);
+    cursor: pointer;
+    border: none;
+    box-shadow: 0 0 6px var(--accent-glow);
+}
+
+/* =========================================================================
+   SELECT ROW
+   Label + select dropdown.
+   ========================================================================= */
+
+.settings-select-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--sp-md);
+    padding: var(--sp-md) 0;
+    min-height: 44px;
+}
+
+.settings-select-row + .settings-select-row {
+    border-top: 1px solid var(--border);
+}
+
+.settings-select-row select {
+    min-width: 160px;
+    padding: 0 var(--sp-md);
+    height: var(--input-height);
+    font-size: var(--font-sm);
+    color: var(--text-primary);
+    background-color: var(--bg-surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    cursor: pointer;
+    transition: border-color var(--transition-fast);
+}
+
+.settings-select-row select:hover {
+    border-color: var(--border-hover);
+}
+
+.settings-select-row select:focus {
+    outline: none;
+    border-color: var(--accent);
+    box-shadow: 0 0 0 2px var(--accent-glow);
+}
+
+/* =========================================================================
+   SETTINGS ACTIONS
+   Bottom save button area.
+   ========================================================================= */
+
+.settings-actions {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: var(--sp-sm);
+    padding: var(--sp-lg) 0 0;
+}
+
+.settings-actions .btn {
+    min-width: 100px;
+}
+
+/* =========================================================================
+   DANGER ZONE
+   Red-bordered section for destructive actions.
+   ========================================================================= */
+
+.settings-danger {
+    border-color: rgba(239, 68, 68, 0.25);
+}
+
+.settings-danger .settings-section-header {
+    border-left-color: var(--danger);
+    color: var(--danger);
+    background-color: rgba(239, 68, 68, 0.04);
+}
+
+/* =========================================================================
+   CHECKBOX GROUP
+   Grid of checkboxes for JSON field settings.
+   ========================================================================= */
+
+.settings-checkbox-group {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: var(--sp-sm);
+    padding: var(--sp-sm) 0;
+}
+
+.settings-checkbox-item {
+    display: flex;
+    align-items: center;
+    gap: var(--sp-sm);
+    font-size: var(--font-sm);
+    color: var(--text-primary);
+    cursor: pointer;
+    user-select: none;
+}
+
+.settings-checkbox-item input[type="checkbox"] {
+    width: 16px;
+    height: 16px;
+    accent-color: var(--accent);
+    cursor: pointer;
+}
+
+/* =========================================================================
+   SETTINGS HELP LINK
+   Small inline help text with link.
+   ========================================================================= */
+
+.settings-help {
+    font-size: var(--font-xs);
+    color: var(--text-muted);
+    margin-top: var(--sp-xs);
+}
+
+.settings-help a {
+    color: var(--accent);
+    text-decoration: none;
+}
+
+.settings-help a:hover {
+    text-decoration: underline;
+}
+
+/* =========================================================================
+   SETTINGS VERSION INFO
+   Version display in the update section.
+   ========================================================================= */
+
+.settings-version {
+    display: flex;
+    align-items: center;
+    gap: var(--sp-sm);
+    font-size: var(--font-sm);
+    color: var(--text-secondary);
+    padding: var(--sp-sm) 0;
+}
+
+.settings-version-value {
+    font-weight: var(--weight-semibold);
+    color: var(--text-primary);
+    padding: 2px 8px;
+    background-color: rgba(102, 192, 249, 0.10);
+    border: 1px solid rgba(102, 192, 249, 0.20);
+    border-radius: var(--radius-sm);
+    font-size: var(--font-xs);
+}
+
+/* =========================================================================
+   DIRTY INDICATOR
+   Subtle visual cue when settings have unsaved changes.
+   ========================================================================= */
+
+.settings-container.dirty .settings-actions .btn-primary {
+    animation: glow 1.5s ease-in-out infinite;
+}
+
+/* =========================================================================
+   SETTINGS STATUS BADGE
+   Inline status indicator for validation states.
+   ========================================================================= */
+
+.settings-status {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--sp-xs);
+    font-size: var(--font-xs);
+    padding: 2px 8px;
+    border-radius: var(--radius-pill);
+}
+
+.settings-status.success {
+    background-color: rgba(74, 222, 128, 0.12);
+    color: var(--success);
+    border: 1px solid rgba(74, 222, 128, 0.25);
+}
+
+.settings-status.error {
+    background-color: rgba(239, 68, 68, 0.12);
+    color: var(--danger);
+    border: 1px solid rgba(239, 68, 68, 0.25);
+}
+
+.settings-status.pending {
+    background-color: rgba(255, 169, 64, 0.12);
+    color: var(--warning);
+    border: 1px solid rgba(255, 169, 64, 0.25);
+}

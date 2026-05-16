@@ -1,0 +1,701 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>模组页面 - 含启动条</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI Variable', 'Segoe UI', -apple-system, sans-serif;
+            background: linear-gradient(180deg, #1b2838 0%, #12171e 100%);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            padding: 0;
+        }
+
+        /* ===== WINDOW ===== */
+        .window {
+            width: 100%;
+            max-width: 900px;
+            height: 100vh;
+            margin: 0 auto;
+            background: #12171e;
+            display: flex;
+            flex-direction: column;
+            border-left: 1px solid rgba(86, 131, 172, 0.15);
+            border-right: 1px solid rgba(86, 131, 172, 0.15);
+        }
+
+        /* ===== TITLE BAR ===== */
+        .title-bar {
+            background: rgba(21, 31, 46, 0.95);
+            padding: 12px 16px;
+            display: flex;
+            align-items: center;
+            border-bottom: 1px solid rgba(86, 131, 172, 0.2);
+        }
+
+        .title-bar-left { display: flex; align-items: center; gap: 10px; }
+        .app-icon { font-size: 18px; }
+        .app-title { color: #c7d5e0; font-size: 13px; font-weight: 500; }
+
+        /* ===== TAB SELECTOR ===== */
+        .tab-selector {
+            display: flex;
+            gap: 4px;
+            padding: 0 16px;
+            background: rgba(21, 31, 46, 0.8);
+            border-bottom: 1px solid rgba(86, 131, 172, 0.15);
+        }
+
+        .tab-btn {
+            padding: 10px 16px;
+            background: transparent;
+            border: none;
+            color: #8b98a0;
+            font-size: 12px;
+            cursor: pointer;
+            border-bottom: 2px solid transparent;
+            transition: all 0.2s;
+        }
+
+        .tab-btn:hover { color: #c7d5e0; }
+        .tab-btn.active { color: #fff; border-bottom-color: #66c0f9; }
+
+        /* ===== TOOLBAR ===== */
+        .toolbar {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 12px 16px;
+            background: rgba(21, 31, 46, 0.5);
+            border-bottom: 1px solid rgba(86, 131, 172, 0.15);
+        }
+
+        .search-box {
+            flex: 1;
+            max-width: 280px;
+            background: rgba(42, 71, 94, 0.6);
+            border: 1px solid rgba(86, 131, 172, 0.3);
+            border-radius: 20px;
+            padding: 8px 14px;
+            color: #c7d5e0;
+            font-size: 12px;
+        }
+
+        .search-box::placeholder { color: #555; }
+
+        .filter-dropdown {
+            position: relative;
+        }
+
+        .filter-btn {
+            background: rgba(42, 71, 94, 0.6);
+            border: 1px solid rgba(86, 131, 172, 0.3);
+            border-radius: 6px;
+            padding: 8px 14px;
+            color: #c7d5e0;
+            font-size: 12px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .filter-btn:hover { background: rgba(42, 71, 94, 0.8); }
+
+        .filter-menu {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            margin-top: 4px;
+            background: rgba(21, 31, 46, 0.98);
+            border: 1px solid rgba(86, 131, 172, 0.3);
+            border-radius: 6px;
+            padding: 6px 0;
+            min-width: 140px;
+            display: none;
+            z-index: 100;
+        }
+
+        .filter-menu.show { display: block; }
+
+        .filter-option {
+            padding: 8px 14px;
+            color: #c7d5e0;
+            font-size: 12px;
+            cursor: pointer;
+        }
+
+        .filter-option:hover { background: rgba(102, 192, 249, 0.1); }
+
+        .toolbar-right { margin-left: auto; display: flex; gap: 8px; }
+
+        .btn-primary {
+            background: linear-gradient(90deg, #47bfff, #2a475e);
+            border: none;
+            border-radius: 6px;
+            padding: 8px 16px;
+            color: #fff;
+            font-size: 12px;
+            cursor: pointer;
+        }
+
+        .btn-primary:hover { opacity: 0.9; }
+
+        /* ===== CONTENT AREA ===== */
+        .content {
+            flex: 1;
+            display: flex;
+            overflow: hidden;
+        }
+
+        /* ===== LEFT PANEL ===== */
+        .left-panel {
+            width: 55%;
+            border-right: 1px solid rgba(86, 131, 172, 0.15);
+            display: flex;
+            flex-direction: column;
+        }
+
+        .mod-list {
+            flex: 1;
+            overflow-y: auto;
+            padding: 10px;
+        }
+
+        .mod-item {
+            background: rgba(255, 255, 255, 0.03);
+            border-radius: 6px;
+            padding: 12px 14px;
+            margin-bottom: 6px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            transition: all 0.2s;
+        }
+
+        .mod-item:hover { background: rgba(255, 255, 255, 0.06); }
+
+        .mod-item.selected {
+            background: linear-gradient(90deg, rgba(102, 192, 249, 0.15), rgba(102, 192, 249, 0.05));
+            border: 1px solid rgba(102, 192, 249, 0.3);
+        }
+
+        .mod-icon { font-size: 24px; }
+
+        .mod-info { flex: 1; }
+        .mod-name { color: #e5e5e5; font-size: 13px; font-weight: 500; }
+        .mod-author { color: #8b98a0; font-size: 11px; margin-top: 2px; }
+
+        .mod-toggle {
+            width: 36px;
+            height: 20px;
+            background: rgba(42, 71, 94, 0.8);
+            border-radius: 10px;
+            position: relative;
+            cursor: pointer;
+        }
+
+        .mod-toggle.on { background: #66c0f9; }
+
+        .mod-toggle::after {
+            content: '';
+            position: absolute;
+            width: 16px;
+            height: 16px;
+            background: #fff;
+            border-radius: 50%;
+            top: 2px;
+            left: 2px;
+            transition: all 0.2s;
+        }
+
+        .mod-toggle.on::after { left: 18px; }
+
+        /* ===== RIGHT PANEL ===== */
+        .right-panel {
+            width: 45%;
+            padding: 16px;
+            overflow-y: auto;
+            background: rgba(0, 0, 0, 0.2);
+        }
+
+        .detail-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 16px; }
+        .detail-title { color: #66c0f9; font-size: 22px; font-weight: 500; }
+        .detail-version { color: #8b98a0; font-size: 12px; margin-top: 4px; }
+
+        .detail-badges { display: flex; gap: 8px; margin-bottom: 12px; }
+        .badge { background: rgba(42, 71, 94, 0.4); border-radius: 4px; padding: 4px 10px; font-size: 10px; color: #c7d5e0; text-transform: uppercase; }
+        .badge.gameplay { background: rgba(244, 114, 182, 0.2); color: #f472b6; }
+        .badge.cosmetic { background: rgba(102, 192, 249, 0.2); color: #66c0f9; }
+
+        .detail-info { font-size: 12px; color: #8b98a0; margin-bottom: 16px; line-height: 1.8; }
+        .detail-desc { font-size: 13px; color: #c7d5e0; line-height: 1.7; margin-bottom: 16px; }
+
+        .detail-notes { background: rgba(42, 71, 94, 0.15); border: 1px solid rgba(86, 131, 172, 0.15); border-radius: 6px; padding: 12px; margin-bottom: 16px; }
+        .detail-notes-header { display: flex; align-items: center; gap: 6px; margin-bottom: 8px; font-size: 11px; color: #66c0f9; text-transform: uppercase; }
+        .detail-notes-content { font-size: 12px; color: #c7d5e0; line-height: 1.5; }
+
+        .detail-actions { display: flex; gap: 10px; }
+        .btn-enable { background: linear-gradient(90deg, #47bfff, #2a475e); border: none; border-radius: 4px; padding: 10px 24px; color: #fff; font-size: 12px; cursor: pointer; }
+        .btn-secondary { background: transparent; border: 1px solid rgba(86, 131, 172, 0.4); border-radius: 4px; padding: 10px 20px; color: #a3c9e7; font-size: 12px; cursor: pointer; }
+
+        /* ===== FOOTER WITH LAUNCH BAR ===== */
+        .footer {
+            background: rgba(21, 31, 46, 0.6);
+            padding: 8px 16px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 11px;
+            color: #8b98a0;
+            border-top: 1px solid rgba(86, 131, 172, 0.15);
+        }
+
+        .footer-left { display: flex; gap: 16px; }
+
+        /* ===== HORIZONTAL LAUNCH BAR ===== */
+        .launch-bar {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            padding-right: 8px;
+        }
+
+        /* Drive positions - horizontal */
+        .drive-pos-h {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            width: 28px;
+            height: 26px;
+            font-size: 11px;
+            font-weight: 600;
+            border-radius: 12px;
+            transition: all 0.15s ease;
+            color: #66c0f9;
+            cursor: pointer;
+        }
+
+        .drive-pos-h.park {
+            background: linear-gradient(135deg, rgba(244, 114, 182, 0.12), transparent);
+        }
+
+        .drive-pos-h.drive {
+            background: linear-gradient(135deg, rgba(102, 192, 249, 0.12), transparent);
+        }
+
+        .drive-pos-h.neutral {
+            background: linear-gradient(135deg, rgba(16, 185, 129, 0.15), rgba(16, 185, 129, 0.08));
+            color: #10b981;
+            position: relative;
+            z-index: 1;
+        }
+
+        .drive-pos-h.reverse {
+            background: linear-gradient(135deg, rgba(244, 114, 182, 0.12), transparent);
+        }
+
+        .drive-pos-h.active {
+            background: linear-gradient(135deg, rgba(102, 192, 249, 0.35), rgba(102, 192, 249, 0.15));
+            box-shadow: 0 0 10px rgba(102, 192, 249, 0.35);
+            color: #fff;
+        }
+
+        .drive-pos-h.active.neutral {
+            background: linear-gradient(135deg, rgba(16, 185, 129, 0.35), rgba(16, 185, 129, 0.15));
+            box-shadow: 0 0 10px rgba(16, 185, 129, 0.35);
+        }
+
+        .drive-pos-h.active.park, .drive-pos-h.active.reverse {
+            background: linear-gradient(135deg, rgba(244, 114, 182, 0.35), rgba(244, 114, 182, 0.15));
+            box-shadow: 0 0 10px rgba(244, 114, 182, 0.35);
+        }
+
+        /* Track with larger gaps */
+        .track-line-h {
+            width: 18px;
+            height: 2px;
+            background: rgba(102, 192, 249, 0.15);
+            border-radius: 1px;
+        }
+
+        .track-gap {
+            width: 40px;
+        }
+
+        /* Gear knob / Play button - covering N */
+        .gear-knob-h {
+            position: absolute;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(145deg, #2a475e, #1b2838);
+            border: 2px solid #66c0f9;
+            border-radius: 12px;
+            cursor: grab;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 10;
+            box-shadow: 0 2px 10px rgba(102, 192, 249, 0.25);
+            transition: left 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275), opacity 0.3s ease;
+        }
+
+        .gear-knob-h::after {
+            content: '';
+            width: 0;
+            height: 0;
+            border-left: 8px solid #66c0f9;
+            border-top: 5px solid transparent;
+            border-bottom: 5px solid transparent;
+        }
+
+        .gear-knob-h.launching {
+            animation: pulse 0.4s ease-in-out infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.08); }
+        }
+
+        .status-mini {
+            color: #66c0f9;
+            font-size: 10px;
+            margin-left: 8px;
+            min-width: 100px;
+        }
+
+        .status-mini.launching { color: #4ade80; }
+    </style>
+</head>
+<body>
+    <div class="window">
+        <!-- Title Bar -->
+        <div class="title-bar">
+            <div class="title-bar-left">
+                <div class="app-icon">⚔️</div>
+                <div class="app-title">杀戮尖塔2 模组管理器</div>
+            </div>
+        </div>
+
+        <!-- Tab Selector -->
+        <div class="tab-selector">
+            <button class="tab-btn active">模组</button>
+            <button class="tab-btn">整合包</button>
+            <button class="tab-btn">存档</button>
+            <button class="tab-btn">设置</button>
+        </div>
+
+        <!-- Toolbar -->
+        <div class="toolbar">
+            <input type="text" class="search-box" placeholder="搜索模组...">
+
+            <div class="filter-dropdown">
+                <button class="filter-btn" onclick="toggleFilter()">
+                    筛选 <span style="opacity:0.5">▼</span>
+                </button>
+                <div class="filter-menu" id="filterMenu">
+                    <div class="filter-option">全部</div>
+                    <div class="filter-option">游戏性</div>
+                    <div class="filter-option">美化</div>
+                    <div class="filter-option">已启用</div>
+                </div>
+            </div>
+
+            <div class="toolbar-right">
+                <button class="btn-primary">+ 安装模组</button>
+            </div>
+        </div>
+
+        <!-- Content -->
+        <div class="content">
+            <!-- Left Panel - Mod List -->
+            <div class="left-panel">
+                <div class="mod-list">
+                    <div class="mod-item selected">
+                        <div class="mod-icon">🎴</div>
+                        <div class="mod-info">
+                            <div class="mod-name">BetterMonsterDraw</div>
+                            <div class="mod-author">作者: LuckyRabbit</div>
+                        </div>
+                        <div class="mod-toggle on" onclick="toggleMod(this)"></div>
+                    </div>
+                    <div class="mod-item">
+                        <div class="mod-icon">💎</div>
+                        <div class="mod-info">
+                            <div class="mod-name">CrystalRelics</div>
+                            <div class="mod-author">作者: GemCrafter</div>
+                        </div>
+                        <div class="mod-toggle" onclick="toggleMod(this)"></div>
+                    </div>
+                    <div class="mod-item">
+                        <div class="mod-icon">⚡</div>
+                        <div class="mod-info">
+                            <div class="mod-name">FastRewards</div>
+                            <div class="mod-author">作者: SpeedDev</div>
+                        </div>
+                        <div class="mod-toggle on" onclick="toggleMod(this)"></div>
+                    </div>
+                    <div class="mod-item">
+                        <div class="mod-icon">🌈</div>
+                        <div class="mod-info">
+                            <div class="mod-name">ColorfulCards</div>
+                            <div class="mod-author">作者: Artist</div>
+                        </div>
+                        <div class="mod-toggle" onclick="toggleMod(this)"></div>
+                    </div>
+                    <div class="mod-item">
+                        <div class="mod-icon">🔥</div>
+                        <div class="mod-info">
+                            <div class="mod-name">HotFixes</div>
+                            <div class="mod-author">作者: DevTeam</div>
+                        </div>
+                        <div class="mod-toggle on" onclick="toggleMod(this)"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right Panel - Details -->
+            <div class="right-panel">
+                <div class="detail-header">
+                    <div>
+                        <div class="detail-title">BetterMonsterDraw</div>
+                        <div class="detail-version">v1.2.3</div>
+                    </div>
+                </div>
+
+                <div class="detail-badges">
+                    <span class="badge gameplay">游戏性</span>
+                    <span class="badge">原版兼容</span>
+                </div>
+
+                <div class="detail-info">
+                    作者: LuckyRabbit | 大小: 2.3 MB | 安装时间: 2026-04-10
+                </div>
+
+                <div class="detail-desc">
+                    改善怪物抽卡池的模组，让Boss和小怪的出现更加平衡。包含详细的配置选项，可以自定义每种怪物的权重。
+                </div>
+
+                <div class="detail-notes">
+                    <div class="detail-notes-header">📝 备注</div>
+                    <div class="detail-notes-content">推荐与 ColorfulCards 配合使用效果更佳</div>
+                </div>
+
+                <div class="detail-actions">
+                    <button class="btn-enable">启用</button>
+                    <button class="btn-secondary">卸载</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Footer with Launch Bar -->
+        <div class="footer">
+            <div class="footer-left">
+                <span>3 已启用 / 5 总数</span>
+                <span style="color:#66c0f9;">5分钟前</span>
+            </div>
+
+            <div class="launch-bar">
+                <!-- P -->
+                <div class="drive-pos-h park" id="pos-p">
+                    <span>P</span>
+                </div>
+                <div class="track-line-h"></div>
+
+                <!-- D -->
+                <div class="drive-pos-h drive" id="pos-d">
+                    <span>D</span>
+                </div>
+                <div class="track-gap"></div>
+
+                <!-- N with knob covering -->
+                <div class="drive-pos-h-wrapper" style="position: relative; display: flex; align-items: center; justify-content: center;">
+                    <div class="drive-pos-h neutral active" id="pos-n">
+                        <span>N</span>
+                    </div>
+                    <div class="gear-knob-h" id="knob" style="left: 0;"></div>
+                </div>
+                <div class="track-gap"></div>
+
+                <!-- R -->
+                <div class="drive-pos-h reverse" id="pos-r">
+                    <span>R</span>
+                </div>
+            </div>
+
+            <div class="status-mini" id="status">← 拖动启动</div>
+        </div>
+    </div>
+
+    <script>
+        const knob = document.getElementById('knob');
+        const status = document.getElementById('status');
+        const posP = document.getElementById('pos-p');
+        const posD = document.getElementById('pos-d');
+        const posN = document.getElementById('pos-n');
+        const posR = document.getElementById('pos-r');
+
+        // 获取各档位元素的实际位置
+        function getGearPositions() {
+            const nRect = posN.getBoundingClientRect();
+            const dRect = posD.getBoundingClientRect();
+            const rRect = posR.getBoundingClientRect();
+            const pRect = posP.getBoundingClientRect();
+            const knobRect = knob.getBoundingClientRect();
+
+            const knobCenterX = knobRect.left + knobRect.width / 2;
+
+            return {
+                'P': pRect.left + pRect.width / 2 - knobCenterX,
+                'D': dRect.left + dRect.width / 2 - knobCenterX,
+                'N': nRect.left + nRect.width / 2 - knobCenterX,
+                'R': rRect.left + rRect.width / 2 - knobCenterX
+            };
+        }
+
+        let isDragging = false;
+        let startX = 0;
+        let startLeft = 0;
+        let currentGear = 'N';
+        let gearPositions = null;
+
+        knob.addEventListener('mousedown', startDrag);
+        document.addEventListener('mousemove', drag);
+        document.addEventListener('mouseup', endDrag);
+
+        knob.addEventListener('touchstart', (e) => startDrag(e.touches[0]));
+        document.addEventListener('touchmove', (e) => { e.preventDefault(); drag(e.touches[0]); });
+        document.addEventListener('touchend', endDrag);
+
+        function startDrag(e) {
+            // 初始化时获取实际位置
+            gearPositions = getGearPositions();
+
+            isDragging = true;
+            startX = e.clientX;
+            startLeft = parseFloat(knob.style.left) || 0;
+            knob.style.cursor = 'grabbing';
+            knob.style.transition = 'none';
+            status.textContent = '拖动中...';
+        }
+
+        function drag(e) {
+            if (!isDragging || !gearPositions) return;
+
+            const deltaX = e.clientX - startX;
+            let newLeft = startLeft + deltaX;
+
+            // 扩展行程范围，允许拖到P的位置
+            newLeft = Math.max(-150, Math.min(100, newLeft));
+            knob.style.left = `${newLeft}px`;
+
+            // 检查是否接近某个档位
+            let foundGear = 'N';
+            const SNAP_RANGE = 15;
+
+            for (const [gear, pos] of Object.entries(gearPositions)) {
+                if (gear === 'N') continue;
+                if (Math.abs(newLeft - pos) < SNAP_RANGE) {
+                    foundGear = gear;
+                    break;
+                }
+            }
+
+            if (foundGear !== currentGear) {
+                setGear(foundGear);
+            }
+        }
+
+        function endDrag() {
+            if (!isDragging) return;
+            isDragging = false;
+            knob.style.cursor = 'grab';
+
+            // 如果没到档位上，自动回N
+            if (currentGear === 'N') {
+                knob.style.transition = 'left 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275)';
+                knob.style.left = '0';
+                setGear('N');
+            } else {
+                // 触发启动
+                launch(currentGear);
+            }
+
+            // 清除高亮
+            posP.classList.remove('active');
+            posD.classList.remove('active');
+            posN.classList.remove('active');
+            posR.classList.remove('active');
+        }
+
+        function setGear(gear) {
+            currentGear = gear;
+
+            const colors = { 'D': '#66c0f9', 'R': '#f472b6', 'P': '#f472b6', 'N': '#10b981' };
+            status.textContent = gear === 'P' ? '联机模式' :
+                                gear === 'D' ? '前进(模组)' :
+                                gear === 'R' ? '倒车(原版)' : '空档';
+            status.style.color = colors[gear];
+
+            posP.classList.toggle('active', gear === 'P');
+            posD.classList.toggle('active', gear === 'D');
+            posN.classList.toggle('active', gear === 'N');
+            posR.classList.toggle('active', gear === 'R');
+        }
+
+        function launch(gear) {
+            if (!gearPositions) return;
+
+            const gearName = gear === 'P' ? '联机模式' :
+                           gear === 'D' ? '模组版' : '原版';
+
+            const targetX = gearPositions[gear];
+            knob.style.transition = 'left 0.3s ease';
+            knob.style.left = `${targetX}px`;
+            knob.classList.add('launching');
+
+            status.textContent = `启动 ${gearName}...`;
+
+            setTimeout(() => {
+                status.textContent = `✓ ${gearName} 已启动`;
+                setTimeout(resetKnob, 1500);
+            }, 600);
+        }
+
+        function resetKnob() {
+            knob.style.transition = 'left 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275)';
+            knob.style.left = '0';
+            knob.classList.remove('launching');
+            currentGear = 'N';
+            setGear('N');
+            setTimeout(() => {
+                status.textContent = '← 拖动启动';
+            }, 300);
+        }
+
+        function toggleFilter() {
+            document.getElementById('filterMenu').classList.toggle('show');
+        }
+
+        function toggleMod(el) {
+            el.classList.toggle('on');
+        }
+
+        // Close filter when clicking outside
+        document.addEventListener('click', (e) => {
+            if (!e.target.closest('.filter-dropdown')) {
+                document.getElementById('filterMenu').classList.remove('show');
+            }
+        });
+    </script>
+</body>
+</html>

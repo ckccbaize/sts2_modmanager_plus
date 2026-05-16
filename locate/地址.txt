@@ -1,0 +1,2 @@
+参考游戏根目录E:\SteamLibrary\steamapps\common\Slay the Spire 2
+参考游戏存档目录C:\Users\guo\AppData\Roaming\SlayTheSpire2\steam

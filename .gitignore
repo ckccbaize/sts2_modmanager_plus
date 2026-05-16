@@ -1,0 +1,118 @@
+# Godot
+.godot/
+android/
+ios/
+linux/
+macos/
+windows/
+
+# Build outputs
+*.pck
+*.exe
+*.dll
+*.so
+*.dylib
+
+# Project exports
+*.zip
+sts2_modmanager*.zip
+exports/
+exports_*.zip
+temp_exports/
+
+# Backups & caches
+backups/
+mod_backups/
+temp_mods/
+cache/
+downloads/
+nexus_images_cache/
+logs/
+*.log
+
+# Browser extensions (old versions)
+sts2_browser_extension*.zip
+browser-extension.crx
+browser-extension.pem
+
+# Test files
+test*.zip
+test2.zip
+test.zip
+exe_test/
+test_mods/
+pack_test/
+tst.zip
+2.zip
+dfsdff.zip
+
+# AI/CI tools (exclude config, keep addons structure)
+.claude/
+.mcp.json
+.ccpanes/
+.opencode/
+.playwright-mcp/
+.spec-workflow/
+.omc/
+addons/godot_mcp/
+addons/agent/
+
+# External libraries (not project code)
+node-nexus-api-master/
+GDCefGlue-main/
+ModOrderHelper/
+
+# Old/obsolete directories
+sts2_modmanager_v*/
+sts2_modmanager_v2.8.3betatest/
+sts2_modmanager_v2.8.3test/
+backup_fix_steam/
+fix_steam/
+icon_new/
+插件模板/
+
+# Test mod packs
+pack_mods/
+
+# Exported conversation files
+webui.txt
+n网接入.txt
+集成引擎.txt
+
+# Temporary files
+*.tmp
+*.bak
+*.backup
+*.corrupt
+*.save.backup
+modmanager.gd.backup*
+modmanager_old.gd
+modmanager.tscn15905953453.tmp
+test_classdb.gd.uid
+*.uid.backup
+
+# Node modules
+node_modules/
+
+# OS specific
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# NXM test
+nexus_test_log/
+nxm_previews/
+nexus_page_full.png*
+
+# BrowserHost builds (keep source only)
+browser_host/bin/
+browser_host/obj/
+
+# Local config (local only)
+config.cfg
+config_path
+mod_notes.json
+
+# Debug
+debug.log
+need/

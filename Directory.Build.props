@@ -1,0 +1,8 @@
+<Project>
+  <PropertyGroup>
+    <!-- 禁用 MSBuild 自动生成的 assembly 属性 -->
+    <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
+    <GenerateTargetFrameworkAttribute>false</GenerateTargetFrameworkAttribute>
+    <GenerateAssemblyAttributes>false</GenerateAssemblyAttributes>
+  </PropertyGroup>
+</Project>

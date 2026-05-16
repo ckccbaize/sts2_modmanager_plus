@@ -1,0 +1,1011 @@
+[gd_scene format=3 uid="uid://cfjlj0l608unu"]
+
+[ext_resource type="Script" uid="uid://c2g52k86f81hm" path="res://modmanager.gd" id="1_modmanager"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_titlebar"]
+bg_color = Color(0.082, 0.122, 0.18, 0.95)
+border_width_bottom = 1
+border_color = Color(0.337, 0.514, 0.675, 0.2)
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_topbar"]
+content_margin_left = 12.0
+content_margin_top = 10.0
+content_margin_right = 12.0
+content_margin_bottom = 10.0
+bg_color = Color(0.082, 0.118, 0.176, 0.95)
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_search"]
+content_margin_left = 14.0
+content_margin_top = 8.0
+content_margin_right = 14.0
+content_margin_bottom = 8.0
+bg_color = Color(0.165, 0.278, 0.369, 0.6)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.337, 0.514, 0.675, 0.3)
+corner_radius_top_left = 20
+corner_radius_top_right = 20
+corner_radius_bottom_right = 20
+corner_radius_bottom_left = 20
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_btn_primary"]
+bg_color = Color(0.165, 0.278, 0.369, 1)
+corner_radius_top_left = 6
+corner_radius_top_right = 6
+corner_radius_bottom_right = 6
+corner_radius_bottom_left = 6
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_details_panel"]
+bg_color = Color(0, 0, 0, 0.2)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.337, 0.514, 0.675, 0.15)
+corner_radius_top_left = 8
+corner_radius_top_right = 8
+corner_radius_bottom_right = 8
+corner_radius_bottom_left = 8
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_footer"]
+bg_color = Color(0.082, 0.118, 0.176, 0.6)
+border_width_top = 1
+border_color = Color(0.337, 0.514, 0.675, 0.15)
+
+[node name="Control" type="Control" unique_id=1399934761]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 1
+script = ExtResource("1_modmanager")
+
+[node name="WindowBg" type="ColorRect" parent="." unique_id=1484485021]
+layout_mode = 1
+anchors_preset = 9
+anchor_bottom = 1.0
+offset_right = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+color = Color(0.337, 0.514, 0.675, 0.15)
+
+[node name="WindowBorderRight" type="ColorRect" parent="." unique_id=1465784719]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = -1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+color = Color(0.337, 0.514, 0.675, 0.15)
+
+[node name="LoadingPanel" type="Panel" parent="." unique_id=1334972797]
+visible = false
+z_index = 100
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+
+[node name="BgColor" type="ColorRect" parent="LoadingPanel" unique_id=232448757]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0, 0, 0, 0.7)
+
+[node name="LoadingVBox" type="VBoxContainer" parent="LoadingPanel" unique_id=658640015]
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -100.0
+offset_top = -50.0
+offset_right = 100.0
+offset_bottom = 50.0
+grow_horizontal = 2
+grow_vertical = 2
+alignment = 1
+
+[node name="LoadingBg" type="ColorRect" parent="LoadingPanel/LoadingVBox" unique_id=1728530771]
+custom_minimum_size = Vector2(200, 20)
+layout_mode = 2
+color = Color(0.2, 0.2, 0.2, 1)
+
+[node name="LoadingProgress" type="ColorRect" parent="LoadingPanel/LoadingVBox/LoadingBg" unique_id=422108644]
+custom_minimum_size = Vector2(0, 20)
+layout_mode = 0
+size_flags_horizontal = 0
+color = Color(0.2, 0.7, 0.3, 1)
+
+[node name="LoadingSpinner" type="ProgressBar" parent="LoadingPanel/LoadingVBox" unique_id=1168983087]
+visible = false
+custom_minimum_size = Vector2(200, 20)
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 1
+show_percentage = false
+
+[node name="LoadingLabel" type="Label" parent="LoadingPanel/LoadingVBox" unique_id=882953002]
+layout_mode = 2
+text = "正在安装模组..."
+horizontal_alignment = 1
+
+[node name="TabContainer" type="TabContainer" parent="." unique_id=110557331]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 0
+current_tab = 1
+
+[node name="ModTab" type="Control" parent="TabContainer" unique_id=85661148]
+visible = false
+layout_mode = 2
+metadata/_tab_index = 0
+
+[node name="TopVBox" type="VBoxContainer" parent="TabContainer/ModTab" unique_id=1000717004]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_bottom = -118.0
+grow_horizontal = 2
+grow_vertical = 0
+
+[node name="TitleBar" type="PanelContainer" parent="TabContainer/ModTab/TopVBox" unique_id=851731383]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_styles/panel = SubResource("StyleBoxFlat_titlebar")
+
+[node name="TitleHBox" type="HBoxContainer" parent="TabContainer/ModTab/TopVBox/TitleBar" unique_id=419321601]
+layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="AppIcon" type="Label" parent="TabContainer/ModTab/TopVBox/TitleBar/TitleHBox" unique_id=1372526709]
+layout_mode = 2
+text = "⚔️"
+
+[node name="AppTitle" type="Label" parent="TabContainer/ModTab/TopVBox/TitleBar/TitleHBox" unique_id=1521114464]
+layout_mode = 2
+text = "杀戮尖塔2 模组管理器"
+
+[node name="TabSelector" type="HBoxContainer" parent="TabContainer/ModTab/TopVBox" unique_id=655712741]
+layout_mode = 2
+theme_override_constants/separation = 0
+
+[node name="TabMods" type="Button" parent="TabContainer/ModTab/TopVBox/TabSelector" unique_id=357530959]
+layout_mode = 2
+toggle_mode = true
+button_pressed = true
+text = "模组"
+
+[node name="TabBundles" type="Button" parent="TabContainer/ModTab/TopVBox/TabSelector" unique_id=1780353095]
+layout_mode = 2
+toggle_mode = true
+text = "整合包"
+
+[node name="TabSaves" type="Button" parent="TabContainer/ModTab/TopVBox/TabSelector" unique_id=1861638866]
+layout_mode = 2
+toggle_mode = true
+text = "存档"
+
+[node name="TabSettings" type="Button" parent="TabContainer/ModTab/TopVBox/TabSelector" unique_id=1602129287]
+layout_mode = 2
+toggle_mode = true
+text = "设置"
+
+[node name="TopBarBg" type="PanelContainer" parent="TabContainer/ModTab/TopVBox" unique_id=1825878458]
+layout_mode = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_topbar")
+
+[node name="TopBar" type="HBoxContainer" parent="TabContainer/ModTab/TopVBox/TopBarBg" unique_id=1842569660]
+layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="SearchBox" type="LineEdit" parent="TabContainer/ModTab/TopVBox/TopBarBg/TopBar" unique_id=2084108342]
+custom_minimum_size = Vector2(200, 36)
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_stretch_ratio = 2.0
+theme_override_styles/normal = SubResource("StyleBoxFlat_search")
+theme_override_styles/focus = SubResource("StyleBoxFlat_search")
+placeholder_text = "搜索模组..."
+
+[node name="FilterDropdown" type="MenuButton" parent="TabContainer/ModTab/TopVBox/TopBarBg/TopBar" unique_id=2009940834]
+layout_mode = 2
+text = "筛选 ▾"
+
+[node name="CategoryTags" type="HBoxContainer" parent="TabContainer/ModTab/TopVBox/TopBarBg/TopBar" unique_id=1603653968]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="TagAll" type="Button" parent="TabContainer/ModTab/TopVBox/TopBarBg/TopBar/CategoryTags" unique_id=1538620210]
+layout_mode = 2
+toggle_mode = true
+button_pressed = true
+text = "全部"
+
+[node name="TagGameplay" type="Button" parent="TabContainer/ModTab/TopVBox/TopBarBg/TopBar/CategoryTags" unique_id=471938260]
+layout_mode = 2
+toggle_mode = true
+text = "游戏性"
+
+[node name="TagCosmetic" type="Button" parent="TabContainer/ModTab/TopVBox/TopBarBg/TopBar/CategoryTags" unique_id=548047199]
+layout_mode = 2
+toggle_mode = true
+text = "美化"
+
+[node name="InstallModBtn" type="Button" parent="TabContainer/ModTab/TopVBox/TopBarBg/TopBar" unique_id=77970078]
+custom_minimum_size = Vector2(90, 36)
+layout_mode = 2
+theme_override_styles/normal = SubResource("StyleBoxFlat_btn_primary")
+text = "+ 安装模组"
+
+[node name="UninstallModBtn" type="Button" parent="TabContainer/ModTab/TopVBox/TopBarBg/TopBar" unique_id=2122240458]
+layout_mode = 2
+text = "卸载"
+
+[node name="BatchEnableBtn" type="Button" parent="TabContainer/ModTab/TopVBox/TopBarBg/TopBar" unique_id=1143121538]
+layout_mode = 2
+text = "启用选中"
+
+[node name="BatchUninstallBtn" type="Button" parent="TabContainer/ModTab/TopVBox/TopBarBg/TopBar" unique_id=926697670]
+layout_mode = 2
+text = "停用选中"
+
+[node name="BatchSelectBtn" type="Button" parent="TabContainer/ModTab/TopVBox/TopBarBg/TopBar" unique_id=1096690112]
+layout_mode = 2
+text = "全选"
+
+[node name="BatchDeselectBtn" type="Button" parent="TabContainer/ModTab/TopVBox/TopBarBg/TopBar" unique_id=700360167]
+visible = false
+layout_mode = 2
+
+[node name="RefreshModsBtn" type="Button" parent="TabContainer/ModTab/TopVBox/TopBarBg/TopBar" unique_id=705938869]
+layout_mode = 2
+text = "刷新"
+
+[node name="ModStartModes" type="HBoxContainer" parent="TabContainer/ModTab" unique_id=1268404584]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_top = 158.0
+offset_bottom = 198.0
+grow_horizontal = 2
+grow_vertical = 0
+
+[node name="ModeSpacerLeft" type="Control" parent="TabContainer/ModTab/ModStartModes" unique_id=223889658]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="ModeSingleplayer" type="Button" parent="TabContainer/ModTab/ModStartModes" unique_id=1493308474]
+layout_mode = 2
+toggle_mode = true
+button_pressed = true
+text = "单机模组"
+
+[node name="ModeMultiplayer" type="Button" parent="TabContainer/ModTab/ModStartModes" unique_id=861813779]
+layout_mode = 2
+toggle_mode = true
+text = "联机模组"
+
+[node name="ModeCustom" type="Button" parent="TabContainer/ModTab/ModStartModes" unique_id=781865518]
+layout_mode = 2
+toggle_mode = true
+text = "自定义预设"
+
+[node name="ModeSpacerRight" type="Control" parent="TabContainer/ModTab/ModStartModes" unique_id=1254770663]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="HSplit" type="HSplitContainer" parent="TabContainer/ModTab" unique_id=253334958]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_top = 198.0
+offset_bottom = -40.0
+grow_horizontal = 2
+grow_vertical = 2
+split_offsets = PackedInt32Array(45)
+split_offset = 45
+
+[node name="LeftPanel" type="VBoxContainer" parent="TabContainer/ModTab/HSplit" unique_id=1560344443]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+size_flags_stretch_ratio = 1.1
+
+[node name="ModScroll" type="ScrollContainer" parent="TabContainer/ModTab/HSplit/LeftPanel" unique_id=1290907092]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+
+[node name="ModList" type="VBoxContainer" parent="TabContainer/ModTab/HSplit/LeftPanel/ModScroll" unique_id=1066199059]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_constants/separation = 6
+
+[node name="DropHint" type="Label" parent="TabContainer/ModTab/HSplit/LeftPanel" unique_id=270536972]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "拖拽ZIP文件到此处"
+horizontal_alignment = 1
+
+[node name="RightPanel" type="VBoxContainer" parent="TabContainer/ModTab/HSplit" unique_id=344070664]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+size_flags_stretch_ratio = 0.9
+
+[node name="ModDetailsPanel" type="ScrollContainer" parent="TabContainer/ModTab/HSplit/RightPanel" unique_id=46184891]
+visible = false
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+
+[node name="DetailsPanelBg" type="PanelContainer" parent="TabContainer/ModTab/HSplit/RightPanel/ModDetailsPanel" unique_id=1619494427]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_styles/panel = SubResource("StyleBoxFlat_details_panel")
+
+[node name="DetailsMargin" type="MarginContainer" parent="TabContainer/ModTab/HSplit/RightPanel/ModDetailsPanel/DetailsPanelBg" unique_id=1128686863]
+layout_mode = 2
+theme_override_constants/margin_left = 20
+theme_override_constants/margin_top = 20
+theme_override_constants/margin_right = 20
+theme_override_constants/margin_bottom = 20
+
+[node name="DetailsVBox" type="VBoxContainer" parent="TabContainer/ModTab/HSplit/RightPanel/ModDetailsPanel/DetailsPanelBg/DetailsMargin" unique_id=1683422526]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_constants/separation = 12
+
+[node name="DetailHeaderHBox" type="HBoxContainer" parent="TabContainer/ModTab/HSplit/RightPanel/ModDetailsPanel/DetailsPanelBg/DetailsMargin/DetailsVBox" unique_id=391192910]
+layout_mode = 2
+
+[node name="NameLbl" type="Label" parent="TabContainer/ModTab/HSplit/RightPanel/ModDetailsPanel/DetailsPanelBg/DetailsMargin/DetailsVBox/DetailHeaderHBox" unique_id=1145870266]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "模组名称"
+
+[node name="VersionLbl" type="Label" parent="TabContainer/ModTab/HSplit/RightPanel/ModDetailsPanel/DetailsPanelBg/DetailsMargin/DetailsVBox/DetailHeaderHBox" unique_id=70119109]
+layout_mode = 2
+size_flags_horizontal = 0
+text = "v1.0.0"
+
+[node name="DetailSep" type="HSeparator" parent="TabContainer/ModTab/HSplit/RightPanel/ModDetailsPanel/DetailsPanelBg/DetailsMargin/DetailsVBox" unique_id=1108225588]
+layout_mode = 2
+
+[node name="BadgeHBox" type="HBoxContainer" parent="TabContainer/ModTab/HSplit/RightPanel/ModDetailsPanel/DetailsPanelBg/DetailsMargin/DetailsVBox" unique_id=36447968]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="InfoLbl" type="Label" parent="TabContainer/ModTab/HSplit/RightPanel/ModDetailsPanel/DetailsPanelBg/DetailsMargin/DetailsVBox" unique_id=1277247275]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "点击左侧列表中的模组查看详情"
+autowrap_mode = 2
+
+[node name="DescLbl" type="Label" parent="TabContainer/ModTab/HSplit/RightPanel/ModDetailsPanel/DetailsPanelBg/DetailsMargin/DetailsVBox" unique_id=583526035]
+layout_mode = 2
+size_flags_horizontal = 3
+autowrap_mode = 2
+
+[node name="NotesBg" type="PanelContainer" parent="TabContainer/ModTab/HSplit/RightPanel/ModDetailsPanel/DetailsPanelBg/DetailsMargin/DetailsVBox" unique_id=755813774]
+visible = false
+layout_mode = 2
+
+[node name="NotesMargin" type="MarginContainer" parent="TabContainer/ModTab/HSplit/RightPanel/ModDetailsPanel/DetailsPanelBg/DetailsMargin/DetailsVBox/NotesBg" unique_id=1280709605]
+layout_mode = 2
+theme_override_constants/margin_left = 12
+theme_override_constants/margin_top = 12
+theme_override_constants/margin_right = 12
+theme_override_constants/margin_bottom = 12
+
+[node name="NotesVBox" type="VBoxContainer" parent="TabContainer/ModTab/HSplit/RightPanel/ModDetailsPanel/DetailsPanelBg/DetailsMargin/DetailsVBox/NotesBg/NotesMargin" unique_id=407700604]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="NotesLbl" type="Label" parent="TabContainer/ModTab/HSplit/RightPanel/ModDetailsPanel/DetailsPanelBg/DetailsMargin/DetailsVBox/NotesBg/NotesMargin/NotesVBox" unique_id=2050773618]
+layout_mode = 2
+text = "📝 备注"
+
+[node name="NotesContent" type="Label" parent="TabContainer/ModTab/HSplit/RightPanel/ModDetailsPanel/DetailsPanelBg/DetailsMargin/DetailsVBox/NotesBg/NotesMargin/NotesVBox" unique_id=428165884]
+layout_mode = 2
+autowrap_mode = 2
+
+[node name="ActionHBox" type="HBoxContainer" parent="TabContainer/ModTab/HSplit/RightPanel/ModDetailsPanel/DetailsPanelBg/DetailsMargin/DetailsVBox" unique_id=1331688577]
+layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="BtnEnable" type="Button" parent="TabContainer/ModTab/HSplit/RightPanel/ModDetailsPanel/DetailsPanelBg/DetailsMargin/DetailsVBox/ActionHBox" unique_id=1037626485]
+layout_mode = 2
+text = "启用"
+
+[node name="BtnUninstall" type="Button" parent="TabContainer/ModTab/HSplit/RightPanel/ModDetailsPanel/DetailsPanelBg/DetailsMargin/DetailsVBox/ActionHBox" unique_id=1909391959]
+layout_mode = 2
+text = "卸载"
+
+[node name="BundleTab" type="Control" parent="TabContainer" unique_id=343407416]
+layout_mode = 2
+metadata/_tab_index = 1
+
+[node name="BundleHSplit" type="HSplitContainer" parent="TabContainer/BundleTab" unique_id=1375536922]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_right = 10.0
+offset_bottom = 10.0
+grow_horizontal = 2
+grow_vertical = 2
+split_offsets = PackedInt32Array(250)
+split_offset = 250
+
+[node name="BundleListPanel" type="PanelContainer" parent="TabContainer/BundleTab/BundleHSplit" unique_id=1716717295]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="BundleListVBox" type="VBoxContainer" parent="TabContainer/BundleTab/BundleHSplit/BundleListPanel" unique_id=1191390645]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+
+[node name="TopBar" type="HBoxContainer" parent="TabContainer/BundleTab/BundleHSplit/BundleListPanel/BundleListVBox" unique_id=373959236]
+custom_minimum_size = Vector2(0, 45)
+layout_mode = 2
+
+[node name="ImportBundleBtn" type="Button" parent="TabContainer/BundleTab/BundleHSplit/BundleListPanel/BundleListVBox/TopBar" unique_id=1232219114]
+layout_mode = 2
+text = "导入整合包"
+
+[node name="AddByUrlBtn" type="Button" parent="TabContainer/BundleTab/BundleHSplit/BundleListPanel/BundleListVBox/TopBar" unique_id=2067584936]
+layout_mode = 2
+text = "通过URL下载"
+
+[node name="ExportBundleBtn" type="Button" parent="TabContainer/BundleTab/BundleHSplit/BundleListPanel/BundleListVBox/TopBar" unique_id=2061206705]
+layout_mode = 2
+text = "导出为整合包"
+
+[node name="CheckUpdateBtn" type="Button" parent="TabContainer/BundleTab/BundleHSplit/BundleListPanel/BundleListVBox/TopBar" unique_id=76408990]
+layout_mode = 2
+text = "检查更新"
+
+[node name="BundleListScroll" type="ScrollContainer" parent="TabContainer/BundleTab/BundleHSplit/BundleListPanel/BundleListVBox" unique_id=950010799]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+
+[node name="BundlesList" type="ItemList" parent="TabContainer/BundleTab/BundleHSplit/BundleListPanel/BundleListVBox/BundleListScroll" unique_id=1825190659]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+
+[node name="BundleDetailsPanel" type="PanelContainer" parent="TabContainer/BundleTab/BundleHSplit" unique_id=322238517]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="BundleDetailsScroll" type="ScrollContainer" parent="TabContainer/BundleTab/BundleHSplit/BundleDetailsPanel" unique_id=359512936]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+
+[node name="BundleDetailsVBox" type="VBoxContainer" parent="TabContainer/BundleTab/BundleHSplit/BundleDetailsPanel/BundleDetailsScroll" unique_id=921066426]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+
+[node name="BundleInfoHeader" type="Label" parent="TabContainer/BundleTab/BundleHSplit/BundleDetailsPanel/BundleDetailsScroll/BundleDetailsVBox" unique_id=94144035]
+layout_mode = 2
+text = "整合包信息"
+
+[node name="BundleNameLabel" type="Label" parent="TabContainer/BundleTab/BundleHSplit/BundleDetailsPanel/BundleDetailsScroll/BundleDetailsVBox" unique_id=714760566]
+layout_mode = 2
+
+[node name="BundleAuthorLabel" type="Label" parent="TabContainer/BundleTab/BundleHSplit/BundleDetailsPanel/BundleDetailsScroll/BundleDetailsVBox" unique_id=1980866194]
+layout_mode = 2
+
+[node name="BundleVersionLabel" type="Label" parent="TabContainer/BundleTab/BundleHSplit/BundleDetailsPanel/BundleDetailsScroll/BundleDetailsVBox" unique_id=682702621]
+layout_mode = 2
+
+[node name="BundleDescLabel" type="Label" parent="TabContainer/BundleTab/BundleHSplit/BundleDetailsPanel/BundleDetailsScroll/BundleDetailsVBox" unique_id=303918780]
+layout_mode = 2
+size_flags_vertical = 3
+autowrap_mode = 2
+
+[node name="BundleModsHeader" type="Label" parent="TabContainer/BundleTab/BundleHSplit/BundleDetailsPanel/BundleDetailsScroll/BundleDetailsVBox" unique_id=1503375596]
+layout_mode = 2
+text = "包含的模组"
+
+[node name="BundleModsList" type="ItemList" parent="TabContainer/BundleTab/BundleHSplit/BundleDetailsPanel/BundleDetailsScroll/BundleDetailsVBox" unique_id=530910509]
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="BundleActions" type="HBoxContainer" parent="TabContainer/BundleTab/BundleHSplit/BundleDetailsPanel/BundleDetailsScroll/BundleDetailsVBox" unique_id=1680697986]
+custom_minimum_size = Vector2(0, 40)
+layout_mode = 2
+
+[node name="DeleteBundleBtn" type="Button" parent="TabContainer/BundleTab/BundleHSplit/BundleDetailsPanel/BundleDetailsScroll/BundleDetailsVBox/BundleActions" unique_id=893981813]
+layout_mode = 2
+text = "删除整合包"
+
+[node name="EmptyDetailsLabel" type="Label" parent="TabContainer/BundleTab/BundleHSplit/BundleDetailsPanel/BundleDetailsScroll/BundleDetailsVBox" unique_id=805645774]
+layout_mode = 2
+text = "选择一个整合包查看详情"
+
+[node name="SaveTab" type="Control" parent="TabContainer" unique_id=66086458]
+visible = false
+layout_mode = 2
+metadata/_tab_index = 2
+
+[node name="TopBar" type="HBoxContainer" parent="TabContainer/SaveTab" unique_id=955552977]
+custom_minimum_size = Vector2(0, 40)
+layout_mode = 0
+anchor_right = 1.0
+offset_bottom = 8.0
+
+[node name="ImportSaveBtn" type="Button" parent="TabContainer/SaveTab/TopBar" unique_id=241886899]
+layout_mode = 2
+text = "导入"
+
+[node name="ExportSaveBtn" type="Button" parent="TabContainer/SaveTab/TopBar" unique_id=1759413502]
+layout_mode = 2
+text = "导出"
+
+[node name="BackupSaveBtn" type="Button" parent="TabContainer/SaveTab/TopBar" unique_id=117116091]
+layout_mode = 2
+text = "备份"
+
+[node name="RestoreSaveBtn" type="Button" parent="TabContainer/SaveTab/TopBar" unique_id=638642625]
+layout_mode = 2
+text = "恢复"
+
+[node name="OverwriteSaveBtn" type="Button" parent="TabContainer/SaveTab/TopBar" unique_id=946910261]
+layout_mode = 2
+text = "覆盖"
+
+[node name="SaveContainer" type="HBoxContainer" parent="TabContainer/SaveTab" unique_id=811417126]
+layout_mode = 0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_top = 45.0
+
+[node name="LeftPanelWrapper" type="HBoxContainer" parent="TabContainer/SaveTab/SaveContainer" unique_id=367969012]
+custom_minimum_size = Vector2(250, 0)
+layout_mode = 2
+size_flags_horizontal = 0
+
+[node name="LeftPanelList" type="VBoxContainer" parent="TabContainer/SaveTab/SaveContainer/LeftPanelWrapper" unique_id=2130177468]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+
+[node name="SaveScroll" type="ScrollContainer" parent="TabContainer/SaveTab/SaveContainer/LeftPanelWrapper/LeftPanelList" unique_id=1909508428]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+
+[node name="SaveList" type="VBoxContainer" parent="TabContainer/SaveTab/SaveContainer/LeftPanelWrapper/LeftPanelList/SaveScroll" unique_id=962904146]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="CollapseBtn" type="Button" parent="TabContainer/SaveTab/SaveContainer/LeftPanelWrapper" unique_id=815114918]
+custom_minimum_size = Vector2(25, 0)
+layout_mode = 2
+text = "<"
+
+[node name="RightPanel" type="VBoxContainer" parent="TabContainer/SaveTab/SaveContainer" unique_id=1963081080]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="SaveDetailsPanel" type="PanelContainer" parent="TabContainer/SaveTab/SaveContainer/RightPanel" unique_id=762966852]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+
+[node name="DetailsVBox" type="VBoxContainer" parent="TabContainer/SaveTab/SaveContainer/RightPanel/SaveDetailsPanel" unique_id=1551373770]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+
+[node name="ProfileSelector" type="OptionButton" parent="TabContainer/SaveTab/SaveContainer/RightPanel/SaveDetailsPanel/DetailsVBox" unique_id=259723477]
+custom_minimum_size = Vector2(0, 30)
+layout_mode = 2
+
+[node name="NameLabel" type="Label" parent="TabContainer/SaveTab/SaveContainer/RightPanel/SaveDetailsPanel/DetailsVBox" unique_id=1596738821]
+layout_mode = 2
+text = "存档名称"
+
+[node name="DateLabel" type="Label" parent="TabContainer/SaveTab/SaveContainer/RightPanel/SaveDetailsPanel/DetailsVBox" unique_id=2068595003]
+layout_mode = 2
+text = "日期: -"
+
+[node name="SizeLabel" type="Label" parent="TabContainer/SaveTab/SaveContainer/RightPanel/SaveDetailsPanel/DetailsVBox" unique_id=1342587093]
+layout_mode = 2
+text = "大小: -"
+
+[node name="TypeLabel" type="Label" parent="TabContainer/SaveTab/SaveContainer/RightPanel/SaveDetailsPanel/DetailsVBox" unique_id=199586747]
+layout_mode = 2
+text = "类型: -"
+
+[node name="CharStatsScroll" type="ScrollContainer" parent="TabContainer/SaveTab/SaveContainer/RightPanel/SaveDetailsPanel/DetailsVBox" unique_id=510430427]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+
+[node name="CharStatsVBox" type="VBoxContainer" parent="TabContainer/SaveTab/SaveContainer/RightPanel/SaveDetailsPanel/DetailsVBox/CharStatsScroll" unique_id=974269169]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="NexusTab" type="Control" parent="TabContainer" unique_id=614324071]
+visible = false
+layout_mode = 2
+metadata/_tab_index = 3
+
+[node name="NexusModsPanel" type="PanelContainer" parent="TabContainer/NexusTab" unique_id=1661419958]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="NexusModsUI" type="Control" parent="TabContainer/NexusTab/NexusModsPanel" unique_id=1675931062]
+layout_mode = 2
+
+[node name="DownloadTab" type="Control" parent="TabContainer" unique_id=687327074]
+visible = false
+layout_mode = 2
+metadata/_tab_index = 4
+
+[node name="DownloadPanel" type="PanelContainer" parent="TabContainer/DownloadTab" unique_id=1076889400]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="DownloadVBox" type="VSplitContainer" parent="TabContainer/DownloadTab/DownloadPanel" unique_id=1788421678]
+layout_mode = 2
+split_offsets = PackedInt32Array(150)
+split_offset = 150
+
+[node name="ActiveDownloadsSection" type="VBoxContainer" parent="TabContainer/DownloadTab/DownloadPanel/DownloadVBox" unique_id=271497932]
+custom_minimum_size = Vector2(0, 100)
+layout_mode = 2
+
+[node name="ActiveDownloadsHeader" type="HBoxContainer" parent="TabContainer/DownloadTab/DownloadPanel/DownloadVBox/ActiveDownloadsSection" unique_id=91780726]
+layout_mode = 2
+
+[node name="ActiveDownloadsLabel" type="Label" parent="TabContainer/DownloadTab/DownloadPanel/DownloadVBox/ActiveDownloadsSection/ActiveDownloadsHeader" unique_id=59664811]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "当前下载"
+
+[node name="OpenFolderBtn" type="Button" parent="TabContainer/DownloadTab/DownloadPanel/DownloadVBox/ActiveDownloadsSection/ActiveDownloadsHeader" unique_id=238011421]
+layout_mode = 2
+text = "打开文件夹"
+
+[node name="ActiveDownloadsScroll" type="ScrollContainer" parent="TabContainer/DownloadTab/DownloadPanel/DownloadVBox/ActiveDownloadsSection" unique_id=197673851]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+follow_focus = true
+horizontal_scroll_mode = 0
+
+[node name="ActiveDownloadsList" type="VBoxContainer" parent="TabContainer/DownloadTab/DownloadPanel/DownloadVBox/ActiveDownloadsSection/ActiveDownloadsScroll" unique_id=1098917588]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_constants/separation = 10
+
+[node name="EmptyLabel" type="Label" parent="TabContainer/DownloadTab/DownloadPanel/DownloadVBox/ActiveDownloadsSection/ActiveDownloadsScroll/ActiveDownloadsList" unique_id=1381648851]
+layout_mode = 2
+text = "暂无下载任务"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="HistorySection" type="VBoxContainer" parent="TabContainer/DownloadTab/DownloadPanel/DownloadVBox" unique_id=321644545]
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="HistoryHeader" type="HBoxContainer" parent="TabContainer/DownloadTab/DownloadPanel/DownloadVBox/HistorySection" unique_id=1401861375]
+layout_mode = 2
+
+[node name="HistoryLabel" type="Label" parent="TabContainer/DownloadTab/DownloadPanel/DownloadVBox/HistorySection/HistoryHeader" unique_id=770782646]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "下载历史"
+
+[node name="ClearHistoryBtn" type="Button" parent="TabContainer/DownloadTab/DownloadPanel/DownloadVBox/HistorySection/HistoryHeader" unique_id=2099157729]
+layout_mode = 2
+text = "清空历史"
+
+[node name="HistoryScroll" type="ScrollContainer" parent="TabContainer/DownloadTab/DownloadPanel/DownloadVBox/HistorySection" unique_id=1760977538]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+
+[node name="HistoryList" type="VBoxContainer" parent="TabContainer/DownloadTab/DownloadPanel/DownloadVBox/HistorySection/HistoryScroll" unique_id=909724678]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="SettingsTab" type="Control" parent="TabContainer" unique_id=1479569120]
+visible = false
+layout_mode = 2
+metadata/_tab_index = 5
+
+[node name="SettingsScroll" type="ScrollContainer" parent="TabContainer/SettingsTab" unique_id=499212701]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="SettingsVBox" type="VBoxContainer" parent="TabContainer/SettingsTab/SettingsScroll" unique_id=199196011]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+
+[node name="PathsSection" type="VBoxContainer" parent="TabContainer/SettingsTab/SettingsScroll/SettingsVBox" unique_id=284837152]
+layout_mode = 2
+
+[node name="GamePathLabel" type="Label" parent="TabContainer/SettingsTab/SettingsScroll/SettingsVBox/PathsSection" unique_id=1516895811]
+layout_mode = 2
+text = "游戏路径"
+
+[node name="GamePathRow" type="HBoxContainer" parent="TabContainer/SettingsTab/SettingsScroll/SettingsVBox/PathsSection" unique_id=1762618700]
+layout_mode = 2
+
+[node name="GamePathEdit" type="LineEdit" parent="TabContainer/SettingsTab/SettingsScroll/SettingsVBox/PathsSection/GamePathRow" unique_id=2106225467]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="GamePathBrowseBtn" type="Button" parent="TabContainer/SettingsTab/SettingsScroll/SettingsVBox/PathsSection/GamePathRow" unique_id=445979028]
+layout_mode = 2
+text = "浏览"
+
+[node name="GamePathDetectBtn" type="Button" parent="TabContainer/SettingsTab/SettingsScroll/SettingsVBox/PathsSection/GamePathRow" unique_id=645434552]
+layout_mode = 2
+text = "自动检测"
+
+[node name="GamePathTooltipBtn" type="Button" parent="TabContainer/SettingsTab/SettingsScroll/SettingsVBox/PathsSection/GamePathRow" unique_id=510828163]
+layout_mode = 2
+tooltip_text = "选择SlayTheSpire2.exe文件，程序会自动提取游戏根目录"
+text = "?"
+
+[node name="SavePathLabel" type="Label" parent="TabContainer/SettingsTab/SettingsScroll/SettingsVBox/PathsSection" unique_id=1132952029]
+layout_mode = 2
+text = "存档路径"
+
+[node name="SavePathRow" type="HBoxContainer" parent="TabContainer/SettingsTab/SettingsScroll/SettingsVBox/PathsSection" unique_id=1780242147]
+layout_mode = 2
+
+[node name="SavePathEdit" type="LineEdit" parent="TabContainer/SettingsTab/SettingsScroll/SettingsVBox/PathsSection/SavePathRow" unique_id=2036996066]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="SavePathBrowseBtn" type="Button" parent="TabContainer/SettingsTab/SettingsScroll/SettingsVBox/PathsSection/SavePathRow" unique_id=1603293201]
+layout_mode = 2
+text = "浏览"
+
+[node name="SavePathDetectBtn" type="Button" parent="TabContainer/SettingsTab/SettingsScroll/SettingsVBox/PathsSection/SavePathRow" unique_id=1890549327]
+layout_mode = 2
+text = "自动检测"
+
+[node name="SavePathTooltipBtn" type="Button" parent="TabContainer/SettingsTab/SettingsScroll/SettingsVBox/PathsSection/SavePathRow" unique_id=1832266153]
+layout_mode = 2
+tooltip_text = "选择存档所在文件夹的上一级目录"
+text = "?"
+
+[node name="LanguageSection" type="VBoxContainer" parent="TabContainer/SettingsTab/SettingsScroll/SettingsVBox" unique_id=947395952]
+layout_mode = 2
+
+[node name="LanguageLabel" type="Label" parent="TabContainer/SettingsTab/SettingsScroll/SettingsVBox/LanguageSection" unique_id=2093867197]
+layout_mode = 2
+text = "语言"
+
+[node name="LanguageOption" type="OptionButton" parent="TabContainer/SettingsTab/SettingsScroll/SettingsVBox/LanguageSection" unique_id=1924456104]
+layout_mode = 2
+
+[node name="DpiScaleSection" type="VBoxContainer" parent="TabContainer/SettingsTab/SettingsScroll/SettingsVBox" unique_id=1242501695]
+layout_mode = 2
+
+[node name="DpiScaleLabel" type="Label" parent="TabContainer/SettingsTab/SettingsScroll/SettingsVBox/DpiScaleSection" unique_id=1560837195]
+layout_mode = 2
+text = "界面缩放"
+
+[node name="DpiScaleHBox" type="HBoxContainer" parent="TabContainer/SettingsTab/SettingsScroll/SettingsVBox/DpiScaleSection" unique_id=88349023]
+layout_mode = 2
+
+[node name="DpiScaleSlider" type="HSlider" parent="TabContainer/SettingsTab/SettingsScroll/SettingsVBox/DpiScaleSection/DpiScaleHBox" unique_id=506056197]
+layout_mode = 2
+size_flags_horizontal = 3
+min_value = 0.8
+max_value = 2.0
+step = 0.05
+value = 1.0
+
+[node name="DpiScaleValueLabel" type="Label" parent="TabContainer/SettingsTab/SettingsScroll/SettingsVBox/DpiScaleSection/DpiScaleHBox" unique_id=271505909]
+custom_minimum_size = Vector2(50, 0)
+layout_mode = 2
+text = "100%"
+horizontal_alignment = 2
+
+[node name="Separator1" type="HSeparator" parent="TabContainer/SettingsTab/SettingsScroll/SettingsVBox" unique_id=819762489]
+layout_mode = 2
+
+[node name="BackupSection" type="VBoxContainer" parent="TabContainer/SettingsTab/SettingsScroll/SettingsVBox" unique_id=46269189]
+layout_mode = 2
+
+[node name="AutoBackupCheck" type="CheckBox" parent="TabContainer/SettingsTab/SettingsScroll/SettingsVBox/BackupSection" unique_id=40698215]
+layout_mode = 2
+text = "防误删备份"
+
+[node name="AutoBackupOnStartupCheck" type="CheckBox" parent="TabContainer/SettingsTab/SettingsScroll/SettingsVBox/BackupSection" unique_id=1897549027]
+layout_mode = 2
+text = "启动时自动备份"
+
+[node name="AutoBackupMaxCountHBox" type="HBoxContainer" parent="TabContainer/SettingsTab/SettingsScroll/SettingsVBox/BackupSection" unique_id=646352759]
+layout_mode = 2
+
+[node name="AutoBackupMaxCountLabel" type="Label" parent="TabContainer/SettingsTab/SettingsScroll/SettingsVBox/BackupSection/AutoBackupMaxCountHBox" unique_id=720093185]
+layout_mode = 2
+text = "自动备份保留数量"
+
+[node name="AutoBackupMaxCountSpinBox" type="SpinBox" parent="TabContainer/SettingsTab/SettingsScroll/SettingsVBox/BackupSection/AutoBackupMaxCountHBox" unique_id=1921310785]
+layout_mode = 2
+min_value = 1.0
+max_value = 50.0
+value = 5.0
+
+[node name="ClearBackupsBtn" type="Button" parent="TabContainer/SettingsTab/SettingsScroll/SettingsVBox/BackupSection" unique_id=1960763944]
+layout_mode = 2
+text = "清除所有备份"
+
+[node name="Separator2" type="HSeparator" parent="TabContainer/SettingsTab/SettingsScroll/SettingsVBox" unique_id=1140098026]
+layout_mode = 2
+
+[node name="SaveSettingsBtn" type="Button" parent="TabContainer/SettingsTab/SettingsScroll/SettingsVBox" unique_id=1339942412]
+layout_mode = 2
+text = "保存设置"
+
+[node name="Separator3" type="HSeparator" parent="TabContainer/SettingsTab/SettingsScroll/SettingsVBox" unique_id=749761819]
+layout_mode = 2
+
+[node name="StorageSection" type="VBoxContainer" parent="TabContainer/SettingsTab/SettingsScroll/SettingsVBox" unique_id=834647631]
+layout_mode = 2
+
+[node name="TempModsPathHeader" type="HBoxContainer" parent="TabContainer/SettingsTab/SettingsScroll/SettingsVBox/StorageSection" unique_id=1199307751]
+layout_mode = 2
+
+[node name="TempModsPathLabel" type="Label" parent="TabContainer/SettingsTab/SettingsScroll/SettingsVBox/StorageSection/TempModsPathHeader" unique_id=1843253707]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "模组存储文件夹"
+
+[node name="TempModsPathTooltipBtn" type="Button" parent="TabContainer/SettingsTab/SettingsScroll/SettingsVBox/StorageSection/TempModsPathHeader" unique_id=151054626]
+custom_minimum_size = Vector2(24, 0)
+layout_mode = 2
+tooltip_text = "不建议修改，修改可能导致模组管理异常"
+text = "?"
+
+[node name="TempModsPathRow" type="HBoxContainer" parent="TabContainer/SettingsTab/SettingsScroll/SettingsVBox/StorageSection" unique_id=1167006188]
+layout_mode = 2
+
+[node name="TempModsPathEdit" type="LineEdit" parent="TabContainer/SettingsTab/SettingsScroll/SettingsVBox/StorageSection/TempModsPathRow" unique_id=1707701808]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="TempModsPathBrowseBtn" type="Button" parent="TabContainer/SettingsTab/SettingsScroll/SettingsVBox/StorageSection/TempModsPathRow" unique_id=1158196450]
+layout_mode = 2
+text = "浏览"
+
+[node name="BackupPathHeader" type="HBoxContainer" parent="TabContainer/SettingsTab/SettingsScroll/SettingsVBox/StorageSection" unique_id=1646434385]
+layout_mode = 2
+
+[node name="BackupPathLabel" type="Label" parent="TabContainer/SettingsTab/SettingsScroll/SettingsVBox/StorageSection/BackupPathHeader" unique_id=877869450]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "存档备份文件夹"
+
+[node name="BackupPathTooltipBtn" type="Button" parent="TabContainer/SettingsTab/SettingsScroll/SettingsVBox/StorageSection/BackupPathHeader" unique_id=371946437]
+custom_minimum_size = Vector2(24, 0)
+layout_mode = 2
+tooltip_text = "不建议修改，修改可能导致备份功能异常"
+text = "?"
+
+[node name="BackupPathRow" type="HBoxContainer" parent="TabContainer/SettingsTab/SettingsScroll/SettingsVBox/StorageSection" unique_id=117733878]
+layout_mode = 2
+
+[node name="BackupPathEdit" type="LineEdit" parent="TabContainer/SettingsTab/SettingsScroll/SettingsVBox/StorageSection/BackupPathRow" unique_id=300537854]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="BackupPathBrowseBtn" type="Button" parent="TabContainer/SettingsTab/SettingsScroll/SettingsVBox/StorageSection/BackupPathRow" unique_id=1523096276]
+layout_mode = 2
+text = "浏览"
+
+[node name="NexusAPISection" type="VBoxContainer" parent="TabContainer/SettingsTab/SettingsScroll/SettingsVBox" unique_id=660022999]
+layout_mode = 2
+
+[node name="NexusAPILabel" type="Label" parent="TabContainer/SettingsTab/SettingsScroll/SettingsVBox/NexusAPISection" unique_id=661788867]
+layout_mode = 2
+text = "Nexus Mods API"
+
+[node name="NexusAPIKeyRow" type="HBoxContainer" parent="TabContainer/SettingsTab/SettingsScroll/SettingsVBox/NexusAPISection" unique_id=989105092]
+layout_mode = 2
+
+[node name="NexusAPIKeyEdit" type="LineEdit" parent="TabContainer/SettingsTab/SettingsScroll/SettingsVBox/NexusAPISection/NexusAPIKeyRow" unique_id=840254294]
+layout_mode = 2
+size_flags_horizontal = 3
+placeholder_text = "输入Nexus Mods API Key"
+
+[node name="NexusValidateBtn" type="Button" parent="TabContainer/SettingsTab/SettingsScroll/SettingsVBox/NexusAPISection/NexusAPIKeyRow" unique_id=1519145436]
+layout_mode = 2
+text = "验证"
+
+[node name="NexusHelpBtn" type="Button" parent="TabContainer/SettingsTab/SettingsScroll/SettingsVBox/NexusAPISection/NexusAPIKeyRow" unique_id=913514991]
+layout_mode = 2
+text = "?"
+
+[node name="NexusStatusLabel" type="Label" parent="TabContainer/SettingsTab/SettingsScroll/SettingsVBox/NexusAPISection" unique_id=2111477751]
+layout_mode = 2
+text = "状态: 未验证"
+
+[node name="Separator4" type="HSeparator" parent="TabContainer/SettingsTab/SettingsScroll/SettingsVBox" unique_id=1144370777]
+layout_mode = 2
+
+[node name="Footer" type="PanelContainer" parent="." unique_id=345006437]
+layout_mode = 1
+anchors_preset = 3
+anchor_left = 1.0
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_top = -40.0
+grow_horizontal = 2
+grow_vertical = 0
+theme_override_styles/panel = SubResource("StyleBoxFlat_footer")
+
+[node name="FooterHBox" type="HBoxContainer" parent="Footer" unique_id=1361913069]
+layout_mode = 2
+theme_override_constants/separation = 16
+
+[node name="StatusLabel" type="Label" parent="Footer/FooterHBox" unique_id=508815930]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "3 已启用 / 5 总数"
+
+[node name="LaunchBarPlaceholder" type="Control" parent="Footer/FooterHBox" unique_id=1063284108]
+custom_minimum_size = Vector2(250, 40)
+layout_mode = 2
+
+[node name="StatusMini" type="Label" parent="Footer/FooterHBox" unique_id=1303127382]
+custom_minimum_size = Vector2(120, 0)
+layout_mode = 2
+text = "← 拖动启动"
+horizontal_alignment = 2

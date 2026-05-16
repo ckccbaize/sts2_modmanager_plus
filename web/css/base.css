@@ -1,0 +1,225 @@
+/* ==========================================================================
+   base.css — CSS Reset & Base Styles
+   Slay the Spire 2 Mod Manager — Steam × Windows 11 Dark Theme
+   ========================================================================== */
+
+@import "variables.css";
+
+/* ── Box-Sizing Reset ───────────────────────────────────────────────────── */
+
+*,
+*::before,
+*::after {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+/* ── HTML ───────────────────────────────────────────────────────────────── */
+
+html {
+    /* Prevent font-size inflation on mobile; smooth scrolling for anchors */
+    -moz-text-size-adjust: none;
+    -webkit-text-size-adjust: none;
+    text-size-adjust: none;
+    scroll-behavior: smooth;
+}
+
+/* ── Body ───────────────────────────────────────────────────────────────── */
+
+body {
+    font-family: 'Segoe UI Variable', 'Segoe UI', system-ui, -apple-system,
+                 BlinkMacSystemFont, sans-serif;
+    font-size: var(--font-base);
+    font-weight: var(--weight-normal);
+    line-height: var(--leading-normal);
+    color: var(--text-primary);
+    background-color: var(--bg-deep);
+    min-height: 100vh;
+    overflow: hidden;              /* App manages its own scrolling */
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+}
+
+/* ── Scrollbar Styling (WebKit: Chrome, Edge, Opera) ────────────────────── */
+
+::-webkit-scrollbar {
+    width: var(--scrollbar-width);
+    height: var(--scrollbar-width);
+}
+
+::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+    background: rgba(139, 152, 160, 0.25);
+    border-radius: var(--radius-pill);
+    transition: background var(--transition-fast);
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: rgba(139, 152, 160, 0.45);
+}
+
+::-webkit-scrollbar-thumb:active {
+    background: rgba(139, 152, 160, 0.60);
+}
+
+::-webkit-scrollbar-corner {
+    background: transparent;
+}
+
+/* ── Scrollbar Styling (Firefox) ────────────────────────────────────────── */
+
+* {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(139, 152, 160, 0.25) transparent;
+}
+
+/* ── Selection ──────────────────────────────────────────────────────────── */
+
+::selection {
+    background-color: var(--accent-glow);
+    color: var(--text-primary);
+}
+
+::-moz-selection {
+    background-color: var(--accent-glow);
+    color: var(--text-primary);
+}
+
+/* ── Focus Visible ──────────────────────────────────────────────────────── */
+
+:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+    border-radius: var(--radius-sm);
+}
+
+/* Remove default outline for mouse / touch users */
+:focus:not(:focus-visible) {
+    outline: none;
+}
+
+/* ── Links ──────────────────────────────────────────────────────────────── */
+
+a {
+    color: var(--accent);
+    text-decoration: none;
+    transition: color var(--transition-fast);
+}
+
+a:hover {
+    color: var(--text-primary);
+    text-decoration: underline;
+}
+
+/* ── Images & Media ─────────────────────────────────────────────────────── */
+
+img,
+picture,
+video,
+canvas,
+svg {
+    display: block;
+    max-width: 100%;
+}
+
+/* ── Form Elements ──────────────────────────────────────────────────────── */
+
+input,
+button,
+textarea,
+select {
+    font: inherit;
+    color: inherit;
+    background: none;
+    border: none;
+}
+
+button {
+    cursor: pointer;
+    -webkit-user-select: none;
+    user-select: none;
+}
+
+/* ── Lists ──────────────────────────────────────────────────────────────── */
+
+ul,
+ol {
+    list-style: none;
+}
+
+/* ── Typography Helpers ─────────────────────────────────────────────────── */
+
+.text-primary {
+    color: var(--text-primary);
+}
+
+.text-secondary {
+    color: var(--text-secondary);
+}
+
+.text-muted {
+    color: var(--text-muted);
+}
+
+.text-accent {
+    color: var(--accent);
+}
+
+.text-gameplay {
+    color: var(--gameplay);
+}
+
+.text-cosmetic {
+    color: var(--cosmetic);
+}
+
+.text-success {
+    color: var(--success);
+}
+
+.text-warning {
+    color: var(--warning);
+}
+
+.text-danger {
+    color: var(--danger);
+}
+
+/* ── Text Utility Classes ───────────────────────────────────────────────── */
+
+.text-xs   { font-size: var(--font-xs); }
+.text-sm   { font-size: var(--font-sm); }
+.text-base { font-size: var(--font-base); }
+.text-md   { font-size: var(--font-md); }
+.text-lg   { font-size: var(--font-lg); }
+.text-xl   { font-size: var(--font-xl); }
+.text-xxl  { font-size: var(--font-xxl); }
+
+.font-medium   { font-weight: var(--weight-medium); }
+.font-semibold { font-weight: var(--weight-semibold); }
+.font-bold     { font-weight: var(--weight-bold); }
+
+.leading-tight   { line-height: var(--leading-tight); }
+.leading-normal  { line-height: var(--leading-normal); }
+.leading-relaxed { line-height: var(--leading-relaxed); }
+
+.text-truncate {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.text-center { text-align: center; }
+.text-right  { text-align: right; }
+
+/* ── Accessibility: Reduced Motion ──────────────────────────────────────── */
+
+@media (prefers-reduced-motion: reduce) {
+    html {
+        scroll-behavior: auto;
+    }
+}

@@ -1,0 +1,342 @@
+/* ==========================================================================
+   downloads.css — Download Management Page Styles
+   Slay the Spire 2 Mod Manager — Steam x Windows 11 Dark Theme
+   ========================================================================== */
+
+@import "variables.css";
+
+/* =========================================================================
+   DOWNLOADS CONTAINER
+   ========================================================================= */
+
+.downloads-container {
+    padding: 0;
+    max-width: 900px;
+    margin: 0 auto;
+    display: flex;
+    flex-direction: column;
+    gap: var(--sp-lg);
+}
+
+/* =========================================================================
+   SECTION
+   ========================================================================= */
+
+.downloads-section {
+    display: flex;
+    flex-direction: column;
+    gap: var(--sp-sm);
+}
+
+.section-header {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    padding-bottom: var(--sp-sm);
+    border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+}
+
+.section-header-label {
+    font-size: var(--font-md);
+    font-weight: var(--weight-semibold);
+    color: var(--text-primary);
+}
+
+.section-header-actions {
+    display: flex;
+    gap: var(--sp-xs);
+}
+
+/* =========================================================================
+   ACTIVE DOWNLOAD ITEM
+   ========================================================================= */
+
+.download-item {
+    display: flex;
+    flex-direction: column;
+    gap: var(--sp-sm);
+    padding: var(--sp-md);
+    background-color: var(--bg-surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    transition: border-color var(--transition-fast),
+                box-shadow var(--transition-fast);
+}
+
+.download-item:hover {
+    border-color: var(--border-hover);
+}
+
+.download-item.active {
+    border-left: 3px solid var(--accent);
+}
+
+.download-item.complete {
+    border-left: 3px solid var(--success);
+    opacity: 0.85;
+}
+
+.download-item.failed {
+    border-left: 3px solid var(--danger);
+}
+
+.download-item-row {
+    display: flex;
+    align-items: center;
+    gap: var(--sp-sm);
+}
+
+.download-item-name {
+    flex: 1 1 0;
+    min-width: 0;
+    font-size: var(--font-sm);
+    font-weight: var(--weight-medium);
+    color: var(--text-primary);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.download-item-speed {
+    flex-shrink: 0;
+    font-size: var(--font-xs);
+    color: var(--text-secondary);
+    min-width: 80px;
+    text-align: right;
+}
+
+.download-item-eta {
+    flex-shrink: 0;
+    font-size: var(--font-xs);
+    color: var(--text-muted);
+    min-width: 60px;
+    text-align: right;
+}
+
+.download-item-status {
+    flex-shrink: 0;
+    font-size: var(--font-xs);
+    display: flex;
+    align-items: center;
+    gap: var(--sp-xs);
+}
+
+.download-item-status.status-downloading {
+    color: var(--accent);
+}
+
+.download-item-status.status-paused {
+    color: var(--warning);
+}
+
+.download-item-status.status-complete {
+    color: var(--success);
+}
+
+.download-item-status.status-failed {
+    color: var(--danger);
+}
+
+/* =========================================================================
+   DOWNLOAD PROGRESS BAR
+   ========================================================================= */
+
+.download-progress {
+    display: flex;
+    align-items: center;
+    gap: var(--sp-sm);
+}
+
+.download-progress-bar {
+    flex: 1 1 0;
+    height: 6px;
+    background-color: rgba(42, 71, 94, 0.3);
+    border-radius: var(--radius-pill);
+    overflow: hidden;
+}
+
+.download-progress-fill {
+    height: 100%;
+    width: 0%;
+    background: linear-gradient(90deg, var(--accent-dark), var(--accent));
+    border-radius: var(--radius-pill);
+    transition: width var(--transition-fast);
+    min-width: 0;
+}
+
+.download-item.active .download-progress-fill {
+    background: linear-gradient(90deg, var(--accent-dark), var(--accent));
+    animation: progress-shimmer 1.5s ease-in-out infinite;
+}
+
+.download-item.complete .download-progress-fill {
+    background: var(--success);
+    width: 100% !important;
+}
+
+.download-item.failed .download-progress-fill {
+    background: var(--danger);
+}
+
+.download-progress-pct {
+    flex-shrink: 0;
+    font-size: var(--font-xs);
+    font-weight: var(--weight-semibold);
+    color: var(--text-secondary);
+    min-width: 40px;
+    text-align: right;
+}
+
+@keyframes progress-shimmer {
+    0%   { opacity: 0.8; }
+    50%  { opacity: 1; }
+    100% { opacity: 0.8; }
+}
+
+/* =========================================================================
+   DOWNLOAD ACTION BUTTONS
+   ========================================================================= */
+
+.download-actions {
+    display: flex;
+    gap: var(--sp-xs);
+    flex-shrink: 0;
+}
+
+/* =========================================================================
+   DOWNLOAD HISTORY ITEM
+   ========================================================================= */
+
+.download-history-item {
+    display: flex;
+    align-items: center;
+    gap: var(--sp-sm);
+    padding: var(--sp-sm) var(--sp-md);
+    border-bottom: 1px solid var(--border);
+    font-size: var(--font-sm);
+    transition: background-color var(--transition-fast);
+}
+
+.download-history-item:hover {
+    background-color: var(--bg-surface);
+}
+
+.download-history-item:last-child {
+    border-bottom: none;
+}
+
+.download-history-icon {
+    flex-shrink: 0;
+    width: 20px;
+    height: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+}
+
+.download-history-icon.success {
+    color: var(--success);
+}
+
+.download-history-icon.failed {
+    color: var(--danger);
+}
+
+.download-history-icon.cancelled {
+    color: var(--text-muted);
+}
+
+.download-history-name {
+    flex: 1 1 0;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    color: var(--text-primary);
+}
+
+.download-history-source {
+    flex-shrink: 0;
+    font-size: 10px;
+    padding: 1px 6px;
+    border-radius: var(--radius-sm);
+    background: rgba(102, 192, 249, 0.1);
+    color: var(--accent);
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+}
+
+.download-history-date {
+    flex-shrink: 0;
+    font-size: var(--font-xs);
+    color: var(--text-muted);
+}
+
+.download-history-size {
+    flex-shrink: 0;
+    font-size: var(--font-xs);
+    color: var(--text-muted);
+    min-width: 55px;
+    text-align: right;
+}
+
+/* =========================================================================
+   EMPTY STATE (downloads)
+   ========================================================================= */
+
+.download-empty {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: var(--sp-xxl) var(--sp-lg);
+    text-align: center;
+    gap: var(--sp-md);
+    opacity: 0.6;
+}
+
+.download-empty-icon {
+    font-size: 40px;
+    line-height: 1;
+    opacity: 0.3;
+}
+
+.download-empty-text {
+    font-size: var(--font-sm);
+    color: var(--text-muted);
+}
+
+/* =========================================================================
+   NO-DOWNLOADS INDICATOR
+   ========================================================================= */
+
+.downloads-none {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: var(--sp-xxl) var(--sp-lg);
+    text-align: center;
+    gap: var(--sp-md);
+}
+
+.downloads-none-icon {
+    font-size: 48px;
+    line-height: 1;
+    opacity: 0.25;
+}
+
+.downloads-none-title {
+    font-size: var(--font-md);
+    font-weight: var(--weight-medium);
+    color: var(--text-secondary);
+}
+
+.downloads-none-desc {
+    font-size: var(--font-sm);
+    color: var(--text-muted);
+    max-width: 300px;
+}

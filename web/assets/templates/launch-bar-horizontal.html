@@ -1,0 +1,392 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>横向换挡启动条</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI Variable', 'Segoe UI', -apple-system, sans-serif;
+            background: linear-gradient(180deg, #1b2838 0%, #12171e 100%);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 30px;
+            user-select: none;
+        }
+
+        h1 { color: #c7d5e0; font-weight: 300; letter-spacing: 2px; margin-bottom: 5px; font-size: 18px; }
+        .subtitle { color: #8b98a0; font-size: 13px; margin-bottom: 30px; }
+
+        /* ===== HORIZONTAL SHIFT BAR ===== */
+        .launch-bar {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            background: rgba(0, 0, 0, 0.3);
+            border: 1px solid rgba(102, 192, 249, 0.2);
+            border-radius: 25px;
+            padding: 6px 12px;
+            height: 50px;
+        }
+
+        /* Drive positions - horizontal */
+        .drive-pos-h {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            width: 45px;
+            height: 38px;
+            font-size: 13px;
+            font-weight: 600;
+            border-radius: 18px;
+            transition: all 0.2s ease;
+            color: #66c0f9;
+            position: relative;
+        }
+
+        .drive-pos-h.park {
+            background: linear-gradient(135deg, rgba(244, 114, 182, 0.15), transparent);
+        }
+
+        .drive-pos-h.park .sub-label { color: #f472b6; }
+
+        .drive-pos-h.drive {
+            background: linear-gradient(135deg, rgba(102, 192, 249, 0.15), transparent);
+        }
+
+        .drive-pos-h.neutral {
+            background: linear-gradient(135deg, rgba(16, 185, 129, 0.2), rgba(16, 185, 129, 0.1));
+            color: #10b981;
+            width: 38px;
+        }
+
+        .drive-pos-h.reverse {
+            background: linear-gradient(135deg, rgba(244, 114, 182, 0.15), transparent);
+        }
+
+        .drive-pos-h.reverse .sub-label { color: #f472b6; }
+
+        .drive-pos-h .sub-label {
+            font-size: 7px;
+            opacity: 0.7;
+            margin-top: 1px;
+        }
+
+        .drive-pos-h.active {
+            background: linear-gradient(135deg, rgba(102, 192, 249, 0.4), rgba(102, 192, 249, 0.2));
+            box-shadow: 0 0 12px rgba(102, 192, 249, 0.4);
+            color: #fff;
+        }
+
+        .drive-pos-h.active.neutral {
+            background: linear-gradient(135deg, rgba(16, 185, 129, 0.4), rgba(16, 185, 129, 0.2));
+            box-shadow: 0 0 12px rgba(16, 185, 129, 0.4);
+        }
+
+        .drive-pos-h.active.park, .drive-pos-h.active.reverse {
+            background: linear-gradient(135deg, rgba(244, 114, 182, 0.4), rgba(244, 114, 182, 0.2));
+            box-shadow: 0 0 12px rgba(244, 114, 182, 0.4);
+        }
+
+        /* Track line */
+        .track-line-h {
+            width: 80px;
+            height: 3px;
+            background: rgba(102, 192, 249, 0.15);
+            border-radius: 2px;
+            position: relative;
+        }
+
+        .track-line-h::before {
+            content: '';
+            position: absolute;
+            left: 50%;
+            top: 50%;
+            transform: translate(-50%, -50%);
+            width: 3px;
+            height: 100%;
+            background: rgba(102, 192, 249, 0.2);
+        }
+
+        /* Gear knob */
+        .gear-knob-h {
+            width: 40px;
+            height: 40px;
+            background: linear-gradient(145deg, #2a475e, #1b2838);
+            border: 2px solid #66c0f9;
+            border-radius: 50%;
+            cursor: grab;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 10;
+            box-shadow: 0 3px 15px rgba(102, 192, 249, 0.3);
+            transition: transform 0.1s ease;
+        }
+
+        .gear-knob-h:active { cursor: grabbing; }
+
+        .gear-knob-h::after {
+            content: '';
+            position: absolute;
+            width: 4px;
+            height: 4px;
+            background: #66c0f9;
+            border-radius: 50%;
+            top: 7px;
+        }
+
+        .knob-label-h {
+            font-size: 14px;
+            font-weight: bold;
+            color: #66c0f9;
+        }
+
+        /* Divider */
+        .divider {
+            width: 1px;
+            height: 30px;
+            background: rgba(86, 131, 172, 0.3);
+            margin: 0 4px;
+        }
+
+        /* Play button */
+        .play-btn {
+            width: 38px;
+            height: 38px;
+            background: linear-gradient(135deg, #66c0f9, #2a475e);
+            border: 2px solid rgba(102, 192, 249, 0.5);
+            border-radius: 50%;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-left: 4px;
+            transition: all 0.2s ease;
+            box-shadow: 0 2px 10px rgba(102, 192, 249, 0.3);
+        }
+
+        .play-btn:hover {
+            transform: scale(1.08);
+            box-shadow: 0 4px 15px rgba(102, 192, 249, 0.5);
+        }
+
+        .play-btn:active {
+            transform: scale(0.95);
+        }
+
+        .play-btn::after {
+            content: '';
+            width: 0;
+            height: 0;
+            border-left: 12px solid #fff;
+            border-top: 7px solid transparent;
+            border-bottom: 7px solid transparent;
+            margin-left: 3px;
+        }
+
+        .status {
+            color: #66c0f9;
+            font-size: 13px;
+            margin-top: 20px;
+            min-height: 20px;
+            text-align: center;
+        }
+
+        .hint {
+            color: #555;
+            font-size: 11px;
+            margin-top: 15px;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+    <h1>⚔️ 横向换挡启动条</h1>
+    <p class="subtitle">集成到底部栏</p>
+
+    <div class="launch-bar">
+        <!-- P Park/Multiplayer -->
+        <div class="drive-pos-h park" id="pos-p">
+            <span>P</span>
+            <span class="sub-label">联机</span>
+        </div>
+
+        <!-- Track with knob -->
+        <div class="track-line-h"></div>
+
+        <!-- D Drive -->
+        <div class="drive-pos-h drive" id="pos-d">
+            <span>D</span>
+            <span class="sub-label">前进</span>
+        </div>
+
+        <!-- N Neutral -->
+        <div class="drive-pos-h neutral active" id="pos-n">
+            <span>N</span>
+        </div>
+
+        <!-- R Reverse -->
+        <div class="drive-pos-h reverse" id="pos-r">
+            <span>R</span>
+            <span class="sub-label">倒车</span>
+        </div>
+
+        <div class="divider"></div>
+
+        <!-- Gear Knob -->
+        <div class="gear-knob-h" id="knob">
+            <div class="knob-label-h" id="knob-label">N</div>
+        </div>
+
+        <!-- Play button -->
+        <div class="play-btn" id="play-btn"></div>
+    </div>
+
+    <div class="status" id="status">← 拖动滑块切换档位 →</div>
+    <div class="hint">向左拖动到 P 联机 / D 前进 | 向右拖动到 R 倒车 | 松开回 N 空档</div>
+
+    <script>
+        const knob = document.getElementById('knob');
+        const knobLabel = document.getElementById('knob-label');
+        const status = document.getElementById('status');
+        const playBtn = document.getElementById('play-btn');
+        const posP = document.getElementById('pos-p');
+        const posD = document.getElementById('pos-d');
+        const posN = document.getElementById('pos-n');
+        const posR = document.getElementById('pos-r');
+
+        let isDragging = false;
+        let startX = 0;
+        let currentX = 0;
+        let currentGear = 'N';
+
+        knob.addEventListener('mousedown', startDrag);
+        document.addEventListener('mousemove', drag);
+        document.addEventListener('mouseup', endDrag);
+
+        knob.addEventListener('touchstart', (e) => startDrag(e.touches[0]));
+        document.addEventListener('touchmove', (e) => { e.preventDefault(); drag(e.touches[0]); });
+        document.addEventListener('touchend', endDrag);
+
+        playBtn.addEventListener('click', () => {
+            if (currentGear === 'N') {
+                status.textContent = '请先选择档位';
+                status.style.color = '#ffa940';
+                setTimeout(() => {
+                    status.textContent = '← 拖动滑块切换档位 →';
+                    status.style.color = '#66c0f9';
+                }, 1000);
+                return;
+            }
+            launch(currentGear);
+        });
+
+        function startDrag(e) {
+            isDragging = true;
+            startX = e.clientX;
+            knob.style.cursor = 'grabbing';
+            status.textContent = '拖动中...';
+            status.style.color = '#66c0f9';
+        }
+
+        function drag(e) {
+            if (!isDragging) return;
+
+            const deltaX = e.clientX - startX; // 向右为正
+
+            currentX = deltaX;
+            // 允许向左拖到P，向右拖到R
+            currentX = Math.max(-80, Math.min(80, currentX));
+
+            knob.style.transform = `translate(calc(-50% + ${currentX}px), -50%)`;
+
+            // 逻辑：向左拖 = P/D，向右拖 = R
+            if (currentX < -50) {
+                setGear('P');  // Left - Multiplayer
+            } else if (currentX < -20) {
+                setGear('D');  // Slightly left - Modded
+            } else if (currentX > 50) {
+                setGear('R');  // Right - Vanilla
+            } else {
+                setGear('N');  // Middle - Neutral
+            }
+        }
+
+        function endDrag() {
+            if (!isDragging) return;
+            isDragging = false;
+            knob.style.cursor = 'grab';
+
+            if (currentGear !== 'N') {
+                // 自动启动
+                setTimeout(() => launch(currentGear), 200);
+            } else {
+                currentX = 0;
+                knob.style.transition = 'transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275)';
+                knob.style.transform = 'translate(-50%, -50%)';
+            }
+
+            posP.classList.remove('active');
+            posD.classList.remove('active');
+            posN.classList.remove('active');
+            posR.classList.remove('active');
+        }
+
+        function setGear(gear) {
+            if (currentGear === gear) return;
+            currentGear = gear;
+            knobLabel.textContent = gear;
+
+            const colors = { 'D': '#66c0f9', 'R': '#f472b6', 'P': '#f472b6', 'N': '#10b981' };
+            status.textContent = gear === 'P' ? '联机模式 - 释放启动' :
+                                gear === 'D' ? '前进档 - 释放启动模组版' :
+                                gear === 'R' ? '倒车档 - 释放启动原版' : '空档';
+            status.style.color = colors[gear];
+
+            posP.classList.toggle('active', gear === 'P');
+            posD.classList.toggle('active', gear === 'D');
+            posN.classList.toggle('active', gear === 'N');
+            posR.classList.toggle('active', gear === 'R');
+        }
+
+        function launch(gear) {
+            const gearName = gear === 'P' ? '联机模式' :
+                           gear === 'D' ? '前进档 (模组版)' :
+                           gear === 'R' ? '倒车档 (原版)' : '空档';
+
+            currentX = gear === 'P' ? -90 : (gear === 'D' ? -60 : 90);
+            knob.style.transition = 'all 0.4s ease';
+            knob.style.transform = `translate(calc(-50% + ${currentX}px), -50%)`;
+            knob.style.opacity = '0';
+            playBtn.style.opacity = '0';
+
+            status.textContent = `正在启动 ${gearName}...`;
+
+            setTimeout(() => {
+                status.textContent = `✅ ${gearName} 游戏已启动！`;
+                status.style.color = '#4ade80';
+                setTimeout(resetKnob, 2000);
+            }, 800);
+        }
+
+        function resetKnob() {
+            currentX = 0;
+            currentGear = 'N';
+            knob.style.transition = 'all 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275)';
+            knob.style.transform = 'translate(-50%, -50%)';
+            knob.style.opacity = '1';
+            playBtn.style.opacity = '1';
+            setGear('N');
+            setTimeout(() => {
+                status.textContent = '← 拖动滑块切换档位 →';
+            }, 500);
+        }
+    </script>
+</body>
+</html>

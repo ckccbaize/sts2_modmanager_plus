@@ -1,0 +1,506 @@
+/* ==========================================================================
+   layout.css — Main Application Layout
+   Slay the Spire 2 Mod Manager — Steam × Windows 11 Dark Theme
+   ========================================================================== */
+
+@import "variables.css";
+
+/* =========================================================================
+   APP CONTAINER
+   Full-viewport flex column that holds the entire application shell.
+   ========================================================================= */
+
+.app-container {
+    display: flex;
+    flex-direction: column;
+    width: 100vw;
+    height: 100vh;
+    min-width: 800px;
+    background-color: var(--bg-deep);
+    overflow: hidden;
+}
+
+/* =========================================================================
+   TITLE BAR
+   42px fixed header with app icon and title, styled like a Windows 11
+   dark-frame title bar blended with Steam's muted palette.
+   ========================================================================= */
+
+.title-bar {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    height: var(--title-bar-height);
+    min-height: var(--title-bar-height);
+    padding: 0 var(--sp-lg);
+    background-color: var(--bg-elevated);
+    border-bottom: 1px solid var(--border);
+    gap: var(--sp-md);
+    -webkit-app-region: drag;      /* Allow window dragging in Electron/Tauri */
+    user-select: none;
+    z-index: var(--z-sticky);
+}
+
+.title-bar__icon {
+    width: 20px;
+    height: 20px;
+    border-radius: var(--radius-sm);
+    flex-shrink: 0;
+}
+
+.title-bar__title {
+    font-size: var(--font-sm);
+    font-weight: var(--weight-medium);
+    color: var(--text-secondary);
+    letter-spacing: 0.02em;
+    white-space: nowrap;
+}
+
+.title-bar__actions {
+    margin-left: auto;
+    display: flex;
+    gap: var(--sp-xs);
+    -webkit-app-region: no-drag;
+}
+
+.title-bar__btn {
+    width: 36px;
+    height: 28px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: var(--radius-sm);
+    color: var(--text-secondary);
+    transition: background-color var(--transition-fast),
+                color var(--transition-fast);
+}
+
+.title-bar__btn:hover {
+    background-color: var(--bg-surface);
+    color: var(--text-primary);
+}
+
+.title-bar__btn--close:hover {
+    background-color: var(--danger);
+    color: #fff;
+}
+
+/* =========================================================================
+   TAB NAVIGATION
+   Horizontal row of tab buttons below the title bar.
+   ========================================================================= */
+
+.tab-nav {
+    display: flex;
+    flex-direction: row;
+    align-items: stretch;
+    height: var(--tab-nav-height);
+    min-height: var(--tab-nav-height);
+    padding: 0 var(--sp-lg);
+    gap: 0;
+    background-color: rgba(21, 31, 46, 0.8);
+    border-bottom: 1px solid var(--border);
+    user-select: none;
+}
+
+.tab-btn {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0 var(--sp-lg);
+    font-size: var(--font-sm);
+    font-weight: var(--weight-medium);
+    color: var(--text-secondary);
+    background-color: transparent;
+    border: none;
+    cursor: pointer;
+    transition: color var(--transition-fast),
+                background-color var(--transition-fast);
+}
+
+.tab-btn:hover {
+    color: var(--text-primary);
+    background-color: var(--bg-surface);
+}
+
+/* Active tab: accent bottom border, brighter text, subtle top glow */
+.tab-btn.active {
+    color: var(--text-primary);
+    background-color: transparent;
+}
+
+.tab-btn.active::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 60%;
+    height: 2px;
+    background-color: var(--accent);
+    border-radius: 2px 2px 0 0;
+    box-shadow: 0 0 8px var(--accent-glow);
+}
+
+/* Tab icon + label grouping */
+.tab-btn__icon {
+    width: 16px;
+    height: 16px;
+    margin-right: var(--sp-sm);
+    opacity: 0.7;
+    transition: opacity var(--transition-fast);
+}
+
+.tab-btn:hover .tab-btn__icon,
+.tab-btn.active .tab-btn__icon {
+    opacity: 1;
+}
+
+.tab-btn__badge {
+    margin-left: var(--sp-sm);
+    font-size: var(--font-xs);
+    min-width: 18px;
+    height: 18px;
+    line-height: 18px;
+    text-align: center;
+    padding: 0 var(--sp-xs);
+    background-color: var(--accent-dark);
+    color: var(--accent);
+    border-radius: var(--radius-pill);
+}
+
+/* =========================================================================
+   CONTENT AREA
+   Scrollable region between the tab nav and footer.
+   ========================================================================= */
+
+.content-area {
+    flex: 1 1 0;
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding: var(--sp-lg);
+    position: relative;
+}
+
+/* =========================================================================
+   PAGES
+   Individual tab pages. Hidden by default, .active shows with fade.
+   ========================================================================= */
+
+.page {
+    display: none;
+    opacity: 0;
+    transition: opacity var(--transition-slow);
+}
+
+.page.active {
+    display: block;
+    opacity: 1;
+}
+
+/* =========================================================================
+   FOOTER
+   Status bar and launch controls at the bottom of the app.
+   ========================================================================= */
+
+.footer {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    height: var(--footer-height);
+    min-height: var(--footer-height);
+    padding: 0 var(--sp-lg);
+    background-color: var(--bg-elevated);
+    border-top: 1px solid var(--border);
+    gap: var(--sp-lg);
+    z-index: var(--z-sticky);
+}
+
+.footer-left {
+    flex: 1 1 0;
+    min-width: 0;
+    overflow: hidden;
+    font-size: var(--font-xs);
+    color: var(--text-secondary);
+    white-space: nowrap;
+    text-overflow: ellipsis;
+}
+
+.footer-center {
+    flex: 0 0 auto;
+    min-width: 250px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.footer-right {
+    flex: 0 0 auto;
+    min-width: 0;
+    text-align: right;
+    font-size: var(--font-xs);
+    color: var(--text-muted);
+    white-space: nowrap;
+}
+
+.footer__status {
+    font-size: var(--font-xs);
+    color: var(--text-secondary);
+    flex: 1 1 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.footer__launch-area {
+    display: flex;
+    align-items: center;
+    gap: var(--sp-sm);
+}
+
+/* ── Tesla Launch Knob ────────────────────────────────────────────────── */
+/* Applied to .launch-knob when rendered by launch.js */
+
+.launch-knob {
+    width: 30px;
+    height: 28px;
+    border-radius: 6px;
+    background-color: #16232e;
+    border: 1px solid rgba(102, 192, 249, 0.3);
+    box-shadow: 0 0 6px rgba(102, 192, 249, 0.15);
+    cursor: grab;
+    user-select: none;
+    z-index: 2;
+    /* position/transform set inline by launch.js */
+}
+
+.launch-gear-label {
+    /* Styles applied inline by launch.js; these provide base fallback */
+    line-height: 1;
+}
+
+/* =========================================================================
+   SPLIT LAYOUT
+   Two-column grid: left panel (mod list) + right panel (details).
+   Uses CSS Grid for clean resizable columns.
+   ========================================================================= */
+
+.split-layout {
+    display: grid;
+    grid-template-columns: 1fr 380px;
+    gap: var(--sp-lg);
+    height: 100%;
+    min-height: 0;
+}
+
+.split-layout--reversed {
+    grid-template-columns: 380px 1fr;
+}
+
+/* Resizable split handle */
+.split-handle {
+    width: 4px;
+    cursor: col-resize;
+    background-color: transparent;
+    transition: background-color var(--transition-fast);
+    position: relative;
+}
+
+.split-handle::before {
+    content: '';
+    position: absolute;
+    inset: 0 -4px;
+}
+
+.split-handle:hover {
+    background-color: var(--accent);
+}
+
+/* =========================================================================
+   PANEL
+   Generic surface-level container for cards, lists, and detail views.
+   ========================================================================= */
+
+.panel {
+    background-color: var(--bg-surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: var(--sp-lg);
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+}
+
+.panel--flat {
+    background-color: transparent;
+    border: none;
+    padding: 0;
+}
+
+.panel--scrollable {
+    overflow-y: auto;
+}
+
+.panel__header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: var(--sp-md);
+    flex-shrink: 0;
+}
+
+.panel__title {
+    font-size: var(--font-md);
+    font-weight: var(--weight-semibold);
+    color: var(--text-primary);
+}
+
+.panel__body {
+    flex: 1 1 0;
+    overflow-y: auto;
+    min-height: 0;
+}
+
+/* =========================================================================
+   TOOLBAR
+   Horizontal action bar typically placed above a list or grid.
+   ========================================================================= */
+
+.toolbar {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: var(--sp-sm);
+    padding: var(--sp-sm) 0;
+    flex-shrink: 0;
+}
+
+.toolbar__separator {
+    width: 1px;
+    height: 20px;
+    background-color: var(--border);
+    margin: 0 var(--sp-xs);
+}
+
+.toolbar__spacer {
+    flex: 1 1 0;
+}
+
+/* =========================================================================
+   LIST CONTAINER
+   Vertical list of items (mods, saves, etc.).
+   ========================================================================= */
+
+.list-container {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    overflow-y: auto;
+    flex: 1 1 0;
+    min-height: 0;
+}
+
+/* =========================================================================
+   EMPTY STATE
+   Shown when a list or section has no content.
+   ========================================================================= */
+
+.empty-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: var(--sp-xxl) var(--sp-lg);
+    text-align: center;
+    gap: var(--sp-md);
+    opacity: 0.6;
+}
+
+.empty-state__icon {
+    width: 48px;
+    height: 48px;
+    color: var(--text-muted);
+}
+
+.empty-state__title {
+    font-size: var(--font-lg);
+    font-weight: var(--weight-medium);
+    color: var(--text-secondary);
+}
+
+.empty-state__desc {
+    font-size: var(--font-sm);
+    color: var(--text-muted);
+    max-width: 320px;
+}
+
+/* =========================================================================
+   UTILITY: FLEX & GRID HELPERS
+   Quick layout utilities to reduce inline flex/grid declarations.
+   ========================================================================= */
+
+.flex-row       { display: flex; flex-direction: row; }
+.flex-col       { display: flex; flex-direction: column; }
+.flex-wrap      { flex-wrap: wrap; }
+.flex-center    { align-items: center; justify-content: center; }
+.items-center   { align-items: center; }
+.items-start    { align-items: flex-start; }
+.items-end      { align-items: flex-end; }
+.justify-center { justify-content: center; }
+.justify-between{ justify-content: space-between; }
+.justify-end    { justify-content: flex-end; }
+.gap-xs         { gap: var(--sp-xs); }
+.gap-sm         { gap: var(--sp-sm); }
+.gap-md         { gap: var(--sp-md); }
+.gap-lg         { gap: var(--sp-lg); }
+.gap-xl         { gap: var(--sp-xl); }
+.flex-1         { flex: 1 1 0; }
+.flex-shrink-0  { flex-shrink: 0; }
+
+/* =========================================================================
+   UTILITY: SPACING HELPERS
+   Margin and padding utilities for rapid layout prototyping.
+   ========================================================================= */
+
+.p-xs  { padding: var(--sp-xs); }
+.p-sm  { padding: var(--sp-sm); }
+.p-md  { padding: var(--sp-md); }
+.p-lg  { padding: var(--sp-lg); }
+.p-xl  { padding: var(--sp-xl); }
+
+.px-sm { padding-left: var(--sp-sm); padding-right: var(--sp-sm); }
+.px-md { padding-left: var(--sp-md); padding-right: var(--sp-md); }
+.px-lg { padding-left: var(--sp-lg); padding-right: var(--sp-lg); }
+
+.py-sm { padding-top: var(--sp-sm); padding-bottom: var(--sp-sm); }
+.py-md { padding-top: var(--sp-md); padding-bottom: var(--sp-md); }
+.py-lg { padding-top: var(--sp-lg); padding-bottom: var(--sp-lg); }
+
+.m-xs  { margin: var(--sp-xs); }
+.m-sm  { margin: var(--sp-sm); }
+.m-md  { margin: var(--sp-md); }
+.m-lg  { margin: var(--sp-lg); }
+
+.mt-sm { margin-top: var(--sp-sm); }
+.mt-md { margin-top: var(--sp-md); }
+.mt-lg { margin-top: var(--sp-lg); }
+.mb-sm { margin-bottom: var(--sp-sm); }
+.mb-md { margin-bottom: var(--sp-md); }
+.mb-lg { margin-bottom: var(--sp-lg); }
+.ml-auto { margin-left: auto; }
+.mr-auto { margin-right: auto; }
+
+/* =========================================================================
+   UTILITY: DISPLAY HELPERS
+   ========================================================================= */
+
+.hidden        { display: none !important; }
+.block         { display: block; }
+.inline-block  { display: inline-block; }
+.inline-flex   { display: inline-flex; align-items: center; }
+.relative      { position: relative; }
+.absolute      { position: absolute; }
+.overflow-hidden { overflow: hidden; }
+.truncate      { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

@@ -1,0 +1,516 @@
+/* ==========================================================================
+   nexus.css — Nexus Mods Browsing Page
+   Slay the Spire 2 Mod Manager — Steam × Windows 11 Dark Theme
+   ========================================================================== */
+
+@import "variables.css";
+
+/* =========================================================================
+   NEXUS LAYOUT
+   Grid with fixed sidebar and scrollable content area.
+   ========================================================================= */
+
+.nexus-layout {
+    display: grid;
+    grid-template-columns: 220px 1fr;
+    gap: var(--sp-lg);
+    height: 100%;
+    min-height: 0;
+}
+
+/* =========================================================================
+   NEXUS SIDEBAR
+   Scrollable left panel with search, filter, and downloads sections.
+   ========================================================================= */
+
+.nexus-sidebar {
+    display: flex;
+    flex-direction: column;
+    gap: var(--sp-md);
+    overflow-y: auto;
+    padding: var(--sp-md);
+}
+
+.nexus-search-section,
+.nexus-filter-section,
+.nexus-downloads-section {
+    display: flex;
+    flex-direction: column;
+    gap: var(--sp-sm);
+}
+
+.nexus-search-section label,
+.nexus-filter-section label,
+.nexus-downloads-section label {
+    font-size: var(--font-xs);
+    font-weight: var(--weight-semibold);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--text-secondary);
+}
+
+.nexus-search-section .input-search {
+    width: 100%;
+}
+
+.nexus-filter-section select {
+    width: 100%;
+}
+
+/* =========================================================================
+   NEXUS API CONFIG (sidebar)
+   API key input section within the sidebar.
+   ========================================================================= */
+
+.nexus-api-config {
+    display: flex;
+    flex-direction: column;
+    gap: var(--sp-sm);
+    padding: var(--sp-md);
+    background-color: var(--bg-surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+}
+
+.nexus-api-config label {
+    font-size: var(--font-xs);
+    font-weight: var(--weight-semibold);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--text-secondary);
+}
+
+.nexus-api-config .input {
+    width: 100%;
+}
+
+.nexus-api-status {
+    display: flex;
+    align-items: center;
+    gap: var(--sp-xs);
+    font-size: var(--font-xs);
+    color: var(--text-muted);
+}
+
+.nexus-api-status.validated {
+    color: var(--success);
+}
+
+.nexus-api-status.failed {
+    color: var(--danger);
+}
+
+/* =========================================================================
+   NEXUS GRID
+   3-column responsive grid for mod cards.
+   ========================================================================= */
+
+.nexus-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: var(--sp-lg);
+    padding: var(--sp-sm) 0;
+}
+
+@media (max-width: 1200px) {
+    .nexus-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+@media (max-width: 800px) {
+    .nexus-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* =========================================================================
+   NEXUS CARD
+   Individual mod card with image, info, and hover overlay.
+   ========================================================================= */
+
+.nexus-card {
+    position: relative;
+    background-color: var(--bg-surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+    cursor: pointer;
+    transition: border-color var(--transition-fast),
+                box-shadow var(--transition-fast),
+                transform var(--transition-fast);
+}
+
+.nexus-card:hover {
+    border-color: var(--border-hover);
+    box-shadow: var(--shadow-md);
+    transform: translateY(-2px);
+}
+
+.nexus-card:active {
+    transform: translateY(0) scale(0.995);
+}
+
+/* Card image area with gradient overlay */
+.nexus-card-image {
+    position: relative;
+    width: 100%;
+    height: 200px;
+    overflow: hidden;
+}
+
+.nexus-card-image img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: transform var(--transition-slow);
+}
+
+.nexus-card:hover .nexus-card-image img {
+    transform: scale(1.03);
+}
+
+/* Gradient placeholder when no real image */
+.nexus-card-image-placeholder {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 48px;
+    background: linear-gradient(135deg, var(--accent-dark), rgba(42, 71, 94, 0.6));
+}
+
+.nexus-card-image-placeholder.gameplay {
+    background: linear-gradient(135deg, rgba(244, 114, 182, 0.25), rgba(244, 114, 182, 0.08));
+}
+
+.nexus-card-image-placeholder.cosmetic {
+    background: linear-gradient(135deg, rgba(16, 185, 129, 0.25), rgba(16, 185, 129, 0.08));
+}
+
+/* Bottom gradient overlay on image */
+.nexus-card-image::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 60px;
+    background: linear-gradient(to top, rgba(18, 23, 30, 0.85), transparent);
+    pointer-events: none;
+}
+
+/* Card info section */
+.nexus-card-info {
+    padding: var(--sp-md);
+    display: flex;
+    flex-direction: column;
+    gap: var(--sp-xs);
+}
+
+.nexus-card-name {
+    font-size: var(--font-md);
+    font-weight: var(--weight-bold);
+    color: var(--text-primary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.nexus-card-author {
+    font-size: var(--font-sm);
+    color: var(--text-secondary);
+}
+
+/* Card stats row: downloads + version */
+.nexus-card-stats {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 var(--sp-md) var(--sp-md);
+    font-size: var(--font-xs);
+    color: var(--text-muted);
+}
+
+.nexus-card-downloads {
+    display: flex;
+    align-items: center;
+    gap: var(--sp-xs);
+}
+
+.nexus-card-version {
+    padding: 1px 6px;
+    font-size: var(--font-xs);
+    background-color: rgba(102, 192, 249, 0.10);
+    color: var(--accent);
+    border-radius: var(--radius-sm);
+    border: 1px solid rgba(102, 192, 249, 0.20);
+}
+
+/* Hover overlay with "view details" button */
+.nexus-card-overlay {
+    position: absolute;
+    inset: 0;
+    background-color: rgba(18, 23, 30, 0.75);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    transition: opacity var(--transition-base);
+    pointer-events: none;
+}
+
+.nexus-card:hover .nexus-card-overlay {
+    opacity: 1;
+    pointer-events: auto;
+}
+
+.nexus-card-overlay .btn {
+    animation: scaleIn 0.2s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+
+/* =========================================================================
+   NEXUS DETAIL MODAL
+   Full-screen overlay for mod details.
+   ========================================================================= */
+
+.nexus-details-modal {
+    position: fixed;
+    inset: 0;
+    background-color: rgba(0, 0, 0, 0.70);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: var(--z-modal);
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity var(--transition-base),
+                visibility var(--transition-base);
+}
+
+.nexus-details-modal.open {
+    opacity: 1;
+    visibility: visible;
+}
+
+.nexus-detail-container {
+    background-color: var(--bg-light);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-xl);
+    box-shadow: var(--shadow-xl);
+    max-width: 600px;
+    width: calc(100% - 40px);
+    max-height: calc(100vh - 80px);
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    transform: scale(0.92);
+    transition: transform var(--transition-base);
+}
+
+.nexus-details-modal.open .nexus-detail-container {
+    transform: scale(1);
+}
+
+/* Large image header */
+.nexus-detail-image {
+    position: relative;
+    width: 100%;
+    height: 220px;
+    overflow: hidden;
+    flex-shrink: 0;
+}
+
+.nexus-detail-image-placeholder {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 64px;
+    background: linear-gradient(135deg, var(--accent-dark), rgba(42, 71, 94, 0.6));
+}
+
+.nexus-detail-image-placeholder.gameplay {
+    background: linear-gradient(135deg, rgba(244, 114, 182, 0.3), rgba(244, 114, 182, 0.08));
+}
+
+.nexus-detail-image-placeholder.cosmetic {
+    background: linear-gradient(135deg, rgba(16, 185, 129, 0.3), rgba(16, 185, 129, 0.08));
+}
+
+.nexus-detail-image::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 80px;
+    background: linear-gradient(to top, var(--bg-light), transparent);
+    pointer-events: none;
+}
+
+/* Detail info section */
+.nexus-detail-info {
+    padding: var(--sp-xl);
+    overflow-y: auto;
+    flex: 1 1 0;
+    display: flex;
+    flex-direction: column;
+    gap: var(--sp-md);
+}
+
+.nexus-detail-name {
+    font-size: var(--font-xl);
+    font-weight: var(--weight-bold);
+    color: var(--text-primary);
+}
+
+.nexus-detail-meta {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--sp-md);
+    font-size: var(--font-sm);
+    color: var(--text-secondary);
+}
+
+.nexus-detail-meta-item {
+    display: flex;
+    align-items: center;
+    gap: var(--sp-xs);
+}
+
+.nexus-detail-description {
+    font-size: var(--font-sm);
+    color: var(--text-primary);
+    line-height: var(--leading-relaxed);
+    white-space: pre-wrap;
+}
+
+/* Detail actions */
+.nexus-detail-actions {
+    display: flex;
+    gap: var(--sp-sm);
+    padding: var(--sp-lg) var(--sp-xl);
+    border-top: 1px solid var(--border);
+    flex-shrink: 0;
+}
+
+.nexus-detail-actions .btn {
+    flex: 1;
+}
+
+/* =========================================================================
+   NEXUS LOADING
+   Centered spinner + text for loading state.
+   ========================================================================= */
+
+.nexus-loading {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: var(--sp-md);
+    padding: var(--sp-xxl);
+    color: var(--text-secondary);
+    font-size: var(--font-sm);
+}
+
+/* =========================================================================
+   NEXUS LOAD MORE
+   "View more" button area at bottom of grid.
+   ========================================================================= */
+
+.nexus-load-more {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: var(--sp-xl) 0;
+}
+
+/* =========================================================================
+   NEXUS NO RESULTS
+   Empty state when search yields no results.
+   ========================================================================= */
+
+.nexus-no-results {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: var(--sp-md);
+    padding: var(--sp-xxl);
+    text-align: center;
+    color: var(--text-muted);
+}
+
+.nexus-no-results-icon {
+    width: 48px;
+    height: 48px;
+    opacity: 0.5;
+}
+
+.nexus-no-results-text {
+    font-size: var(--font-md);
+    color: var(--text-secondary);
+}
+
+/* =========================================================================
+   IMAGE SKELETON SHIMMER
+   Loading placeholder for card images.
+   ========================================================================= */
+
+.nexus-card-skeleton {
+    position: relative;
+    background-color: var(--bg-surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+}
+
+.nexus-card-skeleton .skeleton-image {
+    width: 100%;
+    height: 200px;
+    background: linear-gradient(
+        90deg,
+        var(--bg-surface) 25%,
+        rgba(86, 131, 172, 0.08) 50%,
+        var(--bg-surface) 75%
+    );
+    background-size: 200% 100%;
+    animation: shimmer 1.6s ease-in-out infinite;
+}
+
+.nexus-card-skeleton .skeleton-body {
+    padding: var(--sp-md);
+    display: flex;
+    flex-direction: column;
+    gap: var(--sp-sm);
+}
+
+.nexus-card-skeleton .skeleton-line {
+    height: 12px;
+    border-radius: var(--radius-sm);
+    background: linear-gradient(
+        90deg,
+        var(--bg-surface) 25%,
+        rgba(86, 131, 172, 0.08) 50%,
+        var(--bg-surface) 75%
+    );
+    background-size: 200% 100%;
+    animation: shimmer 1.6s ease-in-out infinite;
+}
+
+.nexus-card-skeleton .skeleton-line:nth-child(1) {
+    width: 75%;
+}
+
+.nexus-card-skeleton .skeleton-line:nth-child(2) {
+    width: 50%;
+}
+
+.nexus-card-skeleton .skeleton-line:nth-child(3) {
+    width: 60%;
+}

@@ -1,0 +1,1371 @@
+/* ==========================================================================
+   mods.css -- Mods Management Page
+   Slay the Spire 2 Mod Manager -- Steam x Windows 11 Dark Theme
+   ========================================================================== */
+
+@import "variables.css";
+
+/* =========================================================================
+   LAUNCH MODE TOGGLE BAR
+   Centered row of mode buttons above the toolbar.
+   ========================================================================= */
+
+.mod-launch-modes {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: var(--sp-sm);
+    padding: var(--sp-md) 0;
+    margin-bottom: var(--sp-md);
+}
+
+.mod-launch-modes .mode-btn {
+    width: 100px;
+    height: 30px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: var(--font-sm);
+    font-weight: var(--weight-medium);
+    color: var(--text-secondary);
+    background-color: transparent;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-pill);
+    cursor: pointer;
+    user-select: none;
+    transition: background-color var(--transition-fast),
+                border-color var(--transition-fast),
+                color var(--transition-fast),
+                box-shadow var(--transition-fast);
+}
+
+.mod-launch-modes .mode-btn:hover {
+    background-color: var(--bg-surface);
+    border-color: var(--border-hover);
+    color: var(--text-primary);
+}
+
+.mod-launch-modes .mode-btn.active {
+    background-color: var(--accent);
+    border-color: var(--accent);
+    color: #fff;
+    box-shadow: 0 0 10px var(--accent-glow);
+}
+
+/* =========================================================================
+   MOD TOOLBAR
+   Flex row with search, sort, category tags, and action buttons.
+   ========================================================================= */
+
+.mod-toolbar {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 10px;
+    padding: var(--sp-sm) var(--sp-md);
+    background-color: var(--bg-surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    margin-bottom: var(--sp-sm);
+    flex-wrap: wrap;
+}
+
+/* Refresh button icon */
+.mod-toolbar .icon-refresh {
+    transition: transform 0.3s ease;
+}
+
+.mod-toolbar #btn-refresh-mods:hover .icon-refresh {
+    transform: rotate(180deg);
+}
+
+.mod-toolbar #btn-refresh-mods.spinning .icon-refresh {
+    animation: refreshSpin 0.6s linear;
+}
+
+@keyframes refreshSpin {
+    0%   { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+.mod-toolbar .input-search {
+    position: relative;
+    flex: 0 1 240px;
+    min-width: 160px;
+}
+
+.mod-toolbar .input-search .search-icon {
+    position: absolute;
+    left: 10px;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: var(--font-sm);
+    color: var(--text-muted);
+    pointer-events: none;
+}
+
+.mod-toolbar .input-search .search-input {
+    width: 100%;
+    height: var(--input-height);
+    padding: 0 var(--sp-md) 0 30px;
+    font-size: var(--font-sm);
+    color: var(--text-primary);
+    background-color: rgba(0, 0, 0, 0.2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-pill);
+    outline: none;
+    transition: border-color var(--transition-fast),
+                box-shadow var(--transition-fast);
+}
+
+.mod-toolbar .input-search .search-input::placeholder {
+    color: var(--text-muted);
+}
+
+.mod-toolbar .input-search .search-input:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 2px var(--accent-glow);
+}
+
+.mod-toolbar .toolbar-spacer {
+    flex: 1 1 auto;
+    min-width: var(--sp-sm);
+}
+
+/* =========================================================================
+   TAG PRESETS BAR
+   Horizontal row of preset tag pills below the toolbar.
+   ========================================================================= */
+
+.tag-presets-bar {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: var(--sp-sm);
+    padding: var(--sp-xs) 0;
+    margin-bottom: var(--sp-md);
+    overflow-x: auto;
+    scrollbar-width: none;
+    position: relative;
+    scroll-behavior: smooth;
+    -webkit-mask-image: linear-gradient(to right, transparent 0, black 12px, black calc(100% - 12px), transparent 100%);
+    mask-image: linear-gradient(to right, transparent 0, black 12px, black calc(100% - 12px), transparent 100%);
+}
+
+.tag-presets-bar::-webkit-scrollbar {
+    display: none;
+}
+
+.tag-preset {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    gap: var(--sp-xs);
+    padding: 4px 14px;
+    font-size: var(--font-xs);
+    font-weight: var(--weight-medium);
+    color: var(--text-secondary);
+    background-color: transparent;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-pill);
+    cursor: pointer;
+    user-select: none;
+    white-space: nowrap;
+    flex-shrink: 0;
+    transition: background-color var(--transition-fast),
+                border-color var(--transition-fast),
+                color var(--transition-fast);
+}
+
+.tag-preset:hover {
+    background-color: var(--bg-surface);
+    border-color: var(--border-hover);
+    color: var(--text-primary);
+    filter: brightness(1.15);
+}
+
+.tag-preset.active {
+    background-color: rgba(102, 192, 249, 0.12);
+    border-color: rgba(102, 192, 249, 0.35);
+    color: var(--accent);
+}
+
+/* Long-press delete animation: circular progress around the pill */
+.tag-preset.deleting {
+    animation: tagLongPress 1s linear forwards;
+    position: relative;
+}
+
+.tag-preset.deleting::after {
+    content: '';
+    position: absolute;
+    inset: -3px;
+    border-radius: var(--radius-pill);
+    border: 2px solid transparent;
+    border-top-color: var(--danger);
+    border-right-color: var(--danger);
+    animation: tagDeleteRing 1s linear forwards;
+}
+
+@keyframes tagLongPress {
+    0%   { background-color: transparent; }
+    80%  { background-color: rgba(239, 68, 68, 0.08); }
+    100% { background-color: rgba(239, 68, 68, 0.15); color: var(--danger); }
+}
+
+@keyframes tagDeleteRing {
+    0%   { transform: rotate(0deg); border-color: transparent; border-top-color: var(--danger); }
+    25%  { border-color: transparent; border-top-color: var(--danger); border-right-color: var(--danger); }
+    50%  { border-color: transparent; border-top-color: var(--danger); border-right-color: var(--danger); border-bottom-color: var(--danger); }
+    75%  { border-top-color: var(--danger); border-right-color: var(--danger); border-bottom-color: var(--danger); border-left-color: var(--danger); }
+    100% { border-color: var(--danger); }
+}
+
+/* Add tag button */
+.tag-add-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 26px;
+    height: 26px;
+    font-size: var(--font-md);
+    font-weight: var(--weight-bold);
+    color: var(--text-muted);
+    background-color: transparent;
+    border: 1px dashed var(--border);
+    border-radius: var(--radius-circle);
+    cursor: pointer;
+    flex-shrink: 0;
+    transition: color var(--transition-fast),
+                border-color var(--transition-fast),
+                background-color var(--transition-fast);
+}
+
+.tag-add-btn:hover {
+    color: var(--accent);
+    border-color: var(--accent);
+    background-color: rgba(102, 192, 249, 0.08);
+}
+
+/* Tag separator */
+.tag-separator {
+    display: inline-flex;
+    align-items: center;
+    color: var(--border);
+    font-size: var(--font-sm);
+    margin: 0 4px;
+    user-select: none;
+}
+
+/* Box button in tag-presets */
+.tag-box-btn {
+    font-size: var(--font-xs);
+    padding: 3px 10px;
+    gap: 4px;
+}
+
+/* =========================================================================
+   MOD LIST ITEM
+   64px tall card: icon + info + toggle. Transparent bg, hover highlight.
+   ========================================================================= */
+
+.mod-item {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    height: 64px;
+    padding: 0 var(--sp-md);
+    gap: var(--sp-md);
+    background-color: transparent;
+    border: 1px solid transparent;
+    border-radius: var(--radius-md);
+    cursor: pointer;
+    user-select: none;
+    transition: background-color var(--transition-fast),
+                border-color var(--transition-fast),
+                box-shadow var(--transition-fast);
+}
+
+.mod-item:hover {
+    background-color: rgba(255, 255, 255, 0.06);
+}
+
+.mod-item.selected {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 1px var(--accent-glow), var(--shadow-glow);
+    background-color: rgba(102, 192, 249, 0.05);
+}
+
+.mod-item.batch-selected {
+    border-color: var(--warning, #ffa940);
+    background-color: rgba(255, 169, 64, 0.08);
+    box-shadow: 0 0 0 1px rgba(255, 169, 64, 0.2);
+}
+
+/* Batch mode selector checkbox */
+.batch-selector {
+    display: none;
+    width: 18px;
+    height: 18px;
+    border-radius: var(--radius-sm);
+    border: 2px solid var(--text-muted);
+    background: transparent;
+    cursor: pointer;
+    flex-shrink: 0;
+    transition: all 0.15s ease;
+    position: relative;
+    margin-right: var(--sp-xs);
+}
+
+.batch-selector.checked {
+    border-color: var(--warning, #ffa940);
+    background: var(--warning, #ffa940);
+}
+
+.batch-selector.checked::after {
+    content: '';
+    position: absolute;
+    left: 4px;
+    top: 1px;
+    width: 5px;
+    height: 9px;
+    border: 2px solid var(--bg-deep);
+    border-top: none;
+    border-left: none;
+    transform: rotate(45deg);
+}
+
+/* Batch mode: show selector on mod items */
+.batch-mode-active .mod-item {
+    padding-left: var(--sp-sm);
+}
+
+.batch-mode-active .batch-selector {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* Batch mode toolbar highlight */
+.mod-toolbar.batch-mode-active {
+    background: rgba(255, 169, 64, 0.04);
+    border-color: rgba(255, 169, 64, 0.2);
+}
+
+/* Batch mode hint text */
+.batch-mode-hint {
+    font-size: var(--font-xs);
+    color: var(--warning, #ffa940);
+    display: none;
+    align-items: center;
+    gap: var(--sp-xs);
+    padding: 2px var(--sp-sm);
+    background: rgba(255, 169, 64, 0.1);
+    border-radius: var(--radius-pill);
+    white-space: nowrap;
+}
+
+.batch-mode-active .batch-mode-hint {
+    display: inline-flex;
+}
+
+/* Icon: 40x40 rounded square with colored background */
+.mod-item-icon {
+    width: 40px;
+    height: 40px;
+    border-radius: var(--radius-md);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 20px;
+    flex-shrink: 0;
+    border: 1px solid var(--border);
+    background-color: var(--bg-surface);
+    transition: background-color var(--transition-fast);
+}
+
+.mod-item-icon.icon-gameplay {
+    background-color: rgba(244, 114, 182, 0.12);
+    border-color: rgba(244, 114, 182, 0.2);
+}
+
+.mod-item-icon.icon-cosmetic {
+    background-color: rgba(16, 185, 129, 0.12);
+    border-color: rgba(16, 185, 129, 0.2);
+}
+
+.mod-item-icon.icon-default {
+    background-color: rgba(102, 192, 249, 0.12);
+    border-color: rgba(102, 192, 249, 0.2);
+}
+
+/* Info: name + metadata line */
+.mod-item-info {
+    flex: 1 1 0;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.mod-item-name {
+    font-size: var(--font-md);
+    font-weight: var(--weight-medium);
+    color: var(--text-primary);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.mod-item-meta {
+    font-size: var(--font-sm);
+    color: var(--text-secondary);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.mod-item-meta .author {
+    color: var(--text-secondary);
+}
+
+.mod-item-meta .version {
+    color: var(--text-muted);
+    margin-left: var(--sp-sm);
+}
+
+/* Toggle switch (reuse component styles inline) */
+.mod-item-toggle {
+    position: relative;
+    display: inline-block;
+    width: var(--toggle-width);
+    height: var(--toggle-height);
+    flex-shrink: 0;
+    cursor: pointer;
+}
+
+.mod-item-toggle input {
+    position: absolute;
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+
+.mod-item-toggle .toggle-track {
+    position: absolute;
+    inset: 0;
+    background-color: rgba(139, 152, 160, 0.25);
+    border-radius: var(--radius-pill);
+    transition: background-color var(--transition-base);
+}
+
+.mod-item-toggle .toggle-knob {
+    position: absolute;
+    top: 2px;
+    left: 2px;
+    width: 16px;
+    height: 16px;
+    background-color: var(--text-secondary);
+    border-radius: var(--radius-circle);
+    transition: transform var(--transition-base),
+                background-color var(--transition-base);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
+}
+
+.mod-item-toggle input:checked ~ .toggle-track {
+    background-color: var(--accent);
+}
+
+.mod-item-toggle input:checked ~ .toggle-knob {
+    transform: translateX(16px);
+    background-color: #fff;
+}
+
+/* Dependency warning icon */
+.mod-item-dep-warn {
+    font-size: var(--font-xs);
+    color: var(--warning);
+    flex-shrink: 0;
+    margin-right: var(--sp-xs);
+}
+
+/* =========================================================================
+   MOD ITEM STATES
+   ========================================================================= */
+
+.mod-item.dragging {
+    opacity: 0.3;
+    pointer-events: none;
+}
+
+/* Ghost element that follows the cursor during drag */
+.drag-ghost {
+    opacity: 0.85 !important;
+    pointer-events: none !important;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4) !important;
+    border-radius: var(--radius-md) !important;
+}
+
+/* Mod drag handle — always rendered, hidden by default */
+.mod-item-drag-handle {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: grab;
+    padding: 0 2px;
+    color: var(--text-muted);
+    opacity: 0;
+    transition: opacity var(--transition-fast), color var(--transition-fast);
+    flex-shrink: 0;
+    margin-right: var(--sp-xs);
+}
+
+/* Hide the renderModItem handle inside box content (box has its own handle) */
+.mod-box-content .mod-item-drag-handle {
+    display: none;
+}
+
+.mod-item:hover .mod-item-drag-handle {
+    opacity: 0.6;
+}
+
+.mod-item-drag-handle:hover {
+    opacity: 1 !important;
+    color: var(--text-secondary);
+}
+
+.mod-item-drag-handle:active {
+    cursor: grabbing;
+}
+
+.mod-item-drag-handle svg circle {
+    fill: currentColor;
+}
+
+/* Mod items rendered inside a box content area */
+.mod-box-content .mod-item {
+    padding-left: calc(var(--sp-md) + 8px);
+}
+
+.mod-box.dragging {
+    opacity: 0.3;
+    pointer-events: none;
+}
+
+/* Stagger enter animation for list rendering */
+.mod-item.stagger-enter,
+.mod-box.stagger-enter {
+    opacity: 0;
+    transform: translateY(8px);
+    animation: modItemStaggerIn 0.25s ease forwards;
+}
+
+@keyframes modItemStaggerIn {
+    from {
+        opacity: 0;
+        transform: translateY(8px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Disabled appearance for missing dependency */
+.mod-item.missing-dep {
+    opacity: 0.55;
+}
+
+.mod-item.missing-dep .mod-item-name {
+    text-decoration: line-through;
+    color: var(--text-muted);
+}
+
+/* =========================================================================
+   MOD BOX
+   Collapsible container grouping mods with a left color bar.
+   ========================================================================= */
+
+.mod-box {
+    position: relative;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+    margin-bottom: var(--sp-sm);
+    transition: border-color var(--transition-fast);
+}
+
+/* Left 4px color bar */
+.mod-box::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 4px;
+    background-color: var(--accent);
+    z-index: 1;
+    transition: background-color var(--transition-fast);
+}
+
+.mod-box[data-color="blue"]::before    { background-color: #66c0f9; }
+.mod-box[data-color="green"]::before   { background-color: #10b981; }
+.mod-box[data-color="orange"]::before  { background-color: #f59e0b; }
+.mod-box[data-color="red"]::before     { background-color: #ef4444; }
+.mod-box[data-color="purple"]::before  { background-color: #a78bfa; }
+.mod-box[data-color="yellow"]::before  { background-color: #facc15; }
+.mod-box[data-color="gray"]::before    { background-color: #8b98a0; }
+.mod-box[data-color="cyan"]::before    { background-color: #22d3ee; }
+
+/* Box header */
+.mod-box-header {
+    display: flex;
+    align-items: center;
+    gap: var(--sp-sm);
+    padding: var(--sp-sm) var(--sp-md);
+    padding-left: calc(var(--sp-md) + 4px);
+    background-color: rgba(255, 255, 255, 0.03);
+    cursor: pointer;
+    user-select: none;
+    transition: background-color var(--transition-fast);
+}
+
+.mod-box-header:hover {
+    background-color: rgba(255, 255, 255, 0.06);
+}
+
+/* Drag handle (6-dot SVG grip) */
+.mod-box-drag-handle {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: grab;
+    padding: 2px;
+    color: var(--text-muted);
+    opacity: 0.5;
+    transition: opacity var(--transition-fast), color var(--transition-fast);
+}
+
+.mod-box-drag-handle:hover {
+    opacity: 1;
+    color: var(--text-secondary);
+}
+
+.mod-box-drag-handle:active {
+    cursor: grabbing;
+    opacity: 1;
+}
+
+.mod-box-drag-handle svg circle {
+    fill: currentColor;
+}
+
+/* Box name (editable on double-click) */
+.mod-box-name {
+    font-size: var(--font-sm);
+    font-weight: var(--weight-semibold);
+    color: var(--text-primary);
+    flex: 1 1 0;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.mod-box-name[contenteditable="true"] {
+    outline: none;
+    background-color: rgba(0, 0, 0, 0.2);
+    padding: 2px 6px;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--accent);
+}
+
+/* Box mod count */
+.mod-box-count {
+    font-size: var(--font-xs);
+    color: var(--text-muted);
+    flex-shrink: 0;
+}
+
+/* Box action buttons */
+.mod-box-actions {
+    display: flex;
+    gap: var(--sp-xs);
+    flex-shrink: 0;
+}
+
+.mod-box-actions .box-action-btn {
+    width: 22px;
+    height: 22px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: var(--font-xs);
+    color: var(--text-muted);
+    background: transparent;
+    border: none;
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    transition: color var(--transition-fast),
+                background-color var(--transition-fast);
+}
+
+.mod-box-actions .box-action-btn:hover {
+    color: var(--text-primary);
+    background-color: var(--bg-surface);
+}
+
+.mod-box-actions .box-action-btn.delete-btn:hover {
+    color: var(--danger);
+}
+
+/* Color dot for cycling colors */
+.mod-box-color-dot {
+    width: 12px;
+    height: 12px;
+    border-radius: var(--radius-circle);
+    background-color: var(--accent);
+    cursor: pointer;
+    flex-shrink: 0;
+    transition: transform var(--transition-fast),
+                box-shadow var(--transition-fast);
+}
+
+.mod-box-color-dot:hover {
+    transform: scale(1.3);
+    box-shadow: 0 0 6px rgba(255, 255, 255, 0.2);
+}
+
+/* Collapse chevron (SVG) */
+.mod-box-collapse-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 16px;
+    height: 16px;
+    color: var(--text-secondary);
+    flex-shrink: 0;
+    transition: transform var(--transition-base), color var(--transition-fast);
+}
+
+.mod-box-collapse-icon svg {
+    transition: transform var(--transition-base);
+}
+
+.mod-box.collapsed .mod-box-collapse-icon svg {
+    transform: rotate(0deg);
+}
+
+.mod-box:not(.collapsed) .mod-box-collapse-icon svg {
+    transform: rotate(90deg);
+}
+
+.mod-box-collapse-icon:hover {
+    color: var(--accent);
+}
+
+/* Box content wrapper — grid-based collapse animation (GPU-friendly) */
+.mod-box-content-wrapper {
+    display: grid;
+    grid-template-rows: 1fr;
+    transition: grid-template-rows var(--transition-slow);
+    overflow: hidden;
+}
+
+.mod-box.collapsed .mod-box-content-wrapper {
+    grid-template-rows: 0fr;
+}
+
+.mod-box-content {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    padding: var(--sp-xs) 0;
+    min-height: 0;
+}
+
+.mod-box.collapsed .mod-box-content {
+    padding: 0;
+}
+
+/* Drop target for mod items being dragged into a box */
+.mod-box.drop-target {
+    border-color: var(--accent);
+    background-color: rgba(102, 192, 249, 0.06);
+    box-shadow: inset 0 0 12px rgba(102, 192, 249, 0.08), 0 0 8px rgba(102, 192, 249, 0.15);
+    transition: border-color 0.15s ease, background-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+/* =========================================================================
+   MOD DETAILS PANEL
+   Right-side panel for selected mod information.
+   ========================================================================= */
+
+.mod-details-panel {
+    overflow-y: auto;
+}
+
+.mod-details-panel .panel-body {
+    padding: var(--sp-lg);
+}
+
+/* Empty state when no mod selected */
+.mod-details-panel .empty-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    min-height: 200px;
+    text-align: center;
+    gap: var(--sp-md);
+    opacity: 0.5;
+}
+
+.mod-details-panel .empty-state .empty-icon {
+    font-size: 40px;
+    opacity: 0.4;
+}
+
+/* Detail header: name + version badge */
+.detail-header {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--sp-sm);
+    margin-bottom: var(--sp-lg);
+}
+
+.detail-header .detail-name {
+    font-size: var(--font-xl);
+    font-weight: var(--weight-bold);
+    color: var(--text-primary);
+    line-height: var(--leading-tight);
+    flex: 1 1 0;
+    min-width: 0;
+    word-break: break-word;
+}
+
+.detail-header .detail-version {
+    display: inline-flex;
+    align-items: center;
+    padding: 2px 8px;
+    font-size: var(--font-xs);
+    font-weight: var(--weight-medium);
+    color: var(--text-secondary);
+    background-color: rgba(139, 152, 160, 0.10);
+    border: 1px solid rgba(139, 152, 160, 0.20);
+    border-radius: var(--radius-pill);
+    flex-shrink: 0;
+}
+
+/* Badge pills row */
+.detail-badges {
+    display: flex;
+    flex-direction: row;
+    flex-wrap: wrap;
+    gap: var(--sp-sm);
+    margin-bottom: var(--sp-lg);
+}
+
+.detail-badges .badge {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--sp-xs);
+    padding: 3px 10px;
+    font-size: var(--font-xs);
+    font-weight: var(--weight-medium);
+    border-radius: var(--radius-pill);
+    white-space: nowrap;
+}
+
+.detail-badges .badge-gameplay {
+    background-color: rgba(244, 114, 182, 0.12);
+    color: var(--gameplay);
+    border: 1px solid rgba(244, 114, 182, 0.25);
+}
+
+.detail-badges .badge-cosmetic {
+    background-color: rgba(16, 185, 129, 0.12);
+    color: var(--cosmetic);
+    border: 1px solid rgba(16, 185, 129, 0.25);
+}
+
+.detail-badges .badge-pck {
+    background-color: rgba(102, 192, 249, 0.10);
+    color: var(--accent);
+    border: 1px solid rgba(102, 192, 249, 0.25);
+}
+
+.detail-badges .badge-dll {
+    background-color: rgba(255, 169, 64, 0.12);
+    color: var(--warning);
+    border: 1px solid rgba(255, 169, 64, 0.25);
+}
+
+.detail-badges .badge-source {
+    background-color: rgba(139, 152, 160, 0.10);
+    color: var(--text-secondary);
+    border: 1px solid rgba(139, 152, 160, 0.20);
+}
+
+/* Detail info rows */
+.detail-info {
+    display: flex;
+    flex-direction: column;
+    gap: var(--sp-sm);
+    margin-bottom: var(--sp-lg);
+    padding: var(--sp-md);
+    background-color: rgba(0, 0, 0, 0.15);
+    border-radius: var(--radius-md);
+}
+
+.detail-info-row {
+    display: flex;
+    align-items: center;
+    gap: var(--sp-sm);
+    font-size: var(--font-sm);
+}
+
+.detail-info-row .info-label {
+    color: var(--text-muted);
+    flex-shrink: 0;
+    min-width: 70px;
+}
+
+.detail-info-row .info-value {
+    color: var(--text-primary);
+}
+
+/* Description text block */
+.detail-description {
+    font-size: var(--font-sm);
+    line-height: var(--leading-relaxed);
+    color: var(--text-secondary);
+    margin-bottom: var(--sp-lg);
+    white-space: pre-wrap;
+    word-break: break-word;
+}
+
+/* Dependencies section */
+.detail-dependencies {
+    margin-bottom: var(--sp-lg);
+}
+
+.detail-dependencies .dep-title {
+    font-size: var(--font-sm);
+    font-weight: var(--weight-semibold);
+    color: var(--text-primary);
+    margin-bottom: var(--sp-sm);
+}
+
+.detail-dependencies .dep-list {
+    display: flex;
+    flex-direction: column;
+    gap: var(--sp-xs);
+}
+
+.detail-dependencies .dep-item {
+    font-size: var(--font-xs);
+    color: var(--text-secondary);
+    padding: var(--sp-xs) var(--sp-sm);
+    background-color: rgba(0, 0, 0, 0.1);
+    border-radius: var(--radius-sm);
+}
+
+.detail-dependencies .dep-item.missing {
+    color: var(--danger);
+    border: 1px solid rgba(239, 68, 68, 0.2);
+}
+
+/* Notes area */
+.detail-notes {
+    padding: var(--sp-md);
+    background-color: rgba(102, 192, 249, 0.04);
+    border: 1px solid rgba(102, 192, 249, 0.1);
+    border-radius: var(--radius-md);
+    margin-bottom: var(--sp-lg);
+}
+
+.detail-notes .notes-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: var(--sp-sm);
+}
+
+.detail-notes .notes-title {
+    font-size: var(--font-sm);
+    font-weight: var(--weight-semibold);
+    color: var(--accent);
+}
+
+.detail-notes .notes-text {
+    font-size: var(--font-xs);
+    color: var(--text-secondary);
+    line-height: var(--leading-relaxed);
+    white-space: pre-wrap;
+}
+
+.detail-notes .notes-text.notes-empty {
+    font-style: italic;
+    color: var(--text-muted);
+    cursor: pointer;
+}
+
+.detail-notes .notes-text.notes-empty:hover {
+    color: var(--accent);
+}
+
+.detail-notes .notes-system {
+    margin-top: var(--sp-sm);
+    padding-top: var(--sp-sm);
+    border-top: 1px solid rgba(255, 200, 50, 0.15);
+    font-size: var(--font-xs);
+    color: var(--color-warning, #f59e0b);
+}
+
+/* Note edit textarea in modal */
+.note-textarea {
+    width: 100%;
+    min-height: 160px;
+    height: 200px;
+    padding: var(--sp-md);
+    font-size: var(--font-sm);
+    line-height: 1.6;
+    color: var(--text-primary);
+    background: var(--bg-input, #1a2332);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    resize: both;
+    font-family: inherit;
+}
+
+.note-textarea:focus {
+    outline: none;
+    border-color: var(--accent);
+}
+
+.note-char-count {
+    text-align: right;
+    font-size: var(--font-xs);
+    color: var(--text-muted);
+    margin-top: 4px;
+}
+
+/* Action buttons at bottom */
+.detail-actions {
+    display: flex;
+    gap: var(--sp-sm);
+    margin-top: auto;
+    padding-top: var(--sp-md);
+    border-top: 1px solid var(--border);
+}
+
+.detail-actions .btn {
+    flex: 1;
+    height: 34px;
+}
+
+.detail-actions .btn-enable {
+    background-color: var(--accent);
+    border-color: var(--accent);
+    color: #fff;
+}
+
+.detail-actions .btn-enable:hover {
+    background-color: #7ecbf7;
+    border-color: #7ecbf7;
+    box-shadow: var(--shadow-glow);
+}
+
+.detail-actions .btn-enable.is-enabled {
+    background-color: transparent;
+    border-color: var(--accent);
+    color: var(--accent);
+}
+
+.detail-actions .btn-uninstall {
+    background-color: transparent;
+    border: 1px solid rgba(239, 68, 68, 0.3);
+    color: var(--danger);
+}
+
+.detail-actions .btn-uninstall:hover {
+    background-color: rgba(239, 68, 68, 0.12);
+    border-color: var(--danger);
+}
+
+/* =========================================================================
+   MOD EMPTY STATE
+   Placeholder when no mods exist or no results found.
+   ========================================================================= */
+
+.mod-empty-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: var(--sp-xxl) var(--sp-lg);
+    text-align: center;
+    gap: var(--sp-md);
+    opacity: 0.6;
+    min-height: 200px;
+}
+
+.mod-empty-state .empty-icon {
+    font-size: 48px;
+    opacity: 0.3;
+}
+
+.mod-empty-state .empty-title {
+    font-size: var(--font-lg);
+    font-weight: var(--weight-medium);
+    color: var(--text-secondary);
+}
+
+.mod-empty-state .empty-desc {
+    font-size: var(--font-sm);
+    color: var(--text-muted);
+    max-width: 320px;
+}
+
+/* =========================================================================
+   DROP ZONE
+   Visible when dragging ZIP files into the mod list.
+   ========================================================================= */
+
+.drop-zone {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 80px;
+    margin-top: var(--sp-sm);
+    padding: var(--sp-lg);
+    border: 2px dashed var(--border);
+    border-radius: var(--radius-lg);
+    color: var(--text-muted);
+    font-size: var(--font-sm);
+    text-align: center;
+    transition: border-color var(--transition-fast),
+                background-color var(--transition-fast),
+                color var(--transition-fast);
+}
+
+.drop-zone.drag-over {
+    border-color: var(--accent);
+    background-color: rgba(102, 192, 249, 0.06);
+    color: var(--accent);
+}
+
+/* Drop target on the list container itself */
+.list-container.drop-active {
+    background-color: rgba(102, 192, 249, 0.03);
+}
+
+/* Drag-to-reorder drop indicator line */
+.mod-drop-indicator {
+    position: fixed;
+    height: 3px;
+    background: linear-gradient(90deg, transparent, var(--accent) 10%, var(--accent) 90%, transparent);
+    border-radius: 2px;
+    pointer-events: none;
+    z-index: 9999;
+    box-shadow: 0 0 8px rgba(102, 192, 249, 0.6), 0 0 16px rgba(102, 192, 249, 0.3);
+    transition: top 60ms ease, left 60ms ease, width 60ms ease;
+}
+
+/* Round endpoints on the indicator */
+.mod-drop-indicator::before,
+.mod-drop-indicator::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    width: 8px;
+    height: 8px;
+    background: var(--accent);
+    border-radius: 50%;
+    transform: translateY(-50%);
+    box-shadow: 0 0 6px rgba(102, 192, 249, 0.6);
+}
+
+.mod-drop-indicator::before {
+    left: -4px;
+}
+
+.mod-drop-indicator::after {
+    right: -4px;
+}
+
+/* =========================================================================
+   SCROLLBAR INSIDE MOD LIST
+   Thin custom scrollbar matching the theme.
+   ========================================================================= */
+
+.list-container::-webkit-scrollbar,
+.mod-details-panel::-webkit-scrollbar {
+    width: var(--scrollbar-width);
+}
+
+.list-container::-webkit-scrollbar-track,
+.mod-details-panel::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.list-container::-webkit-scrollbar-thumb,
+.mod-details-panel::-webkit-scrollbar-thumb {
+    background-color: rgba(139, 152, 160, 0.2);
+    border-radius: var(--radius-pill);
+}
+
+.list-container::-webkit-scrollbar-thumb:hover,
+.mod-details-panel::-webkit-scrollbar-thumb:hover {
+    background-color: rgba(139, 152, 160, 0.35);
+}
+
+/* Firefox scrollbar */
+.list-container,
+.mod-details-panel {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(139, 152, 160, 0.2) transparent;
+}
+
+/* =========================================================================
+   INSTALL PROGRESS OVERLAY
+   Loading overlay for mod installation.
+   ========================================================================= */
+
+.install-overlay {
+    position: fixed;
+    inset: 0;
+    background-color: rgba(0, 0, 0, 0.7);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: var(--z-modal);
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity var(--transition-base),
+                visibility var(--transition-base);
+}
+
+.install-overlay.active {
+    opacity: 1;
+    visibility: visible;
+}
+
+.install-overlay .install-content {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--sp-lg);
+    padding: var(--sp-xl);
+    background-color: var(--bg-light);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-xl);
+    box-shadow: var(--shadow-xl);
+    min-width: 280px;
+}
+
+.install-overlay .install-spinner {
+    width: 40px;
+    height: 40px;
+    border: 3px solid var(--border);
+    border-top-color: var(--accent);
+    border-radius: var(--radius-circle);
+    animation: spin 0.7s linear infinite;
+}
+
+.install-overlay .install-text {
+    font-size: var(--font-md);
+    color: var(--text-primary);
+}
+
+.install-overlay .install-progress {
+    width: 200px;
+    height: 4px;
+    background-color: var(--bg-surface);
+    border-radius: var(--radius-pill);
+    overflow: hidden;
+}
+
+.install-overlay .install-progress-fill {
+    height: 100%;
+    border-radius: var(--radius-pill);
+    background: linear-gradient(90deg, var(--accent-dark), var(--accent));
+    transition: width 0.3s ease;
+    width: 0%;
+}
+
+.install-overlay .install-progress-fill.indeterminate {
+    width: 40% !important;
+    animation: indeterminate 1.4s ease infinite;
+}
+
+/* =========================================================================
+   SORT DROPDOWN
+   Override dropdown position in toolbar context.
+   ========================================================================= */
+
+#sort-dropdown .dropdown-menu {
+    min-width: 140px;
+}
+
+#sort-dropdown .dropdown-item.active {
+    color: var(--accent);
+}
+
+/* =========================================================================
+   CONFIRM MODAL
+   Small confirmation dialog for destructive actions.
+   ========================================================================= */
+
+.confirm-modal-body {
+    text-align: center;
+    padding: var(--sp-lg) 0;
+}
+
+.confirm-modal-body .confirm-icon {
+    font-size: 36px;
+    margin-bottom: var(--sp-md);
+}
+
+.confirm-modal-body .confirm-text {
+    font-size: var(--font-md);
+    color: var(--text-primary);
+    margin-bottom: var(--sp-sm);
+}
+
+.confirm-modal-body .confirm-detail {
+    font-size: var(--font-sm);
+    color: var(--text-secondary);
+}
+
+/* =========================================================================
+   RESPONSIVE TWEAKS
+   Collapse toolbar items on narrower viewports.
+   ========================================================================= */
+
+@media (max-width: 1100px) {
+    .mod-toolbar {
+        flex-wrap: wrap;
+    }
+
+    .mod-toolbar .toolbar-spacer {
+        display: none;
+    }
+
+    .split-layout {
+        grid-template-columns: 1fr 320px;
+    }
+}
+
+@media (max-width: 900px) {
+    .split-layout {
+        grid-template-columns: 1fr;
+        grid-template-rows: 1fr auto;
+    }
+
+    .mod-details-panel {
+        max-height: 300px;
+    }
+}

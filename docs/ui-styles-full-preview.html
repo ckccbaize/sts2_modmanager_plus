@@ -1,0 +1,801 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>模组管理器 - UI预览 v8</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI Variable', 'Segoe UI', -apple-system, sans-serif;
+            background: #0d1117;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .header { text-align: center; margin-bottom: 20px; }
+        .header h1 { color: #c7d5e0; font-weight: 300; letter-spacing: 2px; }
+        .header p { color: #8b949e; font-size: 13px; }
+
+        .tab-selector { display: flex; justify-content: center; gap: 8px; margin-bottom: 30px; }
+        .tab-btn {
+            background: rgba(42, 71, 94, 0.4);
+            border: 1px solid rgba(86, 131, 172, 0.3);
+            border-radius: 6px;
+            padding: 10px 20px;
+            color: #8b98a0;
+            font-size: 13px;
+            cursor: pointer;
+        }
+        .tab-btn.active { background: linear-gradient(90deg, #47bfff, #2a475e); border-color: #47bfff; color: #fff; }
+
+        .window {
+            background: linear-gradient(180deg, #1b2838 0%, #12171e 100%);
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+            max-width: 900px;
+            margin: 0 auto;
+        }
+
+        .title-bar {
+            background: rgba(21, 31, 46, 0.95);
+            padding: 10px 16px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid rgba(86, 131, 172, 0.2);
+        }
+
+        .title-bar-left { display: flex; align-items: center; gap: 12px; }
+        .app-icon { width: 24px; height: 24px; background: linear-gradient(135deg, #66c0f9, #1b2838); border-radius: 4px; display: flex; align-items: center; justify-content: center; font-size: 12px; }
+        .app-title { font-size: 13px; color: #c7d5e0; font-weight: 500; }
+
+        .action-btn { background: rgba(42, 71, 94, 0.6); border: 1px solid rgba(86, 131, 172, 0.3); border-radius: 6px; padding: 6px 14px; color: #a3c9e7; font-size: 11px; cursor: pointer; }
+        .action-btn.primary { background: linear-gradient(90deg, #47bfff, #2a475e); border-color: #47bfff; color: #fff; }
+
+        .content { padding: 16px; min-height: 420px; }
+
+        /* ===== MOD TAB ===== */
+        .mod-toolbar {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 16px;
+            background: rgba(21, 31, 46, 0.5);
+            padding: 10px 12px;
+            border-radius: 8px;
+            border: 1px solid rgba(86, 131, 172, 0.15);
+        }
+
+        .mod-search { background: rgba(42, 71, 94, 0.6); border: 1px solid rgba(86, 131, 172, 0.3); border-radius: 20px; padding: 6px 14px; display: flex; align-items: center; gap: 8px; flex: 1; min-width: 150px; max-width: 200px; }
+        .mod-search-input { background: transparent; border: none; color: #fff; font-size: 12px; outline: none; width: 100%; }
+        .mod-search-input::placeholder { color: rgba(197, 213, 224, 0.5); }
+
+        /* Dropdown filter */
+        .mod-filter-dropdown {
+            position: relative;
+        }
+
+        .mod-filter-btn {
+            background: rgba(42, 71, 94, 0.6);
+            border: 1px solid rgba(86, 131, 172, 0.3);
+            border-radius: 6px;
+            padding: 6px 12px;
+            color: #a3c9e7;
+            font-size: 11px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .mod-filter-btn:hover { background: rgba(86, 131, 172, 0.3); }
+
+        .mod-filter-dropdown:hover .mod-filter-menu { display: block; }
+
+        .mod-filter-menu {
+            display: none;
+            position: absolute;
+            top: 100%;
+            left: 0;
+            margin-top: 4px;
+            background: rgba(21, 31, 46, 0.98);
+            border: 1px solid rgba(86, 131, 172, 0.3);
+            border-radius: 6px;
+            padding: 6px 0;
+            min-width: 140px;
+            z-index: 100;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+        }
+
+        .mod-filter-option {
+            padding: 8px 14px;
+            font-size: 11px;
+            color: #c7d5e0;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .mod-filter-option:hover { background: rgba(86, 131, 172, 0.2); }
+        .mod-filter-option::before { content: '○'; color: #8b98a0; font-size: 10px; }
+        .mod-filter-option.selected::before { content: '●'; color: #66c0f9; }
+
+        .mod-filter-check {
+            width: 14px; height: 14px;
+            border: 1px solid rgba(86, 131, 172, 0.3);
+            border-radius: 3px;
+            background: transparent;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 10px;
+            color: #66c0f9;
+        }
+
+        .mod-filter-option.selected .mod-filter-check { background: #66c0f9; border-color: #66c0f9; }
+        .mod-filter-option.selected .mod-filter-check::before { content: '✓'; color: #fff; }
+
+        .mod-filters { display: flex; gap: 6px; }
+        .mod-filter { background: rgba(42, 71, 94, 0.4); border: 1px solid rgba(86, 131, 172, 0.3); border-radius: 6px; padding: 6px 12px; color: #8b98a0; font-size: 11px; cursor: pointer; }
+        .mod-filter.active { background: rgba(102, 192, 249, 0.2); border-color: #66c0f9; color: #66c0f9; }
+
+        .mod-actions { display: flex; gap: 6px; margin-left: auto; }
+
+        .mod-layout { display: flex; gap: 16px; }
+        .mod-left-panel { width: 320px; flex-shrink: 0; }
+
+        /* Start mode tabs */
+        .mod-start-modes { display: flex; gap: 8px; margin-bottom: 12px; border-bottom: 1px solid rgba(86, 131, 172, 0.15); padding-bottom: 8px; }
+        .mod-start-btn { padding: 8px 16px; font-size: 12px; color: #8b98a0; cursor: pointer; border-bottom: 2px solid transparent; background: transparent; }
+        .mod-start-btn:hover { color: #c7d5e0; }
+        .mod-start-btn.active { color: #fff; border-bottom-color: #66c0f9; }
+
+        /* Scrollbar styling */
+        .mod-list {
+            max-height: 280px;
+            overflow-y: auto;
+            padding-right: 4px;
+        }
+
+        .mod-list::-webkit-scrollbar { width: 6px; }
+        .mod-list::-webkit-scrollbar-track { background: rgba(21, 31, 46, 0.3); border-radius: 3px; }
+        .mod-list::-webkit-scrollbar-thumb { background: rgba(86, 131, 172, 0.5); border-radius: 3px; }
+        .mod-list::-webkit-scrollbar-thumb:hover { background: rgba(102, 192, 249, 0.5); }
+
+        .mod-item { background: rgba(255,255,255,0.03); border-radius: 6px; padding: 12px 14px; margin-bottom: 6px; cursor: pointer; display: flex; align-items: center; gap: 12px; }
+        .mod-item:hover { background: rgba(255,255,255,0.06); }
+        .mod-item.selected { background: linear-gradient(90deg, rgba(102, 192, 249, 0.15), transparent); border: 1px solid rgba(102, 192, 249, 0.3); }
+
+        .mod-icon { width: 40px; height: 40px; border-radius: 6px; background: linear-gradient(135deg, #66c0f9, #1b567a); display: flex; align-items: center; justify-content: center; font-size: 18px; flex-shrink: 0; }
+        .mod-icon.gameplay { background: linear-gradient(135deg, #f472b6, #be185d); }
+        .mod-icon.cosmetic { background: linear-gradient(135deg, #10b981, #047857); }
+        .mod-info { flex: 1; min-width: 0; }
+        .mod-name { font-size: 13px; color: #e5e5e5; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .mod-author { font-size: 11px; color: #8b98a0; margin-top: 2px; }
+
+        .mod-toggle { width: 36px; height: 20px; background: rgba(42, 71, 94, 0.8); border-radius: 10px; position: relative; cursor: pointer; flex-shrink: 0; }
+        .mod-toggle.on { background: #66c0f9; }
+        .mod-toggle::after { content: ''; position: absolute; width: 16px; height: 16px; background: #fff; border-radius: 50%; top: 2px; left: 2px; }
+        .mod-toggle.on::after { left: 18px; }
+
+        .mod-detail-panel { flex: 1; background: rgba(0,0,0,0.2); border-radius: 8px; padding: 20px; border: 1px solid rgba(86, 131, 172, 0.15); }
+
+        .detail-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 16px; }
+        .detail-title { font-size: 22px; color: #66c0f9; font-weight: 500; }
+        .detail-version { font-size: 12px; color: #8b98a0; background: rgba(42, 71, 94, 0.6); padding: 4px 10px; border-radius: 4px; }
+
+        .detail-badges { display: flex; gap: 8px; margin-bottom: 12px; }
+        .detail-badge { background: linear-gradient(135deg, #66c0f9, #1b567a); border-radius: 4px; padding: 4px 10px; font-size: 10px; color: #fff; }
+        .detail-badge.gameplay { background: linear-gradient(135deg, #f472b6, #be185d); }
+        .detail-badge.cosmetic { background: linear-gradient(135deg, #10b981, #047857); }
+
+        .detail-info { font-size: 12px; color: #8b98a0; margin-bottom: 16px; line-height: 1.8; }
+        .detail-desc { font-size: 13px; color: #c7d5e0; line-height: 1.7; margin-bottom: 16px; }
+
+        .detail-notes { background: rgba(42, 71, 94, 0.15); border: 1px solid rgba(86, 131, 172, 0.15); border-radius: 6px; padding: 12px; margin-bottom: 16px; }
+        .detail-notes-header { display: flex; align-items: center; gap: 6px; margin-bottom: 8px; font-size: 11px; color: #66c0f9; text-transform: uppercase; }
+        .detail-notes-content { font-size: 12px; color: #c7d5e0; line-height: 1.5; }
+
+        .detail-actions { display: flex; gap: 10px; }
+        .btn-enable { background: linear-gradient(90deg, #47bfff, #2a475e); border: none; border-radius: 4px; padding: 10px 24px; color: #fff; font-size: 12px; cursor: pointer; }
+        .btn-secondary { background: transparent; border: 1px solid rgba(86, 131, 172, 0.4); border-radius: 4px; padding: 10px 20px; color: #a3c9e7; font-size: 12px; cursor: pointer; }
+
+        .footer { background: rgba(21, 31, 46, 0.6); padding: 10px 16px; display: flex; justify-content: space-between; font-size: 11px; color: #8b98a0; }
+
+        /* ===== BUNDLE TAB (unchanged) ===== */
+        .bundle-toolbar {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 16px;
+            background: rgba(21, 31, 46, 0.5);
+            padding: 10px 12px;
+            border-radius: 8px;
+            border: 1px solid rgba(86, 131, 172, 0.15);
+        }
+
+        .bundle-toolbar-title { font-size: 12px; color: #c7d5e0; margin-right: auto; }
+        .bundle-toolbar-btns { display: flex; gap: 6px; }
+
+        .bundle-layout { display: flex; gap: 16px; }
+        .bundle-left { width: 300px; flex-shrink: 0; }
+
+        .bundle-item { background: rgba(255,255,255,0.03); border: 1px solid rgba(86, 131, 172, 0.15); border-radius: 8px; padding: 12px; margin-bottom: 10px; cursor: pointer; display: flex; gap: 12px; }
+        .bundle-item.selected { border-color: rgba(102, 192, 249, 0.5); background: rgba(102, 192, 249, 0.1); }
+
+        .bundle-preview { width: 80px; height: 60px; border-radius: 6px; background: linear-gradient(135deg, #1b2838, #2a475e); display: flex; align-items: center; justify-content: center; font-size: 28px; flex-shrink: 0; }
+        .bundle-info { flex: 1; }
+        .bundle-name { font-size: 13px; color: #c7d5e0; margin-bottom: 4px; }
+        .bundle-meta { font-size: 11px; color: #8b98a0; }
+        .bundle-tags { display: flex; gap: 4px; margin-top: 6px; }
+        .bundle-tag { font-size: 9px; background: rgba(42, 71, 94, 0.6); padding: 2px 6px; border-radius: 3px; color: #8b98a0; }
+
+        .bundle-detail { flex: 1; }
+        .bundle-detail-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 16px; }
+        .bundle-detail-title { font-size: 22px; color: #66c0f9; font-weight: 500; }
+
+        .bundle-mods-list { background: rgba(0,0,0,0.2); border: 1px solid rgba(86, 131, 172, 0.15); border-radius: 6px; padding: 12px; margin-bottom: 16px; }
+        .bundle-mods-header { display: flex; align-items: center; gap: 6px; margin-bottom: 10px; font-size: 11px; color: #66c0f9; text-transform: uppercase; }
+        .bundle-mod-tag { background: rgba(255,255,255,0.03); border-radius: 4px; padding: 6px 10px; margin-bottom: 4px; display: flex; align-items: center; gap: 8px; font-size: 12px; color: #c7d5e0; }
+        .bundle-mod-icon { width: 20px; height: 20px; border-radius: 4px; background: linear-gradient(135deg, #66c0f9, #1b567a); display: flex; align-items: center; justify-content: center; font-size: 10px; }
+
+        .bundle-preset { background: rgba(42, 71, 94, 0.2); border: 1px solid rgba(86, 131, 172, 0.15); border-radius: 6px; padding: 12px; margin-bottom: 16px; }
+        .bundle-preset-header { display: flex; align-items: center; gap: 6px; margin-bottom: 8px; font-size: 11px; color: #8b98a0; text-transform: uppercase; }
+        .bundle-preset-btns { display: flex; gap: 6px; }
+        .bundle-preset-btn { background: rgba(42, 71, 94, 0.4); border: 1px solid rgba(86, 131, 172, 0.3); border-radius: 4px; padding: 6px 12px; color: #8b98a0; font-size: 11px; cursor: pointer; }
+        .bundle-preset-btn.active { background: rgba(102, 192, 249, 0.2); border-color: #66c0f9; color: #66c0f9; }
+
+        /* ===== SAVE TAB ===== */
+        .save-toolbar { display: flex; justify-content: space-between; align-items: center; padding: 12px 16px; background: rgba(21, 31, 46, 0.5); border-bottom: 1px solid rgba(86, 131, 172, 0.15); }
+        .save-title { color: #c7d5e0; font-size: 13px; font-weight: 500; }
+        .save-actions { display: flex; gap: 8px; }
+        .save-layout { display: flex; flex: 1; overflow: hidden; }
+        .save-left { width: 200px; padding: 12px; border-right: 1px solid rgba(86, 131, 172, 0.15); }
+        .save-account { background: rgba(42, 71, 94, 0.3); border-radius: 8px; padding: 12px; }
+        .save-account-header { display: flex; align-items: center; gap: 8px; color: #66c0f9; font-size: 12px; margin-bottom: 12px; }
+        .save-profiles { display: flex; flex-direction: column; gap: 4px; }
+        .save-profile { padding: 8px 12px; border-radius: 4px; cursor: pointer; color: #8b98a0; font-size: 12px; display: flex; justify-content: space-between; }
+        .save-profile.selected { background: rgba(102, 192, 249, 0.2); color: #fff; }
+        .save-time { font-size: 10px; opacity: 0.7; }
+        .save-right { flex: 1; padding: 16px; }
+        .save-detail { background: rgba(0, 0, 0, 0.2); border-radius: 8px; padding: 16px; border: 1px solid rgba(86, 131, 172, 0.15); }
+        .save-detail-header { display: flex; justify-content: space-between; margin-bottom: 16px; }
+        .save-label { color: #8b98a0; font-size: 11px; }
+        .save-character { color: #66c0f9; font-size: 14px; font-weight: 500; }
+        .save-info { color: #c7d5e0; font-size: 13px; line-height: 1.8; }
+        .save-actions-row { display: flex; gap: 8px; margin-top: 16px; }
+
+        /* ===== DOWNLOAD TAB ===== */
+        .download-toolbar { display: flex; gap: 12px; padding: 12px 16px; background: rgba(21, 31, 46, 0.5); border-bottom: 1px solid rgba(86, 131, 172, 0.15); align-items: center; }
+        .download-search { flex: 1; background: rgba(42, 71, 94, 0.6); border: 1px solid rgba(86, 131, 172, 0.3); border-radius: 6px; padding: 8px 12px; color: #c7d5e0; font-size: 12px; }
+        .download-filters { display: flex; gap: 8px; }
+        .filter-tag { padding: 6px 12px; border-radius: 4px; font-size: 11px; color: #8b98a0; cursor: pointer; }
+        .filter-tag.active { background: rgba(102, 192, 249, 0.2); color: #66c0f9; }
+        .download-list { flex: 1; padding: 12px; overflow-y: auto; }
+        .download-item { display: flex; align-items: center; gap: 12px; background: rgba(255, 255, 255, 0.03); border-radius: 8px; padding: 12px; margin-bottom: 8px; border: 1px solid rgba(86, 131, 172, 0.15); }
+        .download-icon { font-size: 24px; }
+        .download-info { flex: 1; }
+        .download-name { color: #c7d5e0; font-size: 13px; margin-bottom: 4px; }
+        .download-progress { height: 4px; background: rgba(42, 71, 94, 0.5); border-radius: 2px; margin-bottom: 4px; }
+        .progress-bar { height: 100%; background: #66c0f9; border-radius: 2px; }
+        .download-status { font-size: 11px; color: #8b98a0; }
+        .download-status.done { color: #4ade80; }
+        .download-action { padding: 6px 12px; background: rgba(42, 71, 94, 0.6); border-radius: 4px; font-size: 11px; color: #66c0f9; cursor: pointer; }
+
+        /* ===== NEXUS TAB ===== */
+        .nexus-toolbar { display: flex; gap: 12px; padding: 12px 16px; background: rgba(21, 31, 46, 0.5); border-bottom: 1px solid rgba(86, 131, 172, 0.15); align-items: center; }
+        .nexus-search { flex: 1; background: rgba(42, 71, 94, 0.6); border: 1px solid rgba(86, 131, 172, 0.3); border-radius: 6px; padding: 8px 12px; color: #c7d5e0; font-size: 12px; }
+        .nexus-categories { display: flex; gap: 8px; }
+        .category-tag { padding: 6px 12px; border-radius: 4px; font-size: 11px; color: #8b98a0; cursor: pointer; }
+        .category-tag.active { background: rgba(102, 192, 249, 0.2); color: #66c0f9; }
+        .nexus-grid { flex: 1; padding: 16px; display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; overflow-y: auto; }
+        .nexus-card { background: rgba(255, 255, 255, 0.03); border-radius: 8px; padding: 16px; border: 1px solid rgba(86, 131, 172, 0.15); cursor: pointer; text-align: center; }
+        .nexus-card:hover { border-color: rgba(102, 192, 249, 0.5); }
+        .nexus-preview { font-size: 32px; margin-bottom: 8px; }
+        .nexus-name { color: #c7d5e0; font-size: 12px; margin-bottom: 4px; }
+        .nexus-author { color: #8b98a0; font-size: 10px; margin-bottom: 8px; }
+        .nexus-downloads { color: #66c0f9; font-size: 10px; }
+
+        /* ===== SETTINGS TAB ===== */
+        .settings-layout { display: flex; flex: 1; overflow: hidden; }
+        .settings-sidebar { width: 140px; padding: 12px; border-right: 1px solid rgba(86, 131, 172, 0.15); background: rgba(21, 31, 46, 0.3); }
+        .settings-nav { padding: 10px 14px; border-radius: 6px; color: #8b98a0; font-size: 12px; cursor: pointer; margin-bottom: 4px; }
+        .settings-nav.active { background: rgba(102, 192, 249, 0.2); color: #66c0f9; }
+        .settings-content { flex: 1; padding: 20px; overflow-y: auto; }
+        .settings-group { margin-bottom: 20px; }
+        .settings-label { color: #8b98a0; font-size: 11px; text-transform: uppercase; margin-bottom: 8px; }
+        .settings-select { background: rgba(42, 71, 94, 0.6); border: 1px solid rgba(86, 131, 172, 0.3); border-radius: 6px; padding: 10px 14px; color: #c7d5e0; font-size: 12px; width: 100%; max-width: 200px; }
+        .settings-toggle { width: 40px; height: 22px; background: rgba(42, 71, 94, 0.8); border-radius: 11px; position: relative; cursor: pointer; }
+        .settings-toggle.on { background: #66c0f9; }
+        .settings-toggle.on::after { left: 20px; }
+        .settings-toggle::after { content: ''; position: absolute; width: 18px; height: 18px; background: #fff; border-radius: 50%; top: 2px; left: 2px; transition: 0.2s; }
+        .settings-path { color: #8b98a0; font-size: 12px; background: rgba(0, 0, 0, 0.3); padding: 10px; border-radius: 6px; }
+
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>⚔️ 模组管理器</h1>
+        <p>Steam × Windows 11 - 模组 & 整合包预�� v8</p>
+    </div>
+
+    <div class="tab-selector">
+        <div class="tab-btn active" onclick="showTab('mod')">模组</div>
+        <div class="tab-btn" onclick="showTab('bundle')">整合包</div>
+        <div class="tab-btn" onclick="showTab('save')">存档</div>
+        <div class="tab-btn" onclick="showTab('download')">下载</div>
+        <div class="tab-btn" onclick="showTab('nexus')">Nexus</div>
+        <div class="tab-btn" onclick="showTab('settings')">设置</div>
+    </div>
+
+    <!-- ========== MOD TAB ========== -->
+    <div id="tab-mod" class="tab-content active">
+        <div class="window">
+            <div class="title-bar">
+                <div class="title-bar-left">
+                    <div class="app-icon">⚔️</div>
+                    <div class="app-title">模组管理器</div>
+                </div>
+            </div>
+
+            <div class="content">
+                <!-- Toolbar with dropdown filter -->
+                <div class="mod-toolbar">
+                    <div class="mod-search">
+                        <span>🔍</span>
+                        <input type="text" class="mod-search-input" placeholder="搜索...">
+                    </div>
+
+                    <!-- Dropdown filter -->
+                    <div class="mod-filter-dropdown">
+                        <div class="mod-filter-btn">
+                            筛选 ▾
+                        </div>
+                        <div class="mod-filter-menu">
+                            <div class="mod-filter-option selected">
+                                <div class="mod-filter-check"></div>
+                                全部
+                            </div>
+                            <div class="mod-filter-option">
+                                <div class="mod-filter-check"></div>
+                                游戏性
+                            </div>
+                            <div class="mod-filter-option">
+                                <div class="mod-filter-check"></div>
+                                美化
+                            </div>
+                            <div class="mod-filter-option">
+                                <div class="mod-filter-check"></div>
+                                已启用
+                            </div>
+                            <div class="mod-filter-option">
+                                <div class="mod-filter-check"></div>
+                                待更新
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="mod-actions">
+                        <div class="action-btn">安装</div>
+                        <div class="action-btn">卸载</div>
+                        <div class="action-btn">启用选中</div>
+                        <div class="action-btn">停用选中</div>
+                        <div class="action-btn">全选</div>
+                        <div class="action-btn primary">刷新</div>
+                    </div>
+                </div>
+
+                <div class="mod-layout">
+                    <div class="mod-left-panel">
+                        <!-- Start mode tabs -->
+                        <div class="mod-start-modes">
+                            <div class="mod-start-btn active">单机模组</div>
+                            <div class="mod-start-btn">联机模组</div>
+                            <div class="mod-start-btn">自定义启动预设</div>
+                        </div>
+
+                        <div class="mod-list">
+                            <div class="mod-item selected">
+                                <div class="mod-icon">🏃</div>
+                                <div class="mod-info">
+                                    <div class="mod-name">BetterTrails</div>
+                                    <div class="mod-author">kjasdh • v1.2.3</div>
+                                </div>
+                                <div class="mod-toggle on"></div>
+                            </div>
+
+                            <div class="mod-item">
+                                <div class="mod-icon gameplay">⚔️</div>
+                                <div class="mod-info">
+                                    <div class="mod-name">ExtraRelics</div>
+                                    <div class="mod-author">gamedev • v2.1.0</div>
+                                </div>
+                                <div class="mod-toggle"></div>
+                            </div>
+
+                            <div class="mod-item">
+                                <div class="mod-icon cosmetic">🎴</div>
+                                <div class="mod-info">
+                                    <div class="mod-name">CardUI Expansion</div>
+                                    <div class="mod-author">modder01 • v1.5.2</div>
+                                </div>
+                                <div class="mod-toggle on"></div>
+                            </div>
+
+                            <div class="mod-item">
+                                <div class="mod-icon">✨</div>
+                                <div class="mod-info">
+                                    <div class="mod-name">RelicFX</div>
+                                    <div class="mod-author">relicfan • v1.0.1</div>
+                                </div>
+                                <div class="mod-toggle"></div>
+                            </div>
+
+                            <div class="mod-item">
+                                <div class="mod-icon gameplay">💀</div>
+                                <div class="mod-info">
+                                    <div class="mod-name">DamageNumbers+</div>
+                                    <div class="mod-author">combat_dev • v1.2.0</div>
+                                </div>
+                                <div class="mod-toggle"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="mod-detail-panel">
+                        <div class="detail-header">
+                            <div class="detail-title">BetterTrails</div>
+                            <div class="detail-version">v1.2.3</div>
+                        </div>
+
+                        <div class="detail-badges">
+                            <div class="detail-badge cosmetic">美化</div>
+                            <div class="detail-badge">兼容 v2.0+</div>
+                        </div>
+
+                        <div class="detail-info">
+                            作者: kjasdh<br>
+                            上传: 2024-12-15<br>
+                            下载: 15,432
+                        </div>
+
+                        <div class="detail-desc">
+                            优化角色的战斗拖尾特效，让战斗画面更加流畅绚丽。
+                        </div>
+
+                        <div class="detail-notes">
+                            <div class="detail-notes-header">
+                                <span>📝</span> 备注
+                            </div>
+                            <div class="detail-notes-content">
+                                推荐与CardUI配合使用效果更佳。
+                            </div>
+                        </div>
+
+                        <div class="detail-actions">
+                            <button class="btn-enable">启用</button>
+                            <button class="btn-secondary">卸载</button>
+                            <button class="btn-secondary">查看文件</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="footer">
+                <div>3 已启用 / 12 总数</div>
+                <div style="color:#66c0f9;">5分钟前</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ========== BUNDLE TAB ========== -->
+    <div id="tab-bundle" class="tab-content">
+        <div class="window">
+            <div class="title-bar">
+                <div class="title-bar-left">
+                    <div class="app-icon">📦</div>
+                    <div class="app-title">整合包</div>
+                </div>
+            </div>
+
+            <div class="content">
+                <div class="bundle-toolbar">
+                    <div class="bundle-toolbar-title">整合包管理</div>
+                    <div class="bundle-toolbar-btns">
+                        <div class="action-btn">导入</div>
+                        <div class="action-btn">导出</div>
+                        <div class="action-btn primary">检查更新</div>
+                    </div>
+                </div>
+
+                <div class="bundle-layout">
+                    <div class="bundle-left">
+                        <div class="bundle-item selected">
+                            <div class="bundle-preview">🎮</div>
+                            <div class="bundle-info">
+                                <div class="bundle-name">新手入门包</div>
+                                <div class="bundle-meta">5个模组 • v1.0.0</div>
+                                <div class="bundle-tags"><span class="bundle-tag">美化</span></div>
+                            </div>
+                        </div>
+                        <div class="bundle-item">
+                            <div class="bundle-preview">⚔️</div>
+                            <div class="bundle-info">
+                                <div class="bundle-name">体验优化包</div>
+                                <div class="bundle-meta">12个模组 • v2.1.0</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="bundle-detail">
+                        <div class="bundle-detail-header">
+                            <div class="bundle-detail-title">新手入门包</div>
+                            <div class="detail-version">v1.0.0</div>
+                        </div>
+                        <div class="detail-badges"><div class="detail-badge">已启用</div></div>
+                        <div class="detail-info">作者: 官方<br>创建: 2024-10-15</div>
+                        <div class="detail-desc">适合新手的模组整合包。</div>
+                        <div class="bundle-mods-list">
+                            <div class="bundle-mods-header"><span>📦</span> 包含的模组</div>
+                            <div class="bundle-mod-tag"><div class="bundle-mod-icon">🏃</div><span>BetterTrails</span></div>
+                            <div class="bundle-mod-tag"><div class="bundle-mod-icon">🎴</div><span>CardUI</span></div>
+                        </div>
+                        <div class="bundle-preset">
+                            <div class="bundle-preset-header"><span>🎯</span> 预设选择</div>
+                            <div class="bundle-preset-btns">
+                                <div class="bundle-preset-btn active">默认</div>
+                                <div class="bundle-preset-btn">性能优先</div>
+                            </div>
+                        </div>
+                        <div class="detail-actions">
+                            <button class="btn-enable">停用</button>
+                            <button class="btn-secondary">编辑</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="footer">
+                <div>当前: 新手入门包</div>
+                <div style="color:#66c0f9;">5个模组</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ========== SAVE TAB ========== -->
+    <div id="tab-save" class="tab-content">
+        <div class="window">
+            <div class="title-bar">
+                <div class="title-bar-left">
+                    <div class="app-icon">💾</div>
+                    <div class="app-title">存档管理</div>
+                </div>
+            </div>
+
+            <div class="content">
+                <div class="save-toolbar">
+                    <div class="save-title">Steam 账号</div>
+                    <div class="save-actions">
+                        <div class="action-btn">导入存档</div>
+                        <div class="action-btn">导出存档</div>
+                    </div>
+                </div>
+
+                <div class="save-layout">
+                    <div class="save-left">
+                        <div class="save-account">
+                            <div class="save-account-header">
+                                <span class="steam-icon">🎮</span>
+                                <span>76561197960287930</span>
+                            </div>
+                            <div class="save-profiles">
+                                <div class="save-profile selected">
+                                    <span>profile1</span>
+                                    <span class="save-time">2小时前</span>
+                                </div>
+                                <div class="save-profile">
+                                    <span>profile2</span>
+                                    <span class="save-time">昨天</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="save-right">
+                        <div class="save-detail">
+                            <div class="save-detail-header">
+                                <span class="save-label">当前角色</span>
+                                <span class="save-character">铁甲战士</span>
+                            </div>
+                            <div class="save-info">
+                                <div>等级: 15</div>
+                                <div>完成关卡: 35</div>
+                                <div>总游戏时间: 12h 30m</div>
+                            </div>
+                            <div class="save-actions-row">
+                                <button class="btn-enable">读取</button>
+                                <button class="btn-secondary">备份</button>
+                                <button class="btn-secondary">复制</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="footer">
+                <div>profile1 - 铁甲战士 Lv.15</div>
+                <div style="color:#66c0f9;">2小时前</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ========== DOWNLOAD TAB ========== -->
+    <div id="tab-download" class="tab-content">
+        <div class="window">
+            <div class="title-bar">
+                <div class="title-bar-left">
+                    <div class="app-icon">📥</div>
+                    <div class="app-title">下载管理</div>
+                </div>
+            </div>
+
+            <div class="content">
+                <div class="download-toolbar">
+                    <input type="text" class="download-search" placeholder="搜索下载...">
+                    <div class="download-filters">
+                        <span class="filter-tag active">全部</span>
+                        <span class="filter-tag">进行中</span>
+                        <span class="filter-tag">已完成</span>
+                    </div>
+                </div>
+
+                <div class="download-list">
+                    <div class="download-item">
+                        <div class="download-icon">📦</div>
+                        <div class="download-info">
+                            <div class="download-name">BetterCards</div>
+                            <div class="download-progress">
+                                <div class="progress-bar" style="width: 65%;"></div>
+                            </div>
+                            <div class="download-status">13.0 MB / 20.0 MB</div>
+                        </div>
+                        <div class="download-action">暂停</div>
+                    </div>
+                    <div class="download-item">
+                        <div class="download-icon">📦</div>
+                        <div class="download-info">
+                            <div class="download-name">RelicIcons Pack</div>
+                            <div class="download-status done">已完成</div>
+                        </div>
+                        <div class="download-action">安装</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="footer">
+                <div>1个进行中 / 2个已完成</div>
+                <div style="color:#66c0f9;">点击安装</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ========== NEXUS TAB ========== -->
+    <div id="tab-nexus" class="tab-content">
+        <div class="window">
+            <div class="title-bar">
+                <div class="title-bar-left">
+                    <div class="app-icon">🔗</div>
+                    <div class="app-title">Nexus Mods</div>
+                </div>
+            </div>
+
+            <div class="content">
+                <div class="nexus-toolbar">
+                    <input type="text" class="nexus-search" placeholder="搜索Nexus...">
+                    <div class="nexus-categories">
+                        <span class="category-tag active">热门</span>
+                        <span class="category-tag">新增</span>
+                        <span class="category-tag">更新</span>
+                    </div>
+                </div>
+
+                <div class="nexus-grid">
+                    <div class="nexus-card">
+                        <div class="nexus-preview">🎴</div>
+                        <div class="nexus-name">Better Draw</div>
+                        <div class="nexus-author">by LuckyRabbit</div>
+                        <div class="nexus-downloads">下载: 1,234</div>
+                    </div>
+                    <div class="nexus-card">
+                        <div class="nexus-preview">⚡</div>
+                        <div class="nexus-name">Fast Rewards</div>
+                        <div class="nexus-author">by SpeedDev</div>
+                        <div class="nexus-downloads">下载: 856</div>
+                    </div>
+                    <div class="nexus-card">
+                        <div class="nexus-preview">💎</div>
+                        <div class="nexus-name">Crystal Relics</div>
+                        <div class="nexus-author">by GemCrafter</div>
+                        <div class="nexus-downloads">下载: 2,341</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="footer">
+                <div>连接 Nexus Mods</div>
+                <div style="color:#66c0f9;">点击查看</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ========== SETTINGS TAB ========== -->
+    <div id="tab-settings" class="tab-content">
+        <div class="window">
+            <div class="title-bar">
+                <div class="title-bar-left">
+                    <div class="app-icon">⚙️</div>
+                    <div class="app-title">设置</div>
+                </div>
+            </div>
+
+            <div class="content">
+                <div class="settings-layout">
+                    <div class="settings-sidebar">
+                        <div class="settings-nav active">通用</div>
+                        <div class="settings-nav">游戏路径</div>
+                        <div class="settings-nav">语言</div>
+                        <div class="settings-nav">启动选项</div>
+                        <div class="settings-nav">关于</div>
+                    </div>
+
+                    <div class="settings-content">
+                        <div class="settings-group">
+                            <div class="settings-label">语言</div>
+                            <div class="settings-options">
+                                <select class="settings-select">
+                                    <option>简体中文</option>
+                                    <option>English</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="settings-group">
+                            <div class="settings-label">最小化到托盘</div>
+                            <div class="settings-toggle on"></div>
+                        </div>
+
+                        <div class="settings-group">
+                            <div class="settings-label">自动备份存档</div>
+                            <div class="settings-toggle on"></div>
+                        </div>
+
+                        <div class="settings-group">
+                            <div class="settings-label">游戏路径</div>
+                            <div class="settings-path">C:\Program Files\Steam\steamapps\common\SlayTheSpire2</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="footer">
+                <div>v1.0.0</div>
+                <div style="color:#66c0f9;">杀戮尖塔2模组管理器</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function showTab(tabName) {
+            document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+            document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
+            document.getElementById('tab-' + tabName).classList.add('active');
+            event.target.classList.add('active');
+        }
+    </script>
+</body>
+</html>

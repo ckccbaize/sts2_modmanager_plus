@@ -1,0 +1,8 @@
+<Project>
+  <!-- 在 SDK 和项目属性之后强制禁用 assembly 属性生成 -->
+  <PropertyGroup>
+    <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
+    <GenerateTargetFrameworkAttribute>false</GenerateTargetFrameworkAttribute>
+    <GenerateAssemblyAttributes>false</GenerateAssemblyAttributes>
+  </PropertyGroup>
+</Project>

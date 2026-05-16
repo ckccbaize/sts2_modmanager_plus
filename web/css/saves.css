@@ -1,0 +1,1092 @@
+/* ==========================================================================
+   saves.css — Save Management Page Styles
+   Slay the Spire 2 Mod Manager — Steam x Windows 11 Dark Theme
+   ========================================================================== */
+
+@import "variables.css";
+
+/* =========================================================================
+   SAVE LIST PANEL
+   ========================================================================= */
+
+#save-list-panel {
+    min-width: 400px; /* 增加最小宽度，保证内容有足够空间 */
+    max-width: 450px; /* 限制最大宽度 */
+}
+
+/* =========================================================================
+   SECTION HEADERS (Steam 存档 / 导入存档)
+   ========================================================================= */
+
+.save-section-title {
+    display: flex;
+    align-items: center;
+    padding: var(--sp-md) var(--sp-md);
+    font-size: var(--font-sm);
+    font-weight: var(--weight-semibold);
+    color: var(--text-primary);
+    background-color: rgba(30, 41, 59, 0.8);
+    border-bottom: 1px solid var(--border);
+    user-select: none;
+}
+
+.save-section-divider {
+    display: flex;
+    align-items: center;
+    padding: var(--sp-sm) var(--sp-md);
+    font-size: var(--font-xs);
+    font-weight: var(--weight-semibold);
+    color: var(--text-secondary);
+    background-color: rgba(21, 31, 46, 0.5);
+    border-top: 1px solid var(--border);
+    border-bottom: 1px solid var(--border);
+    user-select: none;
+    margin-top: var(--sp-sm);
+}
+
+/* =========================================================================
+   SAVE DETAILS PANEL
+   ========================================================================= */
+
+#save-details {
+    overflow-x: hidden; /* 防止横向溢出 */
+}
+
+/* =========================================================================
+   SAVE TOOLBAR
+   ========================================================================= */
+
+.save-toolbar {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: var(--sp-sm);
+    padding: var(--sp-sm) 0;
+    margin-bottom: var(--sp-md);
+    flex-shrink: 0;
+}
+
+/* =========================================================================
+   SAVE LIST ITEMS
+   ========================================================================= */
+
+.save-item {
+    display: flex;
+    align-items: center;
+    gap: var(--sp-sm);
+    padding: var(--sp-sm) var(--sp-md);
+    height: 38px;
+    min-height: 38px;
+    border-bottom: 1px solid var(--border);
+    cursor: pointer;
+    transition: background-color var(--transition-fast);
+    font-size: var(--font-sm);
+    position: relative;
+}
+
+.save-item:hover {
+    background-color: var(--bg-surface);
+}
+
+.save-item.selected {
+    background-color: rgba(102, 192, 249, 0.08);
+    border-left: 3px solid var(--accent);
+    padding-left: calc(var(--sp-md) - 3px);
+}
+
+.save-item.modded {
+    border-left: 3px solid var(--success);
+    padding-left: calc(var(--sp-md) - 3px);
+}
+
+.save-item.modded.selected {
+    border-left-color: var(--accent);
+}
+
+.save-item.steam {
+    border-left: 3px solid #4a8fe7;
+    padding-left: calc(var(--sp-md) - 3px);
+}
+
+.save-item.steam.selected {
+    border-left-color: var(--accent);
+}
+
+.save-item-name {
+    flex: 1 1 0;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    color: var(--text-primary);
+    font-weight: var(--weight-medium);
+}
+
+.save-item-date {
+    flex-shrink: 0;
+    font-size: var(--font-xs);
+    color: var(--text-muted);
+}
+
+.save-item-type {
+    flex-shrink: 0;
+    font-size: var(--font-xs);
+    color: var(--text-muted);
+}
+
+.save-item-size {
+    flex-shrink: 0;
+    font-size: var(--font-xs);
+    color: var(--text-muted);
+    min-width: 55px;
+    text-align: right;
+}
+
+/* =========================================================================
+   SAVE GROUP HEADERS (collapsible by steam_id)
+   ========================================================================= */
+
+.save-group-header {
+    display: flex;
+    align-items: center;
+    gap: var(--sp-sm);
+    padding: var(--sp-sm) var(--sp-md);
+    font-size: var(--font-xs);
+    font-weight: var(--weight-semibold);
+    color: var(--text-secondary);
+    background-color: rgba(21, 31, 46, 0.5);
+    border-bottom: 1px solid var(--border);
+    cursor: pointer;
+    user-select: none;
+    transition: background-color var(--transition-fast);
+}
+
+.save-group-header:hover {
+    background-color: var(--bg-surface);
+}
+
+.save-group-header .chevron {
+    font-size: 10px;
+    color: var(--text-muted);
+    transition: transform var(--transition-base);
+}
+
+.save-group-header.open .chevron {
+    transform: rotate(90deg);
+}
+
+/* =========================================================================
+   SAVE DETAILS PANEL (Right)
+   ========================================================================= */
+
+.save-details {
+    display: flex;
+    flex-direction: column;
+    gap: var(--sp-lg);
+    overflow-y: auto;
+    flex: 1 1 0;
+    min-height: 0;
+}
+
+.save-info-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--sp-md);
+}
+
+.save-info-cell {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.save-info-label {
+    font-size: var(--font-xs);
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+
+.save-info-value {
+    font-size: var(--font-md);
+    font-weight: var(--weight-medium);
+    color: var(--text-primary);
+}
+
+/* =========================================================================
+   PROFILE SELECTOR
+   ========================================================================= */
+
+.profile-selector {
+    display: flex;
+    align-items: center;
+    gap: var(--sp-sm);
+}
+
+.profile-selector label {
+    font-size: var(--font-sm);
+    color: var(--text-secondary);
+    flex-shrink: 0;
+}
+
+.profile-selector select {
+    flex: 1;
+    height: var(--input-height);
+    padding: 0 var(--sp-md);
+    font-size: var(--font-sm);
+    color: var(--text-primary);
+    background-color: var(--bg-surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    cursor: pointer;
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath d='M3 4.5l3 3 3-3' fill='none' stroke='%238b98a0' stroke-width='1.5' stroke-linecap='round'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 10px center;
+    transition: border-color var(--transition-fast),
+                box-shadow var(--transition-fast);
+}
+
+.profile-selector select:hover {
+    border-color: var(--border-hover);
+}
+
+.profile-selector select:focus {
+    outline: none;
+    border-color: var(--accent);
+    box-shadow: 0 0 0 2px var(--accent-glow);
+}
+
+/* =========================================================================
+   CHARACTER STATS CARDS (Enhanced)
+   ========================================================================= */
+
+.char-stats {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: var(--sp-md);
+}
+
+/* ========== 增强版角色统计区域 ========== */
+.char-stats-section {
+    display: flex;
+    flex-direction: column;
+    gap: var(--sp-md);
+    padding: var(--sp-md);
+    background-color: rgba(30, 41, 59, 0.4);
+    border-radius: var(--radius-md);
+    border: 1px solid var(--border);
+}
+
+.char-stats-header {
+    display: flex;
+    align-items: center;
+    padding-bottom: var(--sp-sm);
+    border-bottom: 1px solid var(--border);
+}
+
+.char-stats-title {
+    font-size: var(--font-md);
+    font-weight: var(--weight-semibold);
+    color: var(--text-primary);
+}
+
+/* 汇总统计框 */
+.char-stats-summary {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: var(--sp-md);
+    margin-bottom: var(--sp-md);
+}
+
+.char-stat-box {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: var(--sp-md);
+    background-color: var(--bg-surface);
+    border-radius: var(--radius-md);
+    border: 1px solid var(--border);
+    transition: border-color var(--transition-fast);
+}
+
+.char-stat-box:hover {
+    border-color: var(--border-hover);
+}
+
+.char-stat-value {
+    font-size: var(--font-xl);
+    font-weight: var(--weight-bold);
+    color: var(--text-primary);
+    line-height: 1;
+    margin-bottom: 4px;
+}
+
+.char-stat-label {
+    font-size: var(--font-xs);
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+
+/* 角色统计网格 */
+.char-stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+    gap: var(--sp-md);
+}
+
+/* 增强版角色卡片 */
+.char-stat-card {
+    display: flex;
+    flex-direction: column;
+    background-color: var(--bg-surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    overflow: hidden;
+    transition: border-color var(--transition-fast),
+                transform var(--transition-fast),
+                box-shadow var(--transition-fast);
+}
+
+.char-stat-card:hover {
+    border-color: var(--border-hover);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.char-stat-card-header {
+    display: flex;
+    align-items: center;
+    gap: var(--sp-sm);
+    padding: var(--sp-md);
+    background-color: rgba(15, 23, 31, 0.6);
+    border-bottom: 1px solid var(--border);
+}
+
+.char-stat-icon {
+    width: 36px;
+    height: 36px;
+    border-radius: var(--radius-sm);
+    background-color: var(--accent-dark);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+    flex-shrink: 0;
+    color: var(--accent);
+}
+
+.char-stat-card-header .char-stat-name {
+    flex: 1;
+    font-size: var(--font-sm);
+    font-weight: var(--weight-semibold);
+    color: var(--text-primary);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.char-stat-card-body {
+    display: flex;
+    flex-direction: column;
+    padding: var(--sp-md);
+    gap: var(--sp-sm);
+}
+
+.char-stat-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.char-stat-row .char-stat-label {
+    font-size: var(--font-xs);
+    color: var(--text-secondary);
+}
+
+.char-stat-row .char-stat-value {
+    font-size: var(--font-md);
+    font-weight: var(--weight-semibold);
+    line-height: 1;
+}
+
+.char-stat-row .wins {
+    color: var(--success);
+}
+
+.char-stat-row .losses {
+    color: var(--danger);
+}
+
+.char-stat-row .winrate {
+    color: var(--accent);
+}
+
+/* ========== 旧版样式兼容 ========== */
+.char-stat-info {
+    flex: 1 1 0;
+    min-width: 0;
+}
+
+.char-stat-name {
+    font-size: var(--font-sm);
+    font-weight: var(--weight-semibold);
+    color: var(--text-primary);
+    margin-bottom: 2px;
+}
+
+.char-stat-record {
+    font-size: var(--font-xs);
+    color: var(--text-secondary);
+    display: flex;
+    gap: var(--sp-sm);
+}
+
+.char-stat-record .wins {
+    color: var(--success);
+}
+
+.char-stat-record .losses {
+    color: var(--danger);
+}
+
+.char-stat-meta {
+    font-size: var(--font-xs);
+    color: var(--text-muted);
+    margin-top: 2px;
+}
+
+/* =========================================================================
+   SAVE ACTIONS (bottom of details)
+   ========================================================================= */
+
+.save-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--sp-sm);
+    padding-top: var(--sp-md);
+    border-top: 1px solid var(--border);
+}
+
+/* =========================================================================
+   OVERWRITE WIZARD DIALOG
+   ========================================================================= */
+
+.overwrite-wizard {
+    display: flex;
+    flex-direction: column;
+    gap: var(--sp-xl);
+    padding: var(--sp-lg);
+}
+
+.wizard-steps-indicator {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--sp-sm);
+}
+
+.wizard-step {
+    display: flex;
+    align-items: center;
+    gap: var(--sp-xs);
+    font-size: var(--font-sm);
+    color: var(--text-muted);
+}
+
+.wizard-step.active {
+    color: var(--accent);
+    font-weight: var(--weight-semibold);
+}
+
+.wizard-step.completed {
+    color: var(--success);
+}
+
+.wizard-step-num {
+    width: 24px;
+    height: 24px;
+    border-radius: var(--radius-circle);
+    background-color: var(--bg-surface);
+    border: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: var(--font-xs);
+    font-weight: var(--weight-semibold);
+}
+
+.wizard-step.active .wizard-step-num {
+    background-color: var(--accent);
+    border-color: var(--accent);
+    color: #fff;
+}
+
+.wizard-step.completed .wizard-step-num {
+    background-color: var(--success);
+    border-color: var(--success);
+    color: #fff;
+}
+
+.wizard-step-connector {
+    width: 32px;
+    height: 1px;
+    background-color: var(--border);
+}
+
+.direction-cards {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--sp-md);
+}
+
+.direction-card {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--sp-md);
+    padding: var(--sp-xl);
+    background-color: var(--bg-surface);
+    border: 2px solid var(--border);
+    border-radius: var(--radius-lg);
+    cursor: pointer;
+    text-align: center;
+    transition: border-color var(--transition-fast),
+                background-color var(--transition-fast),
+                box-shadow var(--transition-fast);
+}
+
+.direction-card:hover {
+    border-color: var(--border-hover);
+    background-color: rgba(42, 71, 94, 0.22);
+}
+
+.direction-card.selected {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 1px var(--accent-glow);
+}
+
+.direction-card-icon {
+    font-size: 28px;
+    line-height: 1;
+}
+
+.direction-card-label {
+    font-size: var(--font-md);
+    font-weight: var(--weight-semibold);
+    color: var(--text-primary);
+}
+
+.direction-card-desc {
+    font-size: var(--font-xs);
+    color: var(--text-secondary);
+    line-height: var(--leading-normal);
+}
+
+/* =========================================================================
+   BACKUP LIST - 恢复对话框备份列表（增强版）
+   ========================================================================= */
+
+.backup-list {
+    display: flex;
+    flex-direction: column;
+    gap: var(--sp-sm);
+    max-height: 320px;
+    overflow-y: auto;
+    padding: var(--sp-sm);
+}
+
+.backup-item {
+    display: flex;
+    align-items: center;
+    gap: var(--sp-md);
+    padding: var(--sp-md);
+    background-color: var(--bg-surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    cursor: pointer;
+    transition: all var(--transition-fast);
+}
+
+.backup-item:hover {
+    background-color: var(--bg-hover);
+    border-color: var(--border-hover);
+    transform: translateX(4px);
+}
+
+.backup-item.selected {
+    background-color: rgba(102, 192, 249, 0.15);
+    border-color: var(--accent);
+    box-shadow: 0 0 0 2px rgba(102, 192, 249, 0.1);
+}
+
+.backup-item__icon {
+    flex-shrink: 0;
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(135deg, rgba(102, 192, 249, 0.1), rgba(74, 222, 128, 0.1));
+    border-radius: var(--radius-md);
+    font-size: 20px;
+}
+
+.backup-item__content {
+    flex: 1 1 0;
+    min-width: 0;
+}
+
+.backup-item__name {
+    font-size: var(--font-sm);
+    font-weight: var(--weight-medium);
+    color: var(--text-primary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.backup-item__meta {
+    display: flex;
+    align-items: center;
+    gap: var(--sp-sm);
+    margin-top: 4px;
+}
+
+.backup-item__time {
+    font-size: var(--font-xs);
+    color: var(--text-secondary);
+}
+
+.backup-item__size {
+    font-size: var(--font-xs);
+    color: var(--text-muted);
+}
+
+.backup-item__type {
+    font-size: 10px;
+    padding: 2px 8px;
+    border-radius: 4px;
+    background-color: var(--bg-light);
+    color: var(--text-muted);
+    text-transform: uppercase;
+    font-weight: var(--weight-medium);
+}
+
+.backup-item__type.auto {
+    background-color: rgba(102, 192, 249, 0.2);
+    color: var(--accent);
+}
+
+.backup-item__type.manual {
+    background-color: rgba(74, 222, 128, 0.2);
+    color: var(--success);
+}
+
+.backup-item__delete {
+    flex-shrink: 0;
+    width: 28px;
+    height: 28px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: none;
+    background: transparent;
+    color: var(--text-muted);
+    cursor: pointer;
+    border-radius: var(--radius-sm);
+    transition: all var(--transition-fast);
+    opacity: 0;
+}
+
+.backup-item:hover .backup-item__delete {
+    opacity: 1;
+}
+
+.backup-item__delete:hover {
+    background-color: rgba(239, 68, 68, 0.1);
+    color: var(--danger);
+}
+
+/* =========================================================================
+   LONG-PRESS DELETE BAR
+   ========================================================================= */
+
+.longpress-bar {
+    position: relative;
+    width: 100%;
+    height: 6px;
+    background-color: var(--bg-surface);
+    border-radius: var(--radius-pill);
+    overflow: hidden;
+    margin-top: var(--sp-sm);
+    cursor: pointer;
+    user-select: none;
+}
+
+.longpress-bar-fill {
+    height: 100%;
+    width: 0%;
+    background: linear-gradient(90deg, var(--warning), var(--danger));
+    border-radius: var(--radius-pill);
+    transition: width 50ms linear;
+}
+
+.longpress-bar.complete .longpress-bar-fill {
+    width: 100%;
+}
+
+.longpress-bar-label {
+    font-size: var(--font-xs);
+    color: var(--text-muted);
+    text-align: center;
+    margin-top: var(--sp-xs);
+}
+
+/* =========================================================================
+   EMPTY STATE (saves)
+   ========================================================================= */
+
+.save-empty {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: var(--sp-xxl) var(--sp-lg);
+    text-align: center;
+    gap: var(--sp-md);
+    opacity: 0.6;
+    flex: 1;
+}
+
+.save-empty-icon {
+    font-size: 48px;
+    line-height: 1;
+    opacity: 0.3;
+}
+
+.save-empty-title {
+    font-size: var(--font-lg);
+    font-weight: var(--weight-medium);
+    color: var(--text-secondary);
+}
+
+.save-empty-desc {
+    font-size: var(--font-sm);
+    color: var(--text-muted);
+    max-width: 300px;
+}
+
+/* ==========================================================================
+   TREE VIEW STYLES (Type → Account → Profiles)
+   ========================================================================== */
+
+/* Category header (原版存档 / 模组存档) - 大类标题 */
+.save-category-header {
+    display: flex;
+    align-items: center;
+    gap: var(--sp-sm);
+    padding: var(--sp-md) var(--sp-md);
+    font-size: var(--font-sm);
+    font-weight: var(--weight-semibold);
+    color: var(--text-primary);
+    background-color: rgba(30, 41, 59, 0.8);
+    border-bottom: 1px solid var(--border);
+    cursor: pointer;
+    user-select: none;
+    transition: background-color var(--transition-fast);
+}
+
+.save-category-header:hover {
+    background-color: rgba(51, 65, 85, 0.5);
+}
+
+.save-category-header .chevron {
+    font-size: var(--font-sm);
+    transition: transform var(--transition-base);
+}
+
+.save-category-header.open .chevron {
+    transform: rotate(90deg);
+}
+
+.save-category-header .category-icon {
+    font-size: var(--font-md);
+}
+
+.save-category-header .category-label {
+    flex: 1;
+}
+
+.save-category-header .category-count {
+    font-size: var(--font-xs);
+    color: var(--text-muted);
+    background-color: rgba(255, 255, 255, 0.1);
+    padding: 2px 8px;
+    border-radius: var(--radius-md);
+}
+
+/* Account header (SteamID 组) - 账号标题 */
+.save-account-header {
+    display: flex;
+    align-items: center;
+    gap: var(--sp-sm);
+    padding: var(--sp-sm) var(--sp-lg);
+    padding-left: 32px;
+    font-size: var(--font-xs);
+    font-weight: var(--weight-medium);
+    color: var(--text-secondary);
+    background-color: rgba(21, 31, 46, 0.3);
+    border-bottom: 1px solid rgba(51, 65, 85, 0.3);
+    cursor: pointer;
+    user-select: none;
+    transition: background-color var(--transition-fast);
+}
+
+.save-account-header:hover {
+    background-color: rgba(51, 65, 85, 0.3);
+}
+
+.save-account-header .chevron {
+    font-size: 9px;
+    color: var(--text-muted);
+    transition: transform var(--transition-base);
+}
+
+.save-account-header.open .chevron {
+    transform: rotate(90deg);
+}
+
+.save-account-header.selected {
+    background-color: rgba(102, 192, 249, 0.12);
+    border-left: 3px solid var(--accent);
+}
+
+.save-account-header .account-steam-id {
+    flex: 1;
+}
+
+.save-account-header .account-profiles {
+    font-size: var(--font-xs);
+    color: var(--text-muted);
+}
+
+/* Profile item (individual save card) - 存档卡片 */
+.save-profile-item {
+    display: flex;
+    align-items: center;
+    gap: var(--sp-xs);
+    padding: var(--sp-sm) var(--sp-xl);
+    padding-left: 48px;
+    min-height: 38px;
+    border-bottom: 1px solid rgba(51, 65, 85, 0.2);
+    cursor: pointer;
+    transition: background-color var(--transition-fast);
+    font-size: var(--font-sm);
+}
+
+.save-profile-item:hover {
+    background-color: rgba(51, 65, 85, 0.2);
+}
+
+.save-profile-item.selected {
+    background-color: rgba(102, 192, 249, 0.08);
+    border-left: 3px solid var(--accent);
+    padding-left: calc(var(--sp-xl) - 3px);
+}
+
+.save-profile-item .save-item-indent {
+    width: 16px;
+    flex-shrink: 0;
+}
+
+.save-profile-item .save-item-icon {
+    width: 18px;
+    height: 18px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: var(--font-xs);
+    color: var(--text-muted);
+    flex-shrink: 0;
+}
+
+.save-profile-item .save-item-name {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    color: var(--text-primary);
+    font-weight: var(--weight-medium);
+}
+
+.save-profile-item .save-item-date {
+    flex-shrink: 0;
+    font-size: var(--font-xs);
+    color: var(--text-muted);
+}
+
+/* ==========================================================================
+   ACCOUNT CARD LAYOUT (Steam 账号卡片布局)
+   ========================================================================== */
+
+/* 账号卡片容器 */
+.save-account-card {
+    display: flex;
+    flex-direction: column;
+    background-color: rgba(30, 41, 59, 0.6);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    margin-bottom: var(--sp-sm);
+    overflow: hidden;
+    transition: border-color var(--transition-fast),
+                box-shadow var(--transition-fast);
+}
+
+.save-account-card:hover {
+    border-color: var(--border-hover);
+    background-color: rgba(30, 41, 59, 0.8);
+}
+
+.save-account-card.selected {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 1px var(--accent-glow);
+}
+
+/* 账号标题栏 */
+.save-account-title {
+    display: flex;
+    align-items: center;
+    gap: var(--sp-sm);
+    padding: var(--sp-sm) var(--sp-md);
+    font-size: var(--font-sm);
+    font-weight: var(--weight-semibold);
+    color: var(--text-primary);
+    cursor: pointer;
+    user-select: none;
+    transition: background-color var(--transition-fast);
+}
+
+.save-account-title:hover {
+    background-color: rgba(51, 65, 85, 0.3);
+}
+
+.save-account-title .account-name {
+    flex: 1;
+}
+
+.save-account-title .account-badge {
+    font-size: var(--font-xs);
+    color: var(--text-muted);
+    background-color: rgba(102, 192, 249, 0.15);
+    padding: 2px 8px;
+    border-radius: var(--radius-md);
+}
+
+/* 账号内容区域 */
+.save-account-content {
+    display: flex;
+    flex-direction: column;
+    overflow: hidden; /* 防止内容溢出 */
+}
+
+/* 账号内容 - 左右分栏布局 */
+.save-account-columns {
+    display: grid;
+    grid-template-columns: 50% 50%;
+    gap: 2px;
+    background-color: var(--border);
+    overflow: hidden; /* 防止内容溢出 */
+}
+
+/* 存档栏目 */
+.save-column {
+    display: flex;
+    flex-direction: column;
+    background-color: rgba(21, 31, 46, 0.5);
+    min-height: 100px;
+    min-width: 0; /* 允许列收缩以适配 grid */
+    overflow: hidden; /* 防止内容溢出 */
+}
+
+.save-column.vanilla-column {
+    background-color: rgba(30, 41, 59, 0.4);
+}
+
+.save-column.modded-column {
+    background-color: rgba(42, 51, 68, 0.4);
+}
+
+/* 栏目头部 */
+.column-header {
+    display: flex;
+    align-items: center;
+    gap: var(--sp-xs);
+    padding: 6px 8px; /* 减小 padding */
+    font-size: var(--font-xs);
+    font-weight: var(--weight-semibold);
+    color: var(--text-secondary);
+    background-color: rgba(15, 23, 31, 0.6);
+    border-bottom: 1px solid var(--border);
+}
+
+.column-header .column-icon {
+    font-size: var(--font-md);
+}
+
+.column-header .column-label {
+    flex: 1;
+}
+
+/* 存档卡片 */
+.save-profile-card {
+    display: flex;
+    align-items: center;
+    gap: 6px; /* 减小间距 */
+    padding: 6px 8px; /* 减小 padding 腾出空间 */
+    border-bottom: 1px solid rgba(51, 65, 85, 0.2);
+    cursor: pointer;
+    transition: background-color var(--transition-fast);
+    font-size: var(--font-sm);
+    min-width: 0; /* 允许卡片收缩 */
+    overflow: hidden; /* 防止内容溢出 */
+}
+
+.save-profile-card:last-child {
+    border-bottom: none;
+}
+
+.save-profile-card:hover {
+    background-color: rgba(51, 65, 85, 0.3);
+}
+
+.save-profile-card .profile-icon {
+    width: 20px;
+    height: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: var(--font-sm);
+    color: var(--accent);
+    flex-shrink: 0;
+}
+
+.save-profile-card .profile-name {
+    flex: 1 1 auto; /* 优先扩展 */
+    min-width: 60px; /* 最小宽度保证"存档 X"显示 */
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    color: var(--text-primary);
+    font-weight: var(--weight-medium);
+}
+
+.save-profile-card .profile-date {
+    flex-shrink: 0;
+    font-size: var(--font-xs);
+    color: var(--text-muted);
+    white-space: nowrap; /* 不换行 */
+    text-align: right; /* 日期右对齐 */
+}

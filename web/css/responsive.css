@@ -1,0 +1,325 @@
+/* ============================================
+   Responsive Styles - STS2 Mod Manager Web
+   ============================================ */
+
+/* Large desktop (default) - 1100px+ */
+/* Everything renders normally */
+
+/* Medium desktop */
+@media (max-width: 1200px) {
+    .nexus-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+
+    .mod-toolbar {
+        flex-wrap: wrap;
+    }
+
+    .mod-toolbar .btn:not(.btn-primary) {
+        font-size: 11px;
+        padding: 5px 10px;
+    }
+}
+
+/* Small desktop / large tablet */
+@media (max-width: 1024px) {
+    .split-layout {
+        grid-template-columns: 1fr !important;
+    }
+
+    .split-right {
+        display: none;
+    }
+
+    .split-right.mobile-visible {
+        display: block;
+        position: fixed;
+        top: 0;
+        right: 0;
+        bottom: 0;
+        width: 380px;
+        z-index: var(--z-modal);
+        background: var(--bg-light);
+        box-shadow: -4px 0 20px rgba(0, 0, 0, 0.5);
+        animation: slideInRight var(--transition-normal) ease-out;
+    }
+
+    .split-right.mobile-visible .panel {
+        height: 100%;
+        border-radius: 0;
+    }
+
+    .mobile-back-btn {
+        display: inline-flex;
+    }
+
+    .nexus-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+/* Tablet */
+@media (max-width: 900px) {
+    .nexus-layout {
+        grid-template-columns: 1fr !important;
+    }
+
+    .nexus-sidebar {
+        display: none;
+    }
+
+    .nexus-sidebar.mobile-visible {
+        display: block;
+        position: fixed;
+        top: 42px;
+        left: 0;
+        bottom: 44px;
+        width: 260px;
+        z-index: var(--z-modal);
+        background: var(--bg-light);
+        box-shadow: 4px 0 20px rgba(0, 0, 0, 0.5);
+        animation: slideInLeft var(--transition-normal) ease-out;
+        overflow-y: auto;
+    }
+
+    .save-toolbar {
+        flex-wrap: wrap;
+        gap: 6px;
+    }
+
+    .save-toolbar .btn {
+        font-size: 11px;
+        padding: 5px 10px;
+    }
+
+    .settings-container {
+        padding: var(--sp-md);
+    }
+
+    .settings-section {
+        padding: var(--sp-md);
+    }
+
+    .downloads-container {
+        padding: var(--sp-md);
+    }
+}
+
+/* Small tablet / large phone */
+@media (max-width: 768px) {
+    .app-container {
+        min-width: 100%;
+    }
+
+    .title-bar {
+        padding: 8px 12px;
+    }
+
+    .app-title {
+        font-size: 12px;
+    }
+
+    .tab-nav {
+        overflow-x: auto;
+        overflow-y: hidden;
+        scrollbar-width: none;
+        -ms-overflow-style: none;
+    }
+
+    .tab-nav::-webkit-scrollbar {
+        display: none;
+    }
+
+    .tab-btn {
+        white-space: nowrap;
+        padding: 8px 14px;
+        font-size: 12px;
+        flex-shrink: 0;
+    }
+
+    .mod-launch-modes {
+        gap: 6px;
+    }
+
+    .mode-btn {
+        padding: 6px 14px;
+        font-size: 11px;
+    }
+
+    .mod-toolbar {
+        padding: 8px;
+        gap: 6px;
+    }
+
+    .mod-toolbar .input-search {
+        max-width: none;
+        flex: 1;
+    }
+
+    .tag-presets-bar {
+        padding: 0 8px;
+    }
+
+    .nexus-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .nexus-card-image {
+        height: 160px;
+    }
+
+    .char-stats {
+        grid-template-columns: repeat(2, 1fr);
+    }
+
+    .settings-checkbox-group {
+        grid-template-columns: repeat(2, 1fr);
+    }
+
+    .overwrite-wizard .wizard-cards {
+        grid-template-columns: 1fr;
+    }
+
+    .footer {
+        padding: 0 12px;
+    }
+
+    .footer .status-label {
+        font-size: 11px;
+    }
+}
+
+/* Phone */
+@media (max-width: 480px) {
+    .title-bar-right {
+        display: none;
+    }
+
+    .tab-btn {
+        padding: 6px 10px;
+        font-size: 11px;
+    }
+
+    .mod-toolbar .tag-group {
+        display: none;
+    }
+
+    .mod-toolbar .btn:not(.btn-primary):not(#btn-select-all) {
+        display: none;
+    }
+
+    .mod-item {
+        height: 56px;
+        padding: 8px 12px;
+    }
+
+    .mod-item-icon {
+        width: 32px;
+        height: 32px;
+    }
+
+    .mod-details .detail-actions {
+        flex-direction: column;
+    }
+
+    .mod-details .detail-actions .btn {
+        width: 100%;
+    }
+
+    .save-info-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .char-stats {
+        grid-template-columns: 1fr;
+    }
+
+    .settings-checkbox-group {
+        grid-template-columns: 1fr;
+    }
+
+    .download-item {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    .download-progress {
+        width: 100%;
+        margin-top: 8px;
+    }
+
+    .download-actions {
+        margin-top: 8px;
+        width: 100%;
+        justify-content: flex-end;
+    }
+
+    .bundle-details {
+        padding: var(--sp-md);
+    }
+
+    .launch-bar {
+        transform: scale(0.85);
+        transform-origin: center;
+    }
+}
+
+/* Very small phone */
+@media (max-width: 360px) {
+    .content-area {
+        padding: var(--sp-sm);
+    }
+
+    .mod-toolbar {
+        padding: 6px;
+        gap: 4px;
+    }
+
+    .mod-toolbar .btn-primary {
+        font-size: 11px;
+        padding: 5px 10px;
+    }
+
+    .mod-launch-modes {
+        gap: 4px;
+    }
+
+    .mode-btn {
+        padding: 5px 10px;
+        font-size: 10px;
+    }
+}
+
+/* Print styles */
+@media print {
+    .title-bar,
+    .tab-nav,
+    .footer,
+    .modal-overlay,
+    .loading-overlay,
+    #toast-container,
+    .mod-toolbar,
+    .tag-presets-bar {
+        display: none !important;
+    }
+
+    .app-container {
+        min-width: auto;
+        background: white;
+    }
+
+    .content-area {
+        overflow: visible;
+    }
+
+    .page {
+        display: block !important;
+        opacity: 1 !important;
+    }
+
+    * {
+        color: #000 !important;
+        background: white !important;
+        border-color: #ccc !important;
+    }
+}

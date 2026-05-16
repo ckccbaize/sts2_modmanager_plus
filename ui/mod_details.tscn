@@ -1,0 +1,127 @@
+[gd_scene load_steps=5 format="3" uid="uid://bu6nwcsmog5eh"]
+
+[ext_resource type="Script" path="res://ui/mod_details.gd" id="1_details"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_panel"]
+bg_color = Color(0, 0, 0, 0.2)
+corner_radius_top_left = 8
+corner_radius_top_right = 8
+corner_radius_bottom_left = 8
+corner_radius_bottom_right = 8
+border_width_left = 1
+border_width_right = 1
+border_width_top = 1
+border_width_bottom = 1
+border_color = Color(0.337, 0.514, 0.675, 0.15)
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_enable"]
+bg_color = Color(0.278, 0.749, 1.0)
+corner_radius_top_left = 4
+corner_radius_top_right = 4
+corner_radius_bottom_left = 4
+corner_radius_bottom_right = 4
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_secondary"]
+bg_color = Color(0, 0, 0, 0)
+corner_radius_top_left = 4
+corner_radius_top_right = 4
+corner_radius_bottom_left = 4
+corner_radius_bottom_right = 4
+border_width_left = 1
+border_width_right = 1
+border_width_top = 1
+border_width_bottom = 1
+border_color = Color(0.337, 0.514, 0.675, 0.4)
+
+[node name="ModDetailsPanel" type="PanelContainer"]
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_styles/normal = SubResource("StyleBoxFlat_panel")
+script = ExtResource("1_details")
+
+[node name="Margin" type="MarginContainer" parent="."]
+layout_mode = 2
+theme_override_constants/margin_left = 20
+theme_override_constants/margin_right = 20
+theme_override_constants/margin_top = 20
+theme_override_constants/margin_bottom = 20
+
+[node name="VBox" type="VBoxContainer" parent="Margin"]
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_constants/separation = 12
+
+[node name="HeaderHBox" type="HBoxContainer" parent="Margin/VBox"]
+layout_mode = 2
+
+[node name="TitleLbl" type="Label" parent="Margin/VBox/HeaderHBox"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_stretch_ratio = 1.0
+text = "未选择模组"
+clip_text = true
+
+[node name="VersionLbl" type="Label" parent="Margin/VBox/HeaderHBox"]
+layout_mode = 2
+size_flags_horizontal = 0
+text = "v1.0.0"
+
+[node name="VSeparator" type="VSeparator" parent="Margin/VBox"]
+layout_mode = 2
+
+[node name="BadgeHBox" type="HBoxContainer" parent="Margin/VBox"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="InfoLbl" type="Label" parent="Margin/VBox"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "点击左侧列表中的模组查看详情"
+autowrap_mode = 2
+
+[node name="DescLbl" type="Label" parent="Margin/VBox"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = ""
+autowrap_mode = 2
+
+[node name="NotesBg" type="PanelContainer" parent="Margin/VBox"]
+layout_mode = 2
+visible = false
+
+[node name="NotesMargin" type="MarginContainer" parent="Margin/VBox/NotesBg"]
+layout_mode = 2
+theme_override_constants/margin_left = 12
+theme_override_constants/margin_right = 12
+theme_override_constants/margin_top = 12
+theme_override_constants/margin_bottom = 12
+
+[node name="NotesVBox" type="VBoxContainer" parent="Margin/VBox/NotesBg/NotesMargin"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="NotesHeader" type="HBoxContainer" parent="Margin/VBox/NotesBg/NotesMargin/NotesVBox"]
+layout_mode = 2
+
+[node name="NotesLbl" type="Label" parent="Margin/VBox/NotesBg/NotesMargin/NotesVBox/NotesHeader"]
+layout_mode = 2
+text = "📝 备注"
+
+[node name="NotesContent" type="Label" parent="Margin/VBox/NotesBg/NotesMargin/NotesVBox"]
+layout_mode = 2
+text = ""
+autowrap_mode = 2
+
+[node name="ActionHBox" type="HBoxContainer" parent="Margin/VBox"]
+layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="BtnEnable" type="Button" parent="Margin/VBox/ActionHBox"]
+layout_mode = 2
+theme_override_styles/normal = SubResource("StyleBoxFlat_enable")
+text = "启用"
+
+[node name="BtnUninstall" type="Button" parent="Margin/VBox/ActionHBox"]
+layout_mode = 2
+theme_override_styles/normal = SubResource("StyleBoxFlat_secondary")
+text = "卸载"

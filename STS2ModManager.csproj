@@ -1,0 +1,32 @@
+<Project Sdk="Godot.NET.Sdk/4.6.2">
+  <PropertyGroup>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <EnableDynamicLoading>true</EnableDynamicLoading>
+    <RootNamespace>STS2ModManager</RootNamespace>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+  </PropertyGroup>
+
+  <!-- 禁用自动生成的 assembly 属性 -->
+  <PropertyGroup>
+    <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Web.WebView2" Version="1.0.2651.64" />
+  </ItemGroup>
+
+  <!-- 显式排除不需要的项目 -->
+  <ItemGroup>
+    <!-- 排除所有 CEF 相关文件 -->
+    <Compile Remove="GDCefGlue-main/**/*.cs" />
+    <Compile Remove="GDCefGlue-main/**/*.gd" />
+    <Compile Remove="addons/GCefGlue.bak/**/*" />
+    <!-- 排除 browser_host（独立构建） -->
+    <Compile Remove="browser_host/**/*.cs" />
+    <!-- 排除 ModOrderHelper（独立项目，不是引用） -->
+    <Compile Remove="ModOrderHelper/**/*.cs" />
+    <!-- 排除所有 obj 和 bin 目录 -->
+    <Compile Remove="**/obj/**/*.cs" />
+    <Compile Remove="**/bin/**/*.cs" />
+  </ItemGroup>
+</Project>

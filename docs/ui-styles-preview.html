@@ -1,0 +1,509 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>模组管理器 UI 风格演示 - 更多选择</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #0d1117; color: #fff; padding: 20px; }
+        h1 { text-align: center; margin-bottom: 10px; font-weight: 300; letter-spacing: 2px; }
+        .subtitle { text-align: center; margin-bottom: 30px; color: #666; font-size: 14px; }
+
+        .styles-container { display: grid; grid-template-columns: repeat(auto-fit, minmax(380px, 1fr)); gap: 24px; max-width: 1800px; margin: 0 auto; }
+
+        .style-card { background: #161b22; border-radius: 16px; overflow: hidden; box-shadow: 0 8px 32px rgba(0,0,0,0.4); transition: transform 0.3s; }
+        .style-card:hover { transform: translateY(-4px); }
+        .style-header { padding: 16px 20px; border-bottom: 1px solid rgba(255,255,255,0.08); display: flex; justify-content: space-between; align-items: center; }
+        .style-header h2 { font-size: 16px; font-weight: 500; }
+        .style-tag { padding: 4px 12px; border-radius: 20px; font-size: 11px; opacity: 0.8; }
+
+        .mockup { padding: 0; position: relative; height: 320px; overflow: hidden; }
+
+        /* ===== STYLE E: MacOS Finder ===== */
+        .style-e .style-tag { background: #8e8e93; }
+        .style-e .mockup { background: #f5f5f7; }
+        .style-e .window-bar { background: linear-gradient(180deg, #e8e8ed, #d1d1d6); padding: 10px 12px 8px; display: flex; align-items: center; gap: 8px; }
+        .style-e .window-btns { display: flex; gap: 8px; }
+        .style-e .window-btn { width: 12px; height: 12px; border-radius: 50%; }
+        .style-e .window-btn.close { background: #ff5f56; }
+        .style-e .window-btn.minimize { background: #ffbd2e; }
+        .style-e .window-btn.maximize { background: #27c93f; }
+        .style-e .window-title { flex: 1; text-align: center; font-size: 13px; color: #333; }
+        .style-e .toolbar { background: #fff; padding: 8px 12px; display: flex; gap: 8px; border-bottom: 1px solid #d1d1d6; }
+        .style-e .toolbar-btn { background: #f5f5f7; border: none; border-radius: 6px; padding: 6px 12px; color: #333; font-size: 12px; cursor: pointer; }
+        .style-e .content { display: flex; height: calc(100% - 80px); }
+        .style-e .sidebar { width: 180px; background: #f0f0f2; border-right: 1px solid #d1d1d6; padding: 10px; }
+        .style-e .mod-item { background: transparent; border-radius: 8px; padding: 10px; margin-bottom: 4px; cursor: pointer; display: flex; align-items: center; gap: 10px; transition: 0.2s; }
+        .style-e .mod-item:hover { background: rgba(0,0,0,0.05); }
+        .style-e .mod-item.selected { background: #007aff; border-radius: 8px; }
+        .style-e .mod-item.selected .mod-name { color: #fff; }
+        .style-e .mod-item.selected .mod-author { color: rgba(255,255,255,0.7); }
+        .style-e .mod-icon { width: 28px; height: 28px; border-radius: 6px; background: #34c759; display: flex; align-items: center; justify-content: center; font-size: 14px; }
+        .style-e .mod-name { font-size: 12px; color: #333; }
+        .style-e .mod-author { font-size: 10px; color: #666; margin-top: 2px; }
+        .style-e .main { flex: 1; padding: 16px; background: #fff; }
+        .style-e .detail-card { background: #f5f5f7; border-radius: 12px; padding: 16px; }
+        .style-e .detail-title { font-size: 16px; color: #1d1d1f; margin-bottom: 8px; }
+        .style-e .detail-meta { font-size: 12px; color: #666; margin-bottom: 12px; }
+        .style-e .detail-desc { font-size: 13px; color: #333; line-height: 1.5; }
+        .style-e .action-btn { background: #007aff; border: none; border-radius: 8px; padding: 10px 20px; color: #fff; font-size: 13px; margin-top: 16px; cursor: pointer; }
+
+        /* ===== STYLE F: Windows 11 ===== */
+        .style-f .style-tag { background: #60cdff; color: #000; }
+        .style-f .mockup { background: linear-gradient(135deg, #f3f3f3, #e5e5e5); }
+        .style-f .titlebar { background: rgba(255,255,255,0.7); backdrop-filter: blur(20px); padding: 8px 16px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(0,0,0,0.06); }
+        .style-f .app-name { font-size: 12px; color: #333; }
+        .style-f .search-box { background: #fff; border: 1px solid #e5e5e5; border-radius: 20px; padding: 6px 14px; display: flex; align-items: center; gap: 8px; }
+        .style-f .search-input { border: none; background: transparent; font-size: 12px; color: #333; width: 140px; outline: none; }
+        .style-f .nav-tabs { display: flex; padding: 8px 16px; gap: 4px; background: rgba(255,255,255,0.5); backdrop-filter: blur(20px); }
+        .style-f .nav-tab { padding: 8px 16px; border-radius: 4px; font-size: 12px; color: #333; cursor: pointer; transition: 0.2s; }
+        .style-f .nav-tab.active { background: #fff; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+        .style-f .content { display: flex; height: calc(100% - 75px); }
+        .style-f .panel { background: rgba(255,255,255,0.8); backdrop-filter: blur(20px); border-radius: 8px; margin: 12px; padding: 12px; }
+        .style-f .panel-left { width: 200px; }
+        .style-f .mod-card { background: #fff; border-radius: 8px; padding: 12px; margin-bottom: 8px; cursor: pointer; display: flex; gap: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); transition: 0.2s; }
+        .style-f .mod-card:hover { background: #f5f5f5; }
+        .style-f .mod-icon { width: 36px; height: 36px; border-radius: 6px; background: linear-gradient(135deg, #60cdff, #0078d4); }
+        .style-f .mod-name { font-size: 13px; color: #1a1a1a; font-weight: 500; }
+        .style-f .mod-author { font-size: 11px; color: #666; }
+        .style-f .panel-right { flex: 1; }
+        .style-f .detail-card { background: #fff; border-radius: 12px; padding: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); }
+        .style-f .detail-title { font-size: 20px; color: #1a1a1a; margin-bottom: 8px; }
+        .style-f .detail-badge { background: #e5e5e5; border-radius: 4px; padding: 4px 10px; font-size: 11px; color: #333; display: inline-block; margin-bottom: 12px; }
+        .style-f .detail-info { font-size: 12px; color: #666; margin-bottom: 16px; }
+        .style-f .detail-desc { font-size: 13px; color: #333; line-height: 1.6; }
+        .style-f .btn { background: #0078d4; border: none; border-radius: 4px; padding: 8px 20px; color: #fff; font-size: 12px; cursor: pointer; }
+
+        /* ===== STYLE G: Steam ===== */
+        .style-g .style-tag { background: #171a21; border: 1px solid #66c0f9; }
+        .style-g .mockup { background: linear-gradient(180deg, #1b2838, #2a475e); }
+        .style-g .header { background: linear-gradient(90deg, #171a21, #2a475e); padding: 12px 16px; display: flex; align-items: center; justify-content: space-between; }
+        .style-g .logo { font-size: 18px; color: #66c0f9; font-weight: 600; }
+        .style-g .search { background: #316282; border: none; border-radius: 3px; padding: 6px 12px; color: #fff; font-size: 12px; width: 180px; }
+        .style-g .search::placeholder { color: rgba(255,255,255,0.5); }
+        .style-g .nav { background: #171a21; padding: 0 16px; display: flex; }
+        .style-g .nav-item { padding: 12px 16px; font-size: 12px; color: #b8b6b2; cursor: pointer; border-bottom: 2px solid transparent; transition: 0.2s; }
+        .style-g .nav-item.active { color: #fff; border-bottom-color: #66c0f9; }
+        .style-g .content { display: flex; padding: 16px; gap: 16px; height: calc(100% - 90px); }
+        .style-g .list { width: 240px; }
+        .style-g .mod-row { background: rgba(255,255,255,0.05); border-radius: 2px; padding: 10px 12px; margin-bottom: 4px; cursor: pointer; display: flex; gap: 10px; transition: 0.2s; }
+        .style-g .mod-row:hover { background: rgba(255,255,255,0.1); }
+        .style-g .mod-row.selected { background: linear-gradient(90deg, rgba(102,192,249,0.2), transparent); border-left: 2px solid #66c0f9; }
+        .style-g .mod-icon { width: 32px; height: 32px; border-radius: 2px; background: #66c0f9; }
+        .style-g .mod-name { font-size: 12px; color: #c7d5e0; }
+        .style-g .mod-version { font-size: 10px; color: #8f98a0; }
+        .style-g .detail { flex: 1; background: rgba(0,0,0,0.2); border-radius: 2px; padding: 16px; }
+        .style-g .detail-title { font-size: 18px; color: #66c0f9; margin-bottom: 12px; }
+        .style-g .detail-meta { font-size: 11px; color: #8f98a0; margin-bottom: 16px; }
+        .style-g .detail-tags { display: flex; gap: 8px; margin-bottom: 16px; }
+        .style-g .detail-tag { background: #2a475e; border-radius: 2px; padding: 4px 10px; font-size: 11px; color: #a3c9e7; }
+        .style-g .detail-desc { font-size: 12px; color: #c7d5e0; line-height: 1.6; }
+        .style-g .btn { background: linear-gradient(90deg, #47bfff, #2a475e); border: none; border-radius: 2px; padding: 10px 24px; color: #fff; font-size: 12px; cursor: pointer; margin-top: 16px; }
+
+        /* ===== STYLE H: Minimal ===== */
+        .style-h .mockup { background: #fafafa; }
+        .style-h .style-tag { background: #1a1a1a; }
+        .style-h .sidebar { position: absolute; left: 0; top: 0; bottom: 0; width: 60px; background: #fff; border-right: 1px solid #eee; display: flex; flex-direction: column; align-items: center; padding: 20px 0; }
+        .style-h .sidebar-icon { width: 36px; height: 36px; border-radius: 50%; background: #f5f5f5; display: flex; align-items: center; justify-content: center; font-size: 16px; margin-bottom: 12px; cursor: pointer; transition: 0.2s; }
+        .style-h .sidebar-icon:hover { background: #1a1a1a; color: #fff; }
+        .style-h .main-area { margin-left: 60px; padding: 24px 32px; height: 100%; }
+        .style-h .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 32px; }
+        .style-h .page-title { font-size: 28px; color: #1a1a1a; font-weight: 300; letter-spacing: -0.5px; }
+        .style-h .search-input { background: #f5f5f5; border: none; border-radius: 24px; padding: 12px 20px; font-size: 14px; width: 240px; }
+        .style-h .content { display: flex; gap: 32px; }
+        .style-h .list { width: 320px; }
+        .style-h .mod-item { padding: 20px 0; border-bottom: 1px solid #eee; cursor: pointer; transition: 0.2s; }
+        .style-h .mod-item:hover { opacity: 0.6; }
+        .style-h .mod-item.active { opacity: 1; }
+        .style-h .mod-name { font-size: 15px; color: #1a1a1a; margin-bottom: 4px; }
+        .style-h .mod-author { font-size: 12px; color: #999; }
+        .style-h .detail { flex: 1; padding-top: 12px; }
+        .style-h .detail-title { font-size: 32px; color: #1a1a1a; font-weight: 400; margin-bottom: 16px; letter-spacing: -0.5px; }
+        .style-h .detail-meta { font-size: 14px; color: #999; margin-bottom: 24px; }
+        .style-h .detail-desc { font-size: 14px; color: #666; line-height: 1.8; max-width: 400px; }
+        .style-h .action-btn { background: #1a1a1a; border: none; border-radius: 24px; padding: 14px 32px; color: #fff; font-size: 13px; margin-top: 32px; cursor: pointer; }
+
+        /* ===== STYLE I: Retro Pixel ===== */
+        .style-i .style-tag { background: #8b5cf6; }
+        .style-i .mockup { background: #1a1a2e; image-rendering: pixelated; }
+        .style-i .pixel-bg { position: absolute; inset: 0; background-image:
+            linear-gradient(rgba(255,255,255,0.03) 1px, transparent 1px),
+            linear-gradient(90deg, rgba(255,255,255,0.03) 1px, transparent 1px);
+            background-size: 8px 8px; }
+        .style-i .header { background: #2d2d5e; padding: 10px 16px; display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #4a4a8a; }
+        .style-i .title { font-family: monospace; font-size: 14px; color: #f0f; text-shadow: 2px 2px 0 #00f; letter-spacing: 2px; }
+        .style-i .menu { display: flex; gap: 12px; }
+        .style-i .menu-item { font-family: monospace; color: #0ff; font-size: 11px; cursor: pointer; }
+        .style-i .menu-item:hover { color: #ff0; }
+        .style-i .content { padding: 16px; display: flex; gap: 16px; height: calc(100% - 48px); }
+        .style-i .mod-list { width: 180px; }
+        .style-i .mod-entry { background: #2d2d5e; border: 2px solid #4a4a8a; padding: 8px 10px; margin-bottom: 6px; cursor: pointer; transition: 0.1s; }
+        .style-i .mod-entry:hover { background: #4a4a8a; }
+        .style-i .mod-entry.active { background: #4a4a8a; border-color: #0ff; }
+        .style-i .mod-name { font-family: monospace; font-size: 11px; color: #fff; }
+        .style-i .mod-attr { font-family: monospace; font-size: 9px; color: #f0f; }
+        .style-i .detail-box { flex: 1; background: #2d2d5e; border: 2px solid #4a4a8a; padding: 16px; position: relative; }
+        .style-i .detail-box::before { content: ''; position: absolute; top: 4px; left: 4px; right: 4px; height: 2px; background: #4a4a8a; }
+        .style-i .detail-title { font-family: monospace; font-size: 14px; color: #ff0; margin-bottom: 12px; text-transform: uppercase; }
+        .style-i .detail-info { font-family: monospace; font-size: 10px; color: #0ff; line-height: 1.8; }
+        .style-i .detail-desc { font-family: monospace; font-size: 10px; color: #c0c0c0; margin-top: 16px; line-height: 1.6; }
+        .style-i .action-btn { font-family: monospace; background: #ff00ff; border: none; padding: 8px 16px; color: #fff; font-size: 11px; cursor: pointer; margin-top: 16px; }
+
+        /* ===== STYLE J: Soft Gradient ===== */
+        .style-j .mockup { background: linear-gradient(135deg, #fdfbfb 0%, #ebedee 100%); }
+        .style-j .style-tag { background: #f472b6; }
+        .style-j .topbar { background: rgba(255,255,255,0.8); backdrop-filter: blur(20px); padding: 16px 24px; display: flex; align-items: center; gap: 16px; border-bottom: 1px solid rgba(0,0,0,0.05); }
+        .style-j .logo { font-size: 16px; color: #1f2937; font-weight: 600; }
+        .style-j .search { background: #f3f4f6; border: none; border-radius: 24px; padding: 10px 18px; font-size: 13px; width: 200px; flex: 1; max-width: 300px; }
+        .style-j .content { display: flex; padding: 20px; gap: 20px; height: calc(100% - 65px); }
+        .style-j .sidebar { width: 260px; }
+        .style-j .mod-card { background: #fff; border-radius: 16px; padding: 16px; margin-bottom: 12px; cursor: pointer; box-shadow: 0 1px 3px rgba(0,0,0,0.05); transition: 0.3s; display: flex; gap: 14px; }
+        .style-j .mod-card:hover { box-shadow: 0 4px 20px rgba(0,0,0,0.1); transform: translateY(-2px); }
+        .style-j .mod-card.selected { box-shadow: 0 4px 20px rgba(99,102,241,0.2), 0 0 0 2px #6366f1; }
+        .style-j .mod-icon { width: 44px; height: 44px; border-radius: 12px; background: linear-gradient(135deg, #a78bfa, #8b5cf6); display: flex; align-items: center; justify-content: center; font-size: 18px; }
+        .style-j .mod-name { font-size: 14px; color: #1f2937; font-weight: 500; }
+        .style-j .mod-author { font-size: 12px; color: #9ca3af; margin-top: 2px; }
+        .style-j .detail { flex: 1; }
+        .style-j .detail-card { background: #fff; border-radius: 20px; padding: 24px; box-shadow: 0 4px 24px rgba(0,0,0,0.06); }
+        .style-j .detail-title { font-size: 22px; color: #1f2937; font-weight: 600; margin-bottom: 8px; }
+        .style-j .detail-badge { background: linear-gradient(135deg, #f472b6, #ec4899); -webkit-background-clip: text; -webkit-text-fill-color: transparent; font-size: 12px; font-weight: 500; }
+        .style-j .detail-meta { font-size: 13px; color: #6b7280; margin: 12px 0 16px; }
+        .style-j .detail-desc { font-size: 14px; color: #374151; line-height: 1.7; }
+        .style-j .btn { background: linear-gradient(135deg, #6366f1, #8b5cf6); border: none; border-radius: 12px; padding: 12px 28px; color: #fff; font-size: 13px; font-weight: 500; cursor: pointer; }
+
+        .explanation { padding: 16px 20px; border-top: 1px solid rgba(255,255,255,0.08); }
+        .explanation p { font-size: 12px; color: #888; line-height: 1.5; }
+    </style>
+</head>
+<body>
+    <h1>🎮 模组管理器 UI 风格演示</h1>
+    <p class="subtitle">点击风格卡片可放大查看更多细节</p>
+
+    <div class="styles-container">
+        <!-- Style E: MacOS Finder -->
+        <div class="style-card style-e">
+            <div class="style-header">
+                <h2>MacOS Finder</h2>
+                <span class="style-tag">Apple</span>
+            </div>
+            <div class="mockup">
+                <div class="window-bar">
+                    <div class="window-btns">
+                        <div class="window-btn close"></div>
+                        <div class="window-btn minimize"></div>
+                        <div class="window-btn maximize"></div>
+                    </div>
+                    <div class="window-title">Mod Manager</div>
+                </div>
+                <div class="toolbar">
+                    <button class="toolbar-btn">安装</button>
+                    <button class="toolbar-btn">刷新</button>
+                    <button class="toolbar-btn">卸载</button>
+                </div>
+                <div class="content">
+                    <div class="sidebar">
+                        <div class="mod-item selected">
+                            <div class="mod-icon">🏃</div>
+                            <div>
+                                <div class="mod-name">BetterTrails</div>
+                                <div class="mod-author">kjasdh</div>
+                            </div>
+                        </div>
+                        <div class="mod-item">
+                            <div class="mod-icon">🎴</div>
+                            <div>
+                                <div class="mod-name">CardUI</div>
+                                <div class="mod-author">modder01</div>
+                            </div>
+                        </div>
+                        <div class="mod-item">
+                            <div class="mod-icon">⚔️</div>
+                            <div>
+                                <div class="mod-name">ExtraRelics</div>
+                                <div class="mod-author">gamedev</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="main">
+                        <div class="detail-card">
+                            <div class="detail-title">BetterTrails</div>
+                            <div class="detail-meta">作者: kjasdh • 版本: v1.2.3</div>
+                            <div class="detail-desc">优化角色的战斗拖尾特效，支持自定义颜色和效果。</div>
+                            <button class="action-btn">启用</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="explanation">
+                <p>特点：经典三按钮、磨砂质感、拟物化图标<br>适用：Mac用户、创意工作者</p>
+            </div>
+        </div>
+
+        <!-- Style F: Windows 11 -->
+        <div class="style-card style-f">
+            <div class="style-header">
+                <h2>Windows 11</h2>
+                <span class="style-tag">Microsoft</span>
+            </div>
+            <div class="mockup">
+                <div class="titlebar">
+                    <div class="app-name">Mod Manager</div>
+                    <div class="search-box">
+                        <span>🔍</span>
+                        <input type="text" class="search-input" placeholder="搜索模组">
+                    </div>
+                </div>
+                <div class="nav-tabs">
+                    <div class="nav-tab active">模组</div>
+                    <div class="nav-tab">整合包</div>
+                    <div class="nav-tab">存档</div>
+                    <div class="nav-tab">设置</div>
+                </div>
+                <div class="content">
+                    <div class="panel panel-left">
+                        <div class="mod-card">
+                            <div class="mod-icon"></div>
+                            <div>
+                                <div class="mod-name">BetterTrails</div>
+                                <div class="mod-author">v1.2.3 • kjasdh</div>
+                            </div>
+                        </div>
+                        <div class="mod-card">
+                            <div class="mod-icon" style="background: linear-gradient(135deg, #f472b6, #ec4899);"></div>
+                            <div>
+                                <div class="mod-name">CardUI</div>
+                                <div class="mod-author">v2.1.0 • modder01</div>
+                            </div>
+                        </div>
+                        <div class="mod-card">
+                            <div class="mod-icon" style="background: linear-gradient(135deg, #facc15, #eab308);"></div>
+                            <div>
+                                <div class="mod-name">ExtraRelics</div>
+                                <div class="mod-author">v1.0.5 • gamedev</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="panel panel-right">
+                        <div class="detail-card">
+                            <div class="detail-title">BetterTrails</div>
+                            <div class="detail-badge">美化</div>
+                            <div class="detail-info">作者: kjasdh • 版本: v1.2.3</div>
+                            <div class="detail-desc">优化角色的战斗拖尾特效，让战斗画面更加流畅绚丽。支持自定义颜色和效果设置。</div>
+                            <button class="btn" style="margin-top:12px;">启用</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="explanation">
+                <p>特点：亚克力模糊、居中圆角、蓝色强调<br>适用：Windows用户、现代办公</p>
+            </div>
+        </div>
+
+        <!-- Style G: Steam -->
+        <div class="style-card style-g">
+            <div class="style-header">
+                <h2>Steam</h2>
+                <span class="style-tag">Valve</span>
+            </div>
+            <div class="mockup">
+                <div class="header">
+                    <div class="logo">STEAM</div>
+                    <input type="text" class="search" placeholder="搜索...">
+                </div>
+                <div class="nav">
+                    <div class="nav-item">模组</div>
+                    <div class="nav-item active">已安装</div>
+                    <div class="nav-item">设置</div>
+                </div>
+                <div class="content">
+                    <div class="list">
+                        <div class="mod-row selected">
+                            <div class="mod-icon"></div>
+                            <div>
+                                <div class="mod-name">BetterTrails v1.2.3</div>
+                                <div class="mod-version">kjasdh</div>
+                            </div>
+                        </div>
+                        <div class="mod-row">
+                            <div class="mod-icon" style="background:#66c0f9;"></div>
+                            <div>
+                                <div class="mod-name">CardUI v2.1.0</div>
+                                <div class="mod-version">modder01</div>
+                            </div>
+                        </div>
+                        <div class="mod-row">
+                            <div class="mod-icon" style="background:#a371f7;"></div>
+                            <div>
+                                <div class="mod-name">ExtraRelics v1.0.5</div>
+                                <div class="mod-version">gamedev</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="detail">
+                        <div class="detail-title">BetterTrails</div>
+                        <div class="detail-meta">by kjasdh • v1.2.3</div>
+                        <div class="detail-tags">
+                            <span class="detail-tag">美化</span>
+                            <span class="detail-tag">兼容</span>
+                        </div>
+                        <div class="detail-desc">优化角色的战斗拖尾特效，支持自定义颜色、线条数量和淡出效果。与游戏原有风格完美融合。</div>
+                        <button class="btn">启用模组</button>
+                    </div>
+                </div>
+            </div>
+            <div class="explanation">
+                <p>特点：深蓝渐变、蓝色高光、实用主义<br>适用：游戏玩家、Steam用户</p>
+            </div>
+        </div>
+
+        <!-- Style H: Minimal -->
+        <div class="style-card style-h">
+            <div class="style-header">
+                <h2>Minimal</h2>
+                <span class="style-tag">Zen</span>
+            </div>
+            <div class="mockup">
+                <div class="sidebar">
+                    <div class="sidebar-icon">📦</div>
+                    <div class="sidebar-icon">🔍</div>
+                    <div class="sidebar-icon">⚙️</div>
+                </div>
+                <div class="main-area">
+                    <div class="header">
+                        <div class="page-title">模组</div>
+                        <input type="text" class="search-input" placeholder="搜索...">
+                    </div>
+                    <div class="content">
+                        <div class="list">
+                            <div class="mod-item active">
+                                <div class="mod-name">BetterTrails</div>
+                                <div class="mod-author">kjasdh • v1.2.3</div>
+                            </div>
+                            <div class="mod-item">
+                                <div class="mod-name">CardUI Expansion</div>
+                                <div class="mod-author">modder01 • v2.1.0</div>
+                            </div>
+                            <div class="mod-item">
+                                <div class="mod-name">ExtraRelics</div>
+                                <div class="mod-author">gamedev • v1.0.5</div>
+                            </div>
+                        </div>
+                        <div class="detail">
+                            <div class="detail-title">BetterTrails</div>
+                            <div class="detail-meta">作者: kjasdh • 版本: v1.2.3</div>
+                            <div class="detail-desc">优化角色的战斗拖尾特效，让战斗画面更加流畅绚丽。支持自定义颜色、线条数量和淡出效果。</div>
+                            <button class="action-btn">启用</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="explanation">
+                <p>特点：大量留白、超大字间距、极致简洁<br>适用：极简主义者、禅修爱好者</p>
+            </div>
+        </div>
+
+        <!-- Style I: Retro Pixel -->
+        <div class="style-card style-i">
+            <div class="style-header">
+                <h2>Retro Pixel</h2>
+                <span class="style-tag">8-bit</span>
+            </div>
+            <div class="mockup">
+                <div class="pixel-bg"></div>
+                <div class="header">
+                    <div class="title">MOD MANAGER</div>
+                    <div class="menu">
+                        <div class="menu-item">[FILE]</div>
+                        <div class="menu-item">[EDIT]</div>
+                        <div class="menu-item">[VIEW]</div>
+                    </div>
+                </div>
+                <div class="content">
+                    <div class="mod-list">
+                        <div class="mod-entry active">
+                            <div class="mod-name">BETTER_TRAILS</div>
+                            <div class="mod-attr">v1.2.3 [COSMETIC]</div>
+                        </div>
+                        <div class="mod-entry">
+                            <div class="mod-name">CARD_UI</div>
+                            <div class="mod-attr">v2.1.0 [COSMETIC]</div>
+                        </div>
+                        <div class="mod-entry">
+                            <div class="mod-name">EXTRA_RELICS</div>
+                            <div class="mod-attr">v1.0.5 [GAME]</div>
+                        </div>
+                    </div>
+                    <div class="detail-box">
+                        <div class="detail-title">BETTER_TRAILS</div>
+                        <div class="detail-info">
+                            AUTHOR: KJASDH<br>
+                            VERSION: 1.2.3<br>
+                            TYPE: COSMETIC
+                        </div>
+                        <div class="detail-desc">OPTIMIZED TRAIL EFFECTS FOR COMBAT. CUSTOMIZABLE COLORS AND SIZES.</div>
+                        <button class="action-btn">[ENABLE]</button>
+                    </div>
+                </div>
+            </div>
+            <div class="explanation">
+                <p>特点：等宽字体、像素网格、复古配色<br>适用：怀旧玩家、程序员</p>
+            </div>
+        </div>
+
+        <!-- Style J: Soft Gradient -->
+        <div class="style-card style-j">
+            <div class="style-header">
+                <h2>Soft Gradient</h2>
+                <span class="style-tag">Bloom</span>
+            </div>
+            <div class="mockup">
+                <div class="topbar">
+                    <div class="logo">Mods</div>
+                    <input type="text" class="search" placeholder="搜索模组...">
+                    <button class="btn" style="background:#e5e7eb;font-size:12px;padding:8px 16px;">安装</button>
+                </div>
+                <div class="content">
+                    <div class="sidebar">
+                        <div class="mod-card selected">
+                            <div class="mod-icon">🏃</div>
+                            <div>
+                                <div class="mod-name">BetterTrails</div>
+                                <div class="mod-author">kjasdh • v1.2.3</div>
+                            </div>
+                        </div>
+                        <div class="mod-card">
+                            <div class="mod-icon" style="background:linear-gradient(135deg, #f472b6, #ec4899);">🎴</div>
+                            <div>
+                                <div class="mod-name">CardUI</div>
+                                <div class="mod-author">modder01 • v2.1.0</div>
+                            </div>
+                        </div>
+                        <div class="mod-card">
+                            <div class="mod-icon" style="background:linear-gradient(135deg, #facc15, #eab308);">⚔️</div>
+                            <div>
+                                <div class="mod-name">RelicFixes</div>
+                                <div class="mod-author">gamedev • v1.0.5</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="detail">
+                        <div class="detail-card">
+                            <div class="detail-title">BetterTrails</div>
+                            <div class="detail-badge">COSMETIC</div>
+                            <div class="detail-meta">作者: kjasdh • 版本: v1.2.3</div>
+                            <div class="detail-desc">优化角色的战斗拖尾特效，让战斗画面更加流畅绚丽。支持自定义颜色、线条数量和淡出效果。与游戏原有风格完美融合。</div>
+                            <button class="btn">启用模组</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="explanation">
+                <p>特点：柔和渐变、莫兰迪色、温暖触感<br>适用：创意应用、生活类软件</p>
+            </div>
+        </div>
+    </div>
+
+    <p style="text-align:center;padding:30px;color:#555;">← 滚动查看更多风格 →</p>
+</body>
+</html>

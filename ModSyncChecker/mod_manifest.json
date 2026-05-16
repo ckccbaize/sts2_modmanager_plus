@@ -1,0 +1,10 @@
+{
+  "id": "ModSyncChecker",
+  "version": "1.2.0",
+  "name": "MOD Sync Checker / 模组同步检测器",
+  "author": "K2 & Xiatingfeng",
+  "description": "Compare your mod list with teammates before co-op. Supports exporting/importing MOD profiles to quickly sync with friends.\n\n与队友联机前快速对比 MOD 列表，支持导出/导入 MOD 配置文件，方便与好友同步模组。\n\nFeatures:\n- One-click scan via K key or main menu button\n- Visual diff: missing mods, version mismatches, load order differences\n- Export/import MOD profiles as JSON\n- Auto-select imported profile for instant comparison\n- Clear search filter on import to ensure file visibility\n- Friendly hint when applying load order before game start\n- Draggable window with title bar\n- Minimize / Maximize / Close window controls\n- Resize handle at bottom-right corner\n\n功能：\n- 按 K 键或主菜单按钮一键扫描\n- 直观对比：缺失模组、版本不一致、加载顺序差异\n- 导出/导入 JSON 配置文件\n- 导入后自动选中文件并显示对比\n- 导入时自动清空搜索过滤，确保文件可见\n- 应用排序前检测游戏状态，给出友好提示\n- 可拖拽移动的窗口标题栏\n- 最小化 / 最大化 / 关闭按钮\n- 右下角手柄自由缩放窗口",
+  "has_pck": false,
+  "has_dll": true,
+  "affects_gameplay": false
+}
