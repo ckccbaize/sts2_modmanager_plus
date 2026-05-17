@@ -517,9 +517,9 @@ const STS2Downloads = {
             }
             try {
                 const resp = await this._app.api.getDownloads();
-                if (!resp || !resp.downloads) return;
-
-                const apiDownloads = resp.downloads;
+                // 支持两种返回格式：resp.downloads 和 resp.data.downloads
+                const apiDownloads = resp?.downloads || resp?.data?.downloads;
+                if (!apiDownloads || !Array.isArray(apiDownloads)) return;
                 const seenIds = new Set();
 
                 for (const apiDl of apiDownloads) {
@@ -558,6 +558,12 @@ const STS2Downloads = {
                             }
                         }
                     } else {
+                        // 本地文件优先：检查该mod是否已存在本地
+                        if (this._checkModExistsLocally(apiDl.mod_name, apiDl.url)) {
+                            console.log('[STS2Downloads] Mod already exists locally, skipping download:', apiDl.mod_name);
+                            continue;  // 跳过创建下载项
+                        }
+
                         // New download from API that we don't track yet
                         this.active_downloads[apiDl.id] = {
                             id: apiDl.id,
@@ -593,6 +599,78 @@ const STS2Downloads = {
     },
 
     // ── Helpers ───────────────────────────────────────────────────
+
+    /**
+     * Check if a mod already exists locally by name or URL.
+     * @param {string} modName - The name of the mod
+     * @param {string} url - The URL of the mod
+     * @returns {boolean} - True if mod exists locally
+     * @private
+     */
+    _checkModExistsLocally(modName, url) {
+        if (!modName) return false;
+
+        const normalizedName = modName.toLowerCase().trim();
+
+        // 1. Check download history for successful downloads with same mod name
+        const inHistory = this.history.some(h => 
+            h.mod_name && h.mod_name.toLowerCase().trim() === normalizedName && h.status === 'success'
+        );
+        if (inHistory) return true;
+
+        // 2. Check installed mods via app.mods.mods
+        if (this._app && this._app.mods && this._app.mods.mods) {
+            const installedMods = this._app.mods.mods;
+            const modExists = installedMods.some(mod => {
+                const modNameLower = (mod.name || mod.mod_name || '').toLowerCase().trim();
+                return modNameLower === normalizedName;
+            });
+            if (modExists) return true;
+        }
+
+        // 3. Check active downloads for same mod (avoid duplicate active downloads)
+        const activeExists = Object.values(this.active_downloads).some(dl =>
+            dl.mod_name && dl.mod_name.toLowerCase().trim() === normalizedName
+        );
+        if (activeExists) return true;
+
+        // 4. Check by URL if provided
+        if (url) {
+            const urlInHistory = this.history.some(h => 
+                h.url === url && h.status === 'success'
+            );
+            if (urlInHistory) return true;
+
+            const urlInActive = Object.values(this.active_downloads).some(dl => dl.url === url);
+            if (urlInActive) return true;
+        }
+
+        // 5. Check by filename extracted from URL
+        if (url) {
+            try {
+                const urlObj = new URL(url);
+                const pathname = urlObj.pathname;
+                const filename = pathname.split('/').pop();
+                if (filename) {
+                    const filenameInHistory = this.history.some(h => {
+                        if (!h.url) return false;
+                        try {
+                            const hUrl = new URL(h.url);
+                            const hFilename = hUrl.pathname.split('/').pop();
+                            return hFilename === filename && h.status === 'success';
+                        } catch (e) {
+                            return false;
+                        }
+                    });
+                    if (filenameInHistory) return true;
+                }
+            } catch (e) {
+                // URL parsing failed, skip filename check
+            }
+        }
+
+        return false;
+    },
 
     /**
      * Format ETA in seconds to a readable string.
