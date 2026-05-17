@@ -1,6 +1,6 @@
 // STS2 Mod Manager - Embedded Extension for WebView2
 // Bundle of content.js for direct injection into Nexus Mods pages
-// Version: 4.0 - Modified for WebView2 Host Object communication
+// Version: 5.1 - Modified to always return to mod page on "返回首页"
 
 (function() {
   'use strict';

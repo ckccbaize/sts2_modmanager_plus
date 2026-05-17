@@ -115,4 +115,6 @@ mod_notes.json
 
 # Debug
 debug.log
-need/
+need/temp_save/*
+temp_save/
+reply.md

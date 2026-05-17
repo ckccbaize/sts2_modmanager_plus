@@ -71,6 +71,9 @@ class STS2App {
             this._onPageEnter(newTab, oldTab);
         });
 
+        // 4. Initialize store with version control
+        this._checkStorageVersion();
+
         // 5. Initialize notifications
         this.notifications = new STS2Notifications();
 
@@ -534,6 +537,21 @@ class STS2App {
     }
 
     // ── Mock data ──────────────────────────────────────────────
+
+    /**
+     * Check storage version and clear old data if version mismatch.
+     * This prevents stale localStorage data from causing issues after structural changes.
+     * @private
+     */
+    _checkStorageVersion() {
+        const STORAGE_VERSION = 1;
+        const currentVersion = this.store.get('storage_version', 0);
+        if (currentVersion !== STORAGE_VERSION) {
+            console.log(`[STS2App] Storage version mismatch (${currentVersion} -> ${STORAGE_VERSION}), clearing old data...`);
+            this.store.clear();
+            this.store.set('storage_version', STORAGE_VERSION);
+        }
+    }
 
     /**
      * Load mock/demo data into the store if it appears to be empty.

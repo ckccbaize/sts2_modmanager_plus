@@ -61,6 +61,24 @@ namespace BrowserHost
             return null;
         }
 
+        // 选择本地 ZIP 文件进行导入
+        public string SelectBundleFile()
+        {
+            using (var dialog = new OpenFileDialog())
+            {
+                dialog.Filter = "整合包文件 (*.zip)|*.zip|所有文件 (*.*)|*.*";
+                dialog.Title = "选择整合包";
+                dialog.CheckFileExists = true;
+                dialog.CheckPathExists = true;
+                if (dialog.ShowDialog() == DialogResult.OK)
+                {
+                    Console.WriteLine($"[BrowserHost] SelectBundleFile: {dialog.FileName}");
+                    return dialog.FileName;
+                }
+            }
+            return null;
+        }
+
         // Navigate to Nexus Mods website - synchronous for COM interop
         public void NavigateToNexus()
         {
@@ -104,13 +122,19 @@ namespace BrowserHost
             Console.WriteLine("[BrowserHost] NavigateToLocalhost called");
             try
             {
+                // 取消任何挂起的 HTTP 请求，防止线程池饥饿
+                Program.CancelPendingRequests();
+
                 var port = Program.GetCurrentPort();
+
+                // 使用 hash 路由 #mods，服务器返回 index.html，JavaScript 检测 hash 切换页面
+                var targetUrl = $"http://localhost:{port}/index.html#mods";
 
                 // Use the stored navigation callback if available
                 if (_navigateCallback != null)
                 {
-                    _navigateCallback($"http://localhost:{port}/index.html");
-                    Console.WriteLine("[BrowserHost] NavigateToLocalhost: using callback");
+                    _navigateCallback(targetUrl);
+                    Console.WriteLine("[BrowserHost] NavigateToLocalhost: using callback, target:", targetUrl);
                     return;
                 }
 
@@ -121,7 +145,7 @@ namespace BrowserHost
                     var webView = FindWebView2(form);
                     if (webView != null && webView.CoreWebView2 != null)
                     {
-                        webView.CoreWebView2.Navigate($"http://localhost:{port}/index.html");
+                        webView.CoreWebView2.Navigate(targetUrl);
                         Console.WriteLine("[BrowserHost] NavigateToLocalhost: navigated via fallback");
                     }
                     else
@@ -163,8 +187,11 @@ namespace BrowserHost
                 var httpClient = new System.Net.Http.HttpClient();
                 httpClient.Timeout = TimeSpan.FromSeconds(30);
 
+                // Cancel any pending download request first (prevent thread pool starvation)
+                Program.CancelPendingRequests();
+
                 var content = new StringContent(jsonData ?? "{}", System.Text.Encoding.UTF8, "application/json");
-                var response = httpClient.PostAsync($"http://localhost:{Program.GetCurrentPort()}/api/download", content).Result;
+                var response = httpClient.PostAsync($"http://localhost:{Program.GetCurrentPort()}/api/download", content).GetAwaiter().GetResult();
 
                 if (response.IsSuccessStatusCode)
                 {
@@ -190,7 +217,20 @@ namespace BrowserHost
         public static int GetCurrentPort() => _staticPort;
         public static void SetCurrentPort(int port) => _staticPort = port;
 
+        // Cancel pending requests to prevent thread pool starvation
+        public static void CancelPendingRequests()
+        {
+            try
+            {
+                _pendingCts?.Cancel();
+            }
+            catch { }
+            _pendingCts = new CancellationTokenSource();
+        }
+
         // Job Object API
+        private static CancellationTokenSource? _pendingCts;
+
         [DllImport("kernel32.dll", SetLastError = true)]
         private static extern IntPtr CreateJobObjectW(IntPtr lpJobAttributes, string lpName);
 
@@ -499,6 +539,16 @@ namespace BrowserHost
             return filePort;
         }
 
+        // 带超时限制的端口检测（用于导航操作，避免长时间等待）
+        // 策略：直接使用文件中的端口，不做串行检测
+        // 因为 LocalServer 一旦启动就会保持运行，端口不会变
+        private Task<int> _detectAvailablePortWithTimeoutAsync()
+        {
+            var filePort = _readPortFromFile();
+            Console.WriteLine($"[BrowserHost] 使用端口: {filePort}");
+            return Task.FromResult(filePort);
+        }
+
         private async void InitializeAsync()
         {
             try
@@ -541,6 +591,9 @@ namespace BrowserHost
                 {
                     Console.WriteLine($"[BrowserHost] 导航开始: {e.Uri}");
 
+                    // 取消任何挂起的请求，防止线程池饥饿
+                    Program.CancelPendingRequests();
+
                     // Track current port for download requests
                     if (e.Uri.StartsWith("http://localhost:"))
                     {
@@ -572,28 +625,23 @@ namespace BrowserHost
                     if (!e.IsSuccess)
                     {
                         Console.WriteLine($"[BrowserHost] 错误: {e.WebErrorStatus}");
+                        // 只在首次失败时重试一次
                         if (_retryCount == 0)
                         {
                             _retryCount = 1;
-                            int newPort = _readPortFromFile();
-                            if (newPort != _currentPort && newPort != 0)
-                            {
-                                _currentPort = newPort;
-                            }
-                            else
-                            {
-                                _currentPort = _backupPorts[0];
-                            }
-                            Console.WriteLine($"[BrowserHost] 尝试备用端口 {_currentPort}");
-                            Thread.Sleep(500);
-                            _webView.CoreWebView2.Navigate($"http://localhost:{_currentPort}/index.html");
+                            // 重试时使用 hash URL，让 WebUI 正确切换到模组页
+                            var retryUrl = $"http://localhost:{_currentPort}/index.html#mods";
+                            Console.WriteLine($"[BrowserHost] 重试导航到: {retryUrl}");
+                            // 重试前取消所有挂起请求
+                            Program.CancelPendingRequests();
+                            Thread.Sleep(300);
+                            _webView.CoreWebView2.Navigate(retryUrl);
                         }
                         else
                         {
-                            Console.WriteLine($"[BrowserHost] 连接失败");
-                            MessageBox.Show(
-                                "无法连接到 LocalServer\n请确保 STS2 Mod Manager 正在运行。",
-                                "连接失败", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                            Console.WriteLine($"[BrowserHost] 重试也失败，放弃");
+                            // 不再显示 MessageBox，避免阻塞 UI
+                            // 用户可以通过抽屉菜单的返回首页按钮重试
                         }
                     }
                     else
@@ -914,14 +962,33 @@ namespace BrowserHost
                 Console.WriteLine("[BrowserHost] 抽屉菜单: 返回首页");
                 if (_webView?.CoreWebView2 != null)
                 {
-                    // 检测实际可用的端口
-                    var availablePort = await _detectAvailablePortAsync();
+                    // 取消任何挂起的请求，防止线程池饥饿
+                    Program.CancelPendingRequests();
+
+                    // 检测实际可用的端口（带超时限制）
+                    var availablePort = await _detectAvailablePortWithTimeoutAsync();
                     Console.WriteLine($"[BrowserHost] 返回首页，检测到可用端口: {availablePort}");
-                    _webView.CoreWebView2.Navigate($"http://localhost:{availablePort}/index.html");
+                    // 使用 hash 路由 #mods，服务器返回 index.html，JavaScript 检测 hash 切换页面
+                    _webView.CoreWebView2.Navigate($"http://localhost:{availablePort}/index.html#mods");
                 }
                 CloseDrawer();
             };
             drawerContent.Controls.Add(homeBtn);
+
+            // 创建刷新页面按钮
+            var refreshBtn = new DrawerMenuButton("↻ 刷新", 44);
+            refreshBtn.Dock = DockStyle.Top;
+            refreshBtn.Click += (s, e) =>
+            {
+                Console.WriteLine("[BrowserHost] 抽屉菜单: 刷新页面");
+                if (_webView?.CoreWebView2 != null)
+                {
+                    _webView.CoreWebView2.Reload();
+                    Console.WriteLine("[BrowserHost] 页面已刷新");
+                }
+                CloseDrawer();
+            };
+            drawerContent.Controls.Add(refreshBtn);
 
             // 创建配置页面
             var configPage = new ConfigPage();

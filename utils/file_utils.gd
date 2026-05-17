@@ -139,6 +139,18 @@ static func to_windows_path(godot_path: String) -> String:
 	return godot_path.replace("/", "\\")
 
 
+# 规范化路径（统一使用反斜杠，处理混用斜杠的问题）
+static func normalize_path(path: String) -> String:
+	# 先把正斜杠替换为反斜杠
+	var normalized = path.replace("/", "\\")
+	# 处理连续的多个反斜杠（但保留 UNC 路径的 //）
+	normalized = normalized.replace("\\\\", "\\")
+	# 移除路径末尾的反斜杠（除非是驱动器根目录）
+	if normalized.length() > 3 and normalized.ends_with("\\"):
+		normalized = normalized.substr(0, normalized.length() - 1)
+	return normalized
+
+
 # 读取JSON文件
 static func read_json_file(path: String) -> Dictionary:
 	if not FileAccess.file_exists(path):

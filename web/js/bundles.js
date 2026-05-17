@@ -95,16 +95,18 @@ const STS2Bundles = {
 
     /** @private */
     _bindEvents() {
+        const self = this;
+
         // Import bundle button
         const importBtn = document.getElementById('btn-import-bundle');
         if (importBtn) {
-            importBtn.addEventListener('click', () => this.importBundle());
+            importBtn.addEventListener('click', () => self.importBundleFromLocal());
         }
 
         // Import by URL button
         const urlBtn = document.getElementById('btn-bundle-url');
         if (urlBtn) {
-            urlBtn.addEventListener('click', () => this.importBundleByUrl());
+            urlBtn.addEventListener('click', () => self.importBundleByUrl());
         }
 
         // Export bundle button
@@ -112,13 +114,13 @@ const STS2Bundles = {
         if (exportBtn) {
             exportBtn.addEventListener('click', () => {
                 // Export current enabled mods as new bundle
-                this.exportBundle();
+                self.exportBundle();
             });
         }
 
         // Re-render on language change
-        this._app.on('language-applied', () => {
-            if (this._initialized) this.updateBundlesUI();
+        self._app.on('language-applied', () => {
+            if (self._initialized) self.updateBundlesUI();
         });
     },
 
@@ -130,13 +132,15 @@ const STS2Bundles = {
         if (this._app && this._app.api && this._app.isBackendConnected()) {
             try {
                 const resp = await this._app.api.getBundles();
-                if (resp && resp.bundles) {
-                    this.bundles = resp.bundles;
+                // API 返回格式可能是 {bundles: [...]} 或 {data: {bundles: [...]}}
+                const bundlesData = resp?.data?.bundles || resp?.bundles;
+                if (bundlesData) {
+                    this.bundles = bundlesData;
                     // Save active_bundle from API response
-                    if (resp.active_bundle) {
-                        this.active_bundle = resp.active_bundle;
-                        this._app.store.set('active_bundle', resp.active_bundle);
-                        console.log('[STS2Bundles] Active bundle:', resp.active_bundle);
+                    const activeBundle = resp?.data?.active_bundle || resp?.active_bundle;
+                    if (activeBundle !== undefined) {
+                        this.active_bundle = activeBundle;
+                        this._app.store.set('active_bundle', activeBundle);
                     }
                     this._saveBundles();
                     return;
@@ -499,11 +503,11 @@ const STS2Bundles = {
                     if (activeBundle === currentBundleId && this._app.isBackendConnected && this._app.isBackendConnected()) {
                         try {
                             const result = await this._app.api.applyBundlePreset(currentBundleId, selectedPresetName);
-                            // 后端返回格式：{ success: true, message: "...", ... }（不是 { data: {...} }）
-                            if (result && result.success) {
+                            // Godot 返回格式: {code: 200, data: {success: true, message: "..."}}
+                            if (result && result.data && result.data.success) {
                                 this._app.notifications.show(this._app.i18n.translate_fmt('preset_applied', [selectedPresetName]), 'success');
                             } else {
-                                const msg = result?.message || 'Unknown error';
+                                const msg = result?.data?.message || result?.message || 'Unknown error';
                                 this._app.notifications.show(this._app.i18n.translate_fmt('preset_apply_failed', [msg]), 'warning');
                             }
                         } catch (e) {
@@ -777,43 +781,132 @@ const STS2Bundles = {
     },
 
     /**
-     * Import a bundle from a .zip file (simulated).
+     * Import a bundle from a .zip file via the backend API.
      */
     importBundle() {
         const input = document.createElement('input');
         input.type = 'file';
         input.accept = '.zip';
-        input.addEventListener('change', (e) => {
+        input.addEventListener('change', async (e) => {
             const file = e.target.files[0];
             if (!file) return;
 
             const t = (key) => this._app.i18n.translate(key);
 
-            // Simulate import: create a new bundle from file name
-            const newBundle = {
-                id: 'bundle-' + STS2Utils.generateId(),
-                name: file.name.replace(/\.zip$/i, ''),
-                version: 'v1.0.0',
-                author: 'Imported',
-                description: `${t('imported_from') !== 'imported_from' ? t('imported_from') : 'Imported from'}: ${file.name}`,
-                mod_names: ['STS2中文汉化补丁', '敌人血量显示'],
-                presets: { '默认': ['STS2中文汉化补丁', '敌人血量显示'] },
-                update_url: null,
-                created_date: new Date().toISOString()
-            };
+            if (this._app && this._app.api && this._app.isBackendConnected()) {
+                const reader = new FileReader();
+                reader.onload = async () => {
+                    try {
+                        const dataBase64 = reader.result.split(',')[1];
+                        const result = await this._app.api.importBundle(file.name, dataBase64);
 
-            this.bundles.push(newBundle);
-            this._saveBundles();
-
-            this._app.notifications.show(
-                `${t('bundle_imported') !== 'bundle_imported' ? t('bundle_imported') : 'Bundle imported'}: ${newBundle.name}`,
-                'success'
-            );
-
-            this.selected_bundle_id = newBundle.id;
-            this.updateBundlesUI();
+                        if (result && result.data && result.data.success) {
+                            this._app.notifications.show(
+                                `${t('bundle_imported') || '整合包已导入'}: ${result.data.bundle_name || file.name}`,
+                                'success'
+                            );
+                            await this.loadBundles();
+                            this.updateBundlesUI();
+                        } else if (result && result.data && result.data.error_type === 'missing_bundle_json') {
+                            this._app.notifications.show(
+                                `${t('bundle_import_failed') || '导入失败'}: ${file.name} ${t('not_valid_bundle') || '不是有效的整合包（缺少 bundle.json）'}`,
+                                'error', 5000
+                            );
+                        } else {
+                            this._app.notifications.show(
+                                `${t('bundle_import_failed') || '导入失败'}: ${file.name}`,
+                                'error', 5000
+                            );
+                        }
+                    } catch (e) {
+                        console.warn('[STS2Bundles] API importBundle failed:', e);
+                        this._app.notifications.show(
+                            `${t('bundle_import_failed') || '导入失败'}: ${e.message || '未知错误'}`,
+                            'error', 5000
+                        );
+                    }
+                };
+                reader.readAsDataURL(file);
+            } else {
+                this._app.notifications.show(
+                    t('backend_not_connected_bundle_import') || '后端未连接，无法导入整合包',
+                    'warning', 5000
+                );
+            }
         });
         input.click();
+    },
+
+    /**
+     * Import a bundle from local file via BrowserHost file dialog.
+     * Uses native Windows file dialog, no base64 encoding needed.
+     */
+    async importBundleFromLocal() {
+        const self = this;
+        // 安全获取翻译函数
+        const t = (key) => {
+            if (self._app?.i18n?.translate) {
+                return self._app.i18n.translate(key);
+            }
+            return key;  // fallback to key itself
+        };
+
+        if (!self._app || !self._app.api || !self._app.isBackendConnected()) {
+            self._app.notifications.show(
+                t('backend_not_connected_bundle_import') || '后端未连接，无法导入整合包',
+                'warning', 5000
+            );
+            return;
+        }
+
+        // Call BrowserHost file dialog
+        try {
+            const filePath = await window.chrome.webview.hostObjects.browserHost.SelectBundleFile();
+            if (!filePath) {
+                console.log('[STS2Bundles] Local import cancelled');
+                return;
+            }
+
+            console.log('[STS2Bundles] Local import file:', filePath);
+            self._app.notifications.show(
+                t('importing_bundle') || '正在导入整合包...',
+                'info', 2000
+            );
+
+            // Call Godot API with local file path
+            const result = await self._app.api.importBundleFromLocalPath(filePath);
+            console.log('[STS2Bundles] importBundleFromLocalPath result:', JSON.stringify(result));
+            // Handle both wrapped format {data: {...}} and flat format {...}
+            const success = result?.data?.success ?? result?.success;
+            const bundleName = result?.data?.bundle_name ?? result?.bundle_name;
+            const errorType = result?.data?.error_type ?? result?.error_type;
+            const message = result?.data?.message ?? result?.message;
+            console.log('[STS2Bundles] success:', success, 'bundleName:', bundleName);
+            if (result && success) {
+                self._app.notifications.show(
+                    `${t('bundle_imported') || '整合包已导入'}: ${bundleName || filePath.split(/[\\/]/).pop()}`,
+                    'success'
+                );
+                self.loadBundles().then(() => self.updateBundlesUI());
+            } else if (result && errorType === 'missing_bundle_json') {
+                self._app.notifications.show(
+                    `${t('bundle_import_failed') || '导入失败'}: ${t('not_valid_bundle') || '不是有效的整合包（缺少 bundle.json）'}`,
+                    'error', 5000
+                );
+            } else {
+                console.error('[STS2Bundles] importBundleFromLocalPath failed:', result);
+                self._app.notifications.show(
+                    `${t('bundle_import_failed') || '导入失败'}: ${message || '未知错误'}`,
+                    'error', 5000
+                );
+            }
+        } catch (e) {
+            console.error('[STS2Bundles] SelectBundleFile failed:', e);
+            self._app.notifications.show(
+                `${t('bundle_import_failed') || '导入失败'}: ${e.message || '文件选择失败'}`,
+                'error', 5000
+            );
+        }
     },
 
     /**
@@ -846,15 +939,16 @@ const STS2Bundles = {
                         console.log('[STS2Bundles] importBundle result:', result);
 
                         // \u68c0\u67e5\u540e\u7aef\u8fd4\u56de\u7684\u7ed3\u679c
-                        // \u6ce8\u610f\uff1a\u540e\u7aef\u53d1\u9001\u7684\u54cd\u5e94\u662f {success: true, ...}\uff0c\u4e0d\u662f {code: 200, data: {...}}
-                        if (result && result.success) {
+                        // Godot \u8fd4\u56de\u683c\u5f0f: {code: 200, data: {success: true, bundle_name: "..."}}
+                        // \u9519\u8bef\u683c\u5f0f: {code: 400, data: {success: false, error_type: "missing_bundle_json"}}
+                        if (result && result.data && result.data.success) {
                             this._app.notifications.show(
-                                `${t('bundle_imported') || '\u6574\u5408\u5305\u5df2\u5bfc\u5165'}: ${result.bundle_name || file.name}`,
+                                `${t('bundle_imported') || '\u6574\u5408\u5305\u5df2\u5bfc\u5165'}: ${result.data.bundle_name || file.name}`,
                                 'success'
                             );
                             await this.loadBundles();
                             this.updateBundlesUI();
-                        } else if (result && result.error_type === 'missing_bundle_json') {
+                        } else if (result && result.data && result.data.error_type === 'missing_bundle_json') {
                             // \u540e\u7aef\u68c0\u6d4b\u5230\u4e0d\u662f\u6709\u6548\u7684\u6574\u5408\u5305
                             this._app.notifications.show(
                                 `${t('bundle_import_failed') || '\u5bfc\u5165\u5931\u8d25'}: ${file.name} ${t('not_valid_bundle') || '\u4e0d\u662f\u6709\u6548\u7684\u6574\u5408\u5305\uff08\u7f3a\u5c11 bundle.json\uff09'}`,
@@ -976,17 +1070,18 @@ const STS2Bundles = {
                 // Use backend API to download and import bundle
                 const result = await this._app.api.importBundleFromUrl(url);
 
-                if (result && result.success) {
+                // Godot 返回格式: {code: 200, data: {success: true, bundle_name: "..."}}
+                if (result && result.data && result.data.success) {
                     close();
                     this._app.notifications.show(
-                        `${t('bundle_imported') || '整合包已导入'}: ${result.bundle_name || url.split('/').pop()}`,
+                        `${t('bundle_imported') || '整合包已导入'}: ${result.data.bundle_name || url.split('/').pop()}`,
                         'success'
                     );
                     // Reload bundles list
                     await this.loadBundles();
                     this.updateBundlesUI();
                 } else {
-                    throw new Error(result?.message || '下载失败');
+                    throw new Error(result?.data?.message || result?.message || '下载失败');
                 }
             } catch (e) {
                 console.warn('[STS2Bundles] URL import failed:', e);
@@ -1276,11 +1371,16 @@ const STS2Bundles = {
             if (this._app && this._app.api) {
                 try {
                     const result = await this._app.api.selectDirectory();
+                    // selectDirectory 返回格式: {success: true, path: "..."} (直接返回，不是 {data: {...}})
+                    console.log('[STS2Bundles] selectDirectory result:', result);
                     if (result && result.success && result.path) {
                         exportPath = result.path;
                         overlay.querySelector('#export-path').value = exportPath;
                         // 保存最后使用的路径
                         this._app.store.set('last_bundle_export_path', exportPath);
+                        console.log('[STS2Bundles] exportPath updated:', exportPath);
+                    } else {
+                        console.warn('[STS2Bundles] selectDirectory failed or canceled');
                     }
                 } catch (e) {
                     console.warn('[STS2Bundles] selectDirectory failed:', e);

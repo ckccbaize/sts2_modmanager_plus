@@ -14,6 +14,11 @@ const STS2Downloads = {
     _initialized: false,
     _backendPollTimer: null,  // interval handle for backend download polling
 
+    // ── Polling termination state ─────────────────────────────────
+    _lastPollData: null,      // 上次轮询的响应数据（用于比较）
+    _pollEmptyCount: 0,       // 连续空数据计数器
+    _POLL_EMPTY_THRESHOLD: 3, // 连续几次空数据后停止轮询
+
     // ── Lifecycle ─────────────────────────────────────────────────
 
     init(app) {
@@ -115,6 +120,13 @@ const STS2Downloads = {
      * @returns {string} download id
      */
     addDownload(mod_name, url = '', source = 'local') {
+        // 重置轮询终止计数器并恢复轮询（如果有新下载）
+        this._pollEmptyCount = 0;
+        this._lastPollData = null;
+        if (this._app && this._app.api && this._app.isBackendConnected() && !this._backendPollTimer) {
+            this._startBackendPolling();
+        }
+
         // Handle object form (from nexus module)
         if (typeof mod_name === 'object' && mod_name !== null) {
             const obj = mod_name;
@@ -517,9 +529,68 @@ const STS2Downloads = {
             }
             try {
                 const resp = await this._app.api.getDownloads();
-                // 支持两种返回格式：resp.downloads 和 resp.data.downloads
-                const apiDownloads = resp?.downloads || resp?.data?.downloads;
-                if (!apiDownloads || !Array.isArray(apiDownloads)) return;
+
+                // 解析LocalServer响应格式：支持多种返回格式
+                // 格式1: { downloads: [...] }
+                // 格式2: { data: { downloads: [...] } }
+                // 格式3: { data: { active: [], history: [] } } (LocalServer格式)
+                let apiDownloads = null;
+                let apiHistory = null;
+
+                // 添加调试日志
+                console.log('[STS2Downloads] Poll response:', resp);
+
+                if (resp?.data?.active !== undefined) {
+                    // LocalServer格式：data.active 和 data.history
+                    apiDownloads = resp.data.active;
+                    apiHistory = resp.data.history;
+                    console.log('[STS2Downloads] LocalServer format detected:', { active: apiDownloads?.length, history: apiHistory?.length });
+
+                    // 轮询终止逻辑：当 active.length === 0 且连续多次响应数据无变化时停止轮询
+                    const currentData = JSON.stringify(resp.data);
+                    if (apiDownloads.length === 0) {
+                        if (this._lastPollData === currentData) {
+                            this._pollEmptyCount++;
+                            console.log('[STS2Downloads] Empty poll count:', this._pollEmptyCount);
+                            if (this._pollEmptyCount >= this._POLL_EMPTY_THRESHOLD) {
+                                console.log('[STS2Downloads] Stopping backend polling after', this._POLL_EMPTY_THRESHOLD, 'consecutive empty polls');
+                                this._stopBackendPolling();
+                                return;
+                            }
+                        } else {
+                            this._pollEmptyCount = 0;
+                        }
+                    } else {
+                        this._pollEmptyCount = 0;
+                    }
+                    this._lastPollData = currentData;
+
+                } else if (resp?.downloads) {
+                    // 直接返回格式
+                    apiDownloads = resp.downloads;
+                    console.log('[STS2Downloads] Direct downloads format:', apiDownloads?.length);
+                } else if (resp?.data?.downloads) {
+                    // data.downloads 格式
+                    apiDownloads = resp.data.downloads;
+                    console.log('[STS2Downloads] Data.downloads format:', apiDownloads?.length);
+                } else if (resp?.active !== undefined || resp?.data?.active !== undefined) {
+                    // {active, history} 格式
+                    apiDownloads = resp.active !== undefined ? resp.active : resp.data?.active;
+                    const apiHistory = resp.history !== undefined ? resp.history : resp.data?.history;
+                    console.log('[STS2Downloads] Active/history format:', apiDownloads?.length, apiHistory?.length);
+                } else {
+                    console.warn('[STS2Downloads] Unknown response format:', resp);
+                }
+
+                // 同步历史记录（如果有的话）
+                if (apiHistory && Array.isArray(apiHistory) && apiHistory.length > 0) {
+                    this._mergeHistoryFromAPI(apiHistory);
+                }
+
+                if (!apiDownloads || !Array.isArray(apiDownloads)) {
+                    return;
+                }
+
                 const seenIds = new Set();
 
                 for (const apiDl of apiDownloads) {
@@ -670,6 +741,49 @@ const STS2Downloads = {
         }
 
         return false;
+    },
+
+    /**
+     * Merge history from API response into local history.
+     * Prevents duplicates and updates UI.
+     * @param {Array} apiHistory - History array from API response
+     * @private
+     */
+    _mergeHistoryFromAPI(apiHistory) {
+        if (!Array.isArray(apiHistory) || apiHistory.length === 0) return;
+
+        let historyUpdated = false;
+
+        for (const apiEntry of apiHistory) {
+            // 检查是否已存在
+            const exists = this.history.some(h =>
+                h.id === apiEntry.id ||
+                (h.mod_name === apiEntry.mod_name && h.date === apiEntry.end_time)
+            );
+
+            if (!exists) {
+                // 从API格式转换为本地格式
+                const entry = {
+                    id: apiEntry.id || `hist-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+                    mod_name: apiEntry.mod_name || 'Unknown',
+                    source: apiEntry.download_source || 'nexus',
+                    status: apiEntry.status === 'completed' ? 'success' : (apiEntry.status === 'failed' ? 'failed' : 'success'),
+                    date: apiEntry.end_time ? new Date(apiEntry.end_time * 1000).toISOString() : new Date().toISOString(),
+                    size: apiEntry.total_size || apiEntry.downloaded_size || 0,
+                    duration: apiEntry.start_time && apiEntry.end_time
+                        ? (apiEntry.end_time - apiEntry.start_time) * 1000
+                        : 0,
+                };
+
+                this.history.unshift(entry);
+                historyUpdated = true;
+            }
+        }
+
+        if (historyUpdated) {
+            this._saveHistory();
+            this.renderHistory();
+        }
     },
 
     /**

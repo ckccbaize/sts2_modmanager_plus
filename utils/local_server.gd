@@ -782,7 +782,7 @@ func _handle_saves_routes(method: String, path: String, headers: Dictionary, bod
 # ════════════════════════════════════════════════════════════════
 
 func _handle_bundles_routes(method: String, path: String, headers: Dictionary, body: String) -> Dictionary:
-	# print("[LocalServer] _handle_bundles_routes called: method=", method, ", path=", path)
+	print("[_handle_bundles_routes] method=", method, " path=", path)
 
 	# GET /api/bundles — 列出所有整合包
 	if path == "/api/bundles" and method == "GET":
@@ -794,6 +794,18 @@ func _handle_bundles_routes(method: String, path: String, headers: Dictionary, b
 		if data.is_empty():
 			return {"code": 400, "data": {"error": "Invalid JSON"}}
 		return _bridge_request("import_bundle", data)
+
+	# POST /api/bundles/import-local - 本地文件导入（直接读取本地文件，无 base64）
+	if path == "/api/bundles/import-local" and method == "POST":
+		print("[_handle_bundles_routes] import-local route matched! body=", body)
+		var data = _parse_body_json(body)
+		if data.is_empty():
+			return {"code": 400, "data": {"error": "Invalid JSON"}}
+		var file_path = data.get("file_path", "")
+		if file_path.is_empty():
+			return {"code": 400, "data": {"error": "Missing file_path"}}
+		print("[LocalServer] import_bundle_local: file_path=", file_path)
+		return _bridge_request("import_bundle_local", {"file_path": file_path})
 
 	# /api/bundles/{id}/... 路径解析
 	var bundle_id = _extract_path_id(path, "/api/bundles")

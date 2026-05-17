@@ -36,7 +36,7 @@ func submit(request_id: String, type: String, params: Dictionary = {}) -> void:
 
 ## 服务器线程调用：阻塞等待结果（带超时）
 ## 返回: {code: int, data: Dictionary}
-func wait_for_result(request_id: String, timeout_ms: int = 10000) -> Dictionary:
+func wait_for_result(request_id: String, timeout_ms: int = 30000) -> Dictionary:
 	var start_time = Time.get_ticks_msec()
 	while Time.get_ticks_msec() - start_time < timeout_ms:
 		_mutex.lock()
@@ -44,12 +44,21 @@ func wait_for_result(request_id: String, timeout_ms: int = 10000) -> Dictionary:
 			var result = _results[request_id]
 			_results.erase(request_id)
 			_mutex.unlock()
+			print("[ApiBridge] Request completed: ", request_id)
 			return result
 		_mutex.unlock()
 		OS.delay_usec(500)  # 0.5ms 间隔检查
 
-	# 超时
-	return {"code": 504, "data": {"error": "Request timed out"}}
+	# 超时 - 清理可能存在的过期请求
+	print("[ApiBridge] Request timed out: ", request_id, " after ", timeout_ms, "ms")
+	_mutex.lock()
+	if _results.has(request_id):
+		var result = _results[request_id]
+		_results.erase(request_id)
+		_mutex.unlock()
+		return result
+	_mutex.unlock()
+	return {"code": 504, "data": {"error": "Request timed out after " + str(timeout_ms) + "ms"}}
 
 ## 非阻塞查询结果（用于轮询）
 func poll_result(request_id: String) -> Dictionary:

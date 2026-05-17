@@ -23,6 +23,7 @@ class STS2Router {
 
     /**
      * Initialize the router: restore last tab from store, set up click handlers.
+     * Also checks URL for hash (#tab=) or query (?tab=) parameter to force a specific tab on load.
      */
     init() {
         // Wire up tab button click listeners
@@ -34,9 +35,24 @@ class STS2Router {
             });
         });
 
-        // Restore last tab from store, fall back to default
-        const saved = this._store ? this._store.get('current_tab', this._defaultTab) : this._defaultTab;
-        const target = this._tabs.includes(saved) ? saved : this._defaultTab;
+        // Check URL for hash (#mods) or query (?tab=mods) parameter to force a specific tab
+        // Hash takes priority (browser's native navigation won't change hash)
+        const hashTab = window.location.hash.replace('#', '');
+        const urlParams = new URLSearchParams(window.location.search);
+        const queryTab = urlParams.get('tab');
+
+        // Priority: hash > query > localStorage
+        let target;
+        if (hashTab && this._tabs.includes(hashTab)) {
+            target = hashTab;
+            console.log('[STS2Router] Using tab from hash:', target);
+        } else if (queryTab && this._tabs.includes(queryTab)) {
+            target = queryTab;
+            console.log('[STS2Router] Using tab from query:', target);
+        } else {
+            const saved = this._store ? this._store.get('current_tab', this._defaultTab) : this._defaultTab;
+            target = this._tabs.includes(saved) ? saved : this._defaultTab;
+        }
         this.navigateTo(target, false); // false = no animation on first load
     }
 

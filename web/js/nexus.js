@@ -52,12 +52,48 @@ window.STS2Nexus = {
             this._rendered = true;
         }
 
+        // 【关键修复】进入 N 网页面时，将标签重置为默认标签
+        // 这样即使在 N 网页面关闭管理器，重启后也会进入模组页
+        if (this._app?.mods) {
+            const defaultTag = this._app.mods._defaultTags?.[0] || '单人模组';
+            if (this._app.mods.current_tag !== defaultTag) {
+                console.log('[STS2Nexus] Resetting current_tag to:', defaultTag);
+                this._app.mods.current_tag = defaultTag;
+                this._app.mods.renderTagPresets();
+            }
+        }
+
         // Navigate to Nexus Mods via BrowserHost
         this._navigateToNexus();
     },
 
     /** Called when leaving the Nexus page. */
     onLeave() {
+        // 【关键修复】离开 N 网页面时，将标签重置为默认标签并保存
+        // 确保"返回首页"总是回到模组页，且状态已持久化
+        if (this._app?.mods) {
+            const defaultTag = this._app.mods._defaultTags?.[0] || '单人模组';
+            if (this._app.mods.current_tag !== defaultTag) {
+                console.log('[STS2Nexus] onLeave: Resetting current_tag to:', defaultTag);
+                this._app.mods.current_tag = defaultTag;
+                this._app.mods.renderTagPresets();
+
+                // 【关键】立即保存到后端，确保重启后也是正确的
+                if (this._app.api && this._app.isBackendConnected()) {
+                    try {
+                        // 保存当前标签的启用模组
+                        const currentEnabledMods = Object.keys(this._app.mods.enabled_mods).filter(id => this._app.mods.enabled_mods[id]);
+                        this._app.mods.tag_data[defaultTag] = currentEnabledMods;
+                        // 保存到后端
+                        this._app.api.saveTagData(this._app.mods.tag_data, defaultTag);
+                        console.log('[STS2Nexus] Saved default tag to backend:', defaultTag);
+                    } catch (e) {
+                        console.warn('[STS2Nexus] Failed to save tag data:', e);
+                    }
+                }
+            }
+        }
+
         // Navigate back to local Web UI via BrowserHost
         this._navigateToLocalhost();
     },

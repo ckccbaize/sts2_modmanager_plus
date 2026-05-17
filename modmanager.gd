@@ -3906,7 +3906,6 @@ func _apply_steam_theme() -> void:
 # ════════════════════════════════════════════════════════════════
 
 var webview_control: Control = null  # 内嵌浏览器控件
-var left_drawer: CanvasLayer = null  # 左侧抽屉导航
 var config_panel: CanvasLayer = null  # 配置面板
 
 ## 隐藏原版 UI，显示 WebView
@@ -3939,21 +3938,8 @@ func _hide_legacy_ui_and_show_webview() -> void:
 		footer.visible = false
 		print("[WebView] 已隐藏 Footer")
 
-	# 4. 创建左侧抽屉导航
-	_create_left_drawer()
-
-	# 5. 创建配置面板
+	# 4. 创建配置面板
 	_create_config_panel()
-
-func _create_left_drawer() -> void:
-	"""创建左侧抽屉导航"""
-	print("[LeftDrawer] 创建左侧抽屉导航...")
-	var drawer = preload("res://ui/left_drawer.gd").new()
-	drawer.name = "LeftDrawer"
-	add_child(drawer)
-	left_drawer = drawer
-	drawer.config_pressed.connect(_on_drawer_config_pressed)
-	print("[LeftDrawer] 左侧抽屉导航已创建")
 
 func _create_config_panel() -> void:
 	"""创建配置面板"""
@@ -3965,12 +3951,6 @@ func _create_config_panel() -> void:
 	panel.setup(local_server, update_checker, config)
 	panel.closed.connect(_on_config_panel_closed)
 	print("[ConfigPanel] 配置面板已创建")
-
-func _on_drawer_config_pressed() -> void:
-	"""抽屉中的配置按钮被点击"""
-	print("[LeftDrawer] 配置按钮被点击")
-	if config_panel:
-		config_panel.show_panel()
 
 func _on_config_panel_closed() -> void:
 	"""配置面板关闭"""
@@ -4013,6 +3993,7 @@ func _api_handle_request(type: String, params: Dictionary, request_id: String = 
 		"disable_bundle": return _api_disable_bundle(params)
 		"delete_bundle": return _api_delete_bundle(params)
 		"import_bundle": return _api_import_bundle(params)
+		"import_bundle_local": return _api_import_bundle_local(params)
 		"save_bundle": return _api_save_bundle(params)
 		"update_bundle_presets": return _api_update_bundle_presets(params)
 		"export_bundle": return _api_export_bundle(params)
@@ -18774,6 +18755,122 @@ func _api_import_bundle(params: Dictionary) -> Dictionary:
 	_load_bundles()
 
 	print("[_api_import_bundle] Bundle imported: ", bundle_name, " (", bundle_id, ")")
+	return {"code": 200, "data": {
+		"success": true,
+		"message": "Bundle imported",
+		"bundle_id": bundle_id,
+		"bundle_name": bundle_name
+	}}
+
+
+func _api_import_bundle_local(params: Dictionary) -> Dictionary:
+	var file_path: String = params.get("file_path", "")
+
+	if file_path.is_empty():
+		return {"code": 400, "data": {"success": false, "message": "No file path"}}
+
+	print("[_api_import_bundle_local] Reading local file: ", file_path)
+
+	# 直接读取本地 ZIP 文件
+	var temp_path = file_path  # 直接使用用户选择的文件路径
+
+	if not FileAccess.file_exists(temp_path):
+		return {"code": 400, "data": {"success": false, "message": "File not found: " + temp_path}}
+
+	# 获取文件名
+	var filename = temp_path.get_file()
+	if not filename.ends_with(".zip"):
+		filename += ".zip"
+
+	# 先解压到临时目录，检测 bundle.json 是否存在
+	var temp_extract_dir = get_base_path().path_join("temp_bundle_check_" + str(Time.get_unix_time_from_system()))
+	DirAccess.make_dir_recursive_absolute(temp_extract_dir)
+
+	var reader = ZIPReader.new()
+	if reader.open(temp_path) == OK:
+		var files = reader.get_files()
+		for f in files:
+			var file_data = reader.read_file(f)
+			var out_path = temp_extract_dir.path_join(f)
+			var out_dir = out_path.get_base_dir()
+			DirAccess.make_dir_recursive_absolute(out_dir)
+			var out_file = FileAccess.open(out_path, FileAccess.WRITE)
+			if out_file:
+				out_file.store_buffer(file_data)
+				out_file.close()
+		reader.close()
+
+	# 检测 bundle.json 是否存在（判断是否是有效的整合包）
+	var bundle_json_found = false
+	var bundle_id = ""
+	var bundle_name = ""
+
+	# 先检查根目录是否有 bundle.json
+	if FileAccess.file_exists(temp_extract_dir.path_join("bundle.json")):
+		bundle_json_found = true
+		bundle_id = "bundle_" + str(Time.get_unix_time_from_system())
+		var json_data = _load_json(temp_extract_dir.path_join("bundle.json"))
+		if not json_data.is_empty():
+			bundle_name = json_data.get("name", bundle_id)
+	else:
+		# 根目录没有，检查子目录
+		var dir = DirAccess.open(temp_extract_dir)
+		if dir:
+			dir.list_dir_begin()
+			var entry = dir.get_next()
+			while entry != "":
+				if dir.current_is_dir() and entry != "." and entry != "..":
+					var test_json = temp_extract_dir.path_join(entry).path_join("bundle.json")
+					if FileAccess.file_exists(test_json):
+						bundle_json_found = true
+						bundle_id = entry
+						var json_data = _load_json(test_json)
+						if not json_data.is_empty():
+							bundle_name = json_data.get("name", entry)
+						break
+				entry = dir.get_next()
+			dir.list_dir_end()
+
+	if not bundle_json_found:
+		_delete_directory_recursive(temp_extract_dir)
+		return {"code": 400, "data": {
+			"success": false,
+			"message": "不是有效的整合包：缺少 bundle.json 文件",
+			"error_type": "missing_bundle_json"
+		}}
+
+	# 是有效的整合包，正式解压到 pack_mods/
+	var dest_dir = _get_newpackage_dir().path_join(bundle_id)
+	DirAccess.make_dir_recursive_absolute(dest_dir)
+
+	# 复制文件
+	var temp_dir = DirAccess.open(temp_extract_dir)
+	if temp_dir:
+		temp_dir.list_dir_begin()
+		var entry = temp_dir.get_next()
+		while entry != "":
+			if entry != "." and entry != "..":
+				var src_path = temp_extract_dir.path_join(entry)
+				var dest_path = dest_dir.path_join(entry)
+				if temp_dir.current_is_dir():
+					DirAccess.make_dir_recursive_absolute(dest_path)
+					_copy_directory_recursive(src_path, dest_path)
+				else:
+					var file_data = FileAccess.get_file_as_bytes(src_path)
+					if file_data:
+						var out_file = FileAccess.open(dest_path, FileAccess.WRITE)
+						if out_file:
+							out_file.store_buffer(file_data)
+							out_file.close()
+			entry = temp_dir.get_next()
+		temp_dir.list_dir_end()
+
+	# 清理临时文件
+	_delete_directory_recursive(temp_extract_dir)
+
+	_load_bundles()
+
+	print("[_api_import_bundle_local] Bundle imported: ", bundle_name, " (", bundle_id, ")")
 	return {"code": 200, "data": {
 		"success": true,
 		"message": "Bundle imported",

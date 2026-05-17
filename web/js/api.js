@@ -50,6 +50,7 @@ class STS2API {
             }
             const text = await resp.text();
             console.log('[API] Response text length:', text.length, 'for', path);
+            console.log('[API] Response text preview:', text.substring(0, 200));
             if (!text || text.trim() === '') {
                 console.warn('[API] Empty response for', path);
                 return { data: {} };
@@ -247,8 +248,13 @@ class STS2API {
         return this._request('POST', '/api/bundles/import-from-url', { url });
     }
 
-    // ── Settings ────────────────────────────────────────────────
+    // ── Directory Selection ─────────────────────────────────────
 
+    /**
+     * Open native folder picker via BrowserHost C# Host Object.
+     * Shows proper Windows folder dialog via AddHostObjectToScript.
+     * @returns {Promise<{success: boolean, path?: string, message?: string}>}
+     */
     async getSettings() {
         return this._request('GET', '/api/settings');
     }
@@ -425,6 +431,41 @@ class STS2API {
 
             input.click();
         });
+    }
+/**
+     * Open Windows native file picker for bundle ZIP files via BrowserHost.
+     * Shows proper Windows OpenFileDialog for selecting .zip files.
+     * @returns {Promise<{success: boolean, path?: string, message?: string}>}
+     */
+    async selectBundleFile() {
+        console.log('[API] selectBundleFile called');
+        try {
+            if (window.chrome?.webview?.hostObjects) {
+                const filePath = await window.chrome.webview.hostObjects.browserHost.SelectBundleFile();
+                if (filePath && typeof filePath === 'string' && filePath.length > 0) {
+                    console.log('[API] Selected bundle file:', filePath);
+                    return { success: true, path: filePath };
+                }
+                return { success: false, message: 'User canceled or empty path' };
+            }
+            console.warn('[API] chrome.webview.hostObjects not available');
+            return { success: false, message: 'Host object not available' };
+        } catch (e) {
+            console.warn('[API] SelectBundleFile failed:', e);
+            return { success: false, message: String(e) };
+        }
+    }
+
+    // ── Bundle Import ───────────────────────────────────────────
+
+    /**
+     * Import bundle from a local file path (no base64 encoding).
+     * Uses Windows native file dialog result directly.
+     * @param {string} filePath - Absolute path to the ZIP file
+     * @returns {Promise<object>}
+     */
+    async importBundleFromLocalPath(filePath) {
+        return this._request('POST', '/api/bundles/import-local', { file_path: filePath });
     }
 }
 

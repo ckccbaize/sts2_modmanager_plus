@@ -1,0 +1,25 @@
+#!/bin/bash
+# Pre-commit hook to check for UTF-8 BOM in Godot scripts
+
+echo "Checking for UTF-8 BOM in .gd files..."
+
+ERRORS=0
+for file in $(git diff --cached --name-only | grep '\.gd$'); do
+    if [ -f "$file" ]; then
+        # Check first 3 bytes for BOM (EF BB BF)
+        BOM=$(head -c 3 "$file" | xxd -p)
+        if [ "$BOM" = "efbbbf" ]; then
+            echo "ERROR: $file has UTF-8 BOM (EF BB BF). Please remove it."
+            ERRORS=$((ERRORS + 1))
+        fi
+    fi
+done
+
+if [ $ERRORS -gt 0 ]; then
+    echo ""
+    echo "Fix BOM issues by running:"
+    echo "  powershell -Command \"[byte[]][System.IO.File]::ReadAllBytes('file') | Select-Object -Skip 3 | Set-Content -Encoding Byte\""
+    exit 1
+fi
+
+echo "BOM check passed."

@@ -1,2 +1,9 @@
 # Normalize EOL for all files that Git considers text files.
 * text=auto eol=lf
+
+# Godot scripts - force UTF-8 without BOM
+*.gd text eol=lf working-tree-encoding=UTF-8
+*.gdscript text eol=lf working-tree-encoding=UTF-8
+
+# TSCN files
+*.tscn text eol=lf working-tree-encoding=UTF-8

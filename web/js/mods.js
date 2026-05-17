@@ -382,21 +382,46 @@ const STS2Mods = {
         if (this._app && this._app.api && this._app.isBackendConnected()) {
             try {
                 const resp = await this._app.api.getMods();
-                if (resp.data && resp.data.mods) {
-                    this.mods = resp.data.mods;
+                // API 返回格式: {current_tag, enabled, mods, tag_data} 或 {data: {mods, ...}}
+                const modsData = resp?.data?.mods || resp?.mods;
+                const enabledData = resp?.data?.enabled || resp?.enabled;
+                const tagData = resp?.data?.tag_data || resp?.tag_data;
+                const currentTag = resp?.data?.current_tag || resp?.current_tag;
+
+                if (modsData) {
+                    this.mods = modsData;
                     this.enabled_mods = {};
-                    (resp.data.enabled || []).forEach(id => { this.enabled_mods[id] = true; });
+                    (enabledData || []).forEach(id => { this.enabled_mods[id] = true; });
 
                     // 从后端加载 tag_data 和 current_tag（优先级高于本地缓存）
-                    if (resp.data.tag_data) {
-                        this.tag_data = resp.data.tag_data;
+                    if (tagData) {
+                        this.tag_data = tagData;
+                        // 【关键修复】确保默认标签存在，防止后端数据缺少默认标签
+                        const defaultTags = ['单人模组', '联机模组'];
+                        for (const tag of defaultTags) {
+                            if (!this.tag_data.hasOwnProperty(tag)) {
+                                this.tag_data[tag] = [];
+                            }
+                        }
                         this._app.store.set('mod_tags', this.tag_data);
                         console.log('[STS2Mods] Loaded tag_data from API:', this.tag_data);
                     }
-                    if (resp.data.current_tag) {
-                        this.current_tag = resp.data.current_tag;
+                    if (currentTag) {
+                        const oldTag = this.current_tag;
+                        this.current_tag = currentTag;
+                        // 确保 current_tag 有效
+                        if (!this.tag_data.hasOwnProperty(this.current_tag)) {
+                            this.current_tag = this._defaultTags[0];
+                        }
                         this._app.store.set('current_tag', this.current_tag);
                         console.log('[STS2Mods] Loaded current_tag from API:', this.current_tag);
+
+                        // 【核心修复】如果加载到的标签与之前不同，或者是首次加载，
+                        // 确保 enabled_mods 状态与该标签的预设完全一致。
+                        // 这里我们直接同步 enabled_mods 为该标签定义的列表。
+                        const tagEnabled = this.tag_data[this.current_tag] || [];
+                        this.enabled_mods = {};
+                        tagEnabled.forEach(id => { this.enabled_mods[id] = true; });
                     }
 
                     this.applyFiltersAndSort();
@@ -803,24 +828,31 @@ const STS2Mods = {
             return;
         }
 
-        // 【关键修复】保存当前标签的启用模组到 tag_data（与原版 Godot 保持一致）
-        if (this.current_tag) {
-            const currentEnabledMods = Object.keys(this.enabled_mods).filter(id => this.enabled_mods[id]);
-            this.tag_data[this.current_tag] = currentEnabledMods;
-            console.log('[STS2Mods] Saved current tag mods:', this.current_tag, currentEnabledMods);
+        // 【关键修复】确保 current_tag 有效，防止 null 值覆盖正确预设
+        if (!this.current_tag || !this.tag_data.hasOwnProperty(this.current_tag)) {
+            this.current_tag = this._defaultTags[0];
+        }
 
-            // 保存到后端（持久化）
-            if (this._app && this._app.api && this._app.isBackendConnected()) {
-                try {
-                    await this._app.api.saveTagData(this.tag_data, this.current_tag);
-                    console.log('[STS2Mods] Tag data saved to backend');
-                } catch (e) {
-                    console.warn('[STS2Mods] Failed to save tag data:', e);
-                }
+        // 保存当前标签的启用模组到 tag_data（与原版 Godot 保持一致）
+        const savedTag = this.current_tag;
+        const currentEnabledMods = Object.keys(this.enabled_mods).filter(id => this.enabled_mods[id]);
+        this.tag_data[savedTag] = currentEnabledMods;
+        console.log('[STS2Mods] Saved current tag mods:', savedTag, currentEnabledMods);
+
+        // 保存到后端（持久化）
+        if (this._app && this._app.api && this._app.isBackendConnected()) {
+            try {
+                await this._app.api.saveTagData(this.tag_data, tagName);  // 传新标签，让后端更新 current_tag
+                console.log('[STS2Mods] Tag data saved to backend');
+            } catch (e) {
+                console.warn('[STS2Mods] Failed to save tag data:', e);
             }
         }
 
         this.current_tag = tagName;
+
+        // 【关键修复】切换标签后重新渲染标签按钮，确保高亮状态正确更新
+        this.renderTagPresets();
 
         // 获取新标签需要启用的模组列表
         const tagEnabled = this.tag_data[tagName] || [];
@@ -934,6 +966,17 @@ const STS2Mods = {
             this.current_tag = this._app.store.get('current_tag', this._defaultTags[0]);
         } else {
             this.tag_data = {};
+            this.current_tag = this._defaultTags[0];
+        }
+        // 【关键修复】确保默认标签存在，防止 current_tag 为 null 时覆盖正确预设
+        const defaultTags = ['单人模组', '联机模组'];
+        for (const tag of defaultTags) {
+            if (!this.tag_data.hasOwnProperty(tag)) {
+                this.tag_data[tag] = [];
+            }
+        }
+        // 确保 current_tag 不为 null 且有效
+        if (!this.current_tag || !this.tag_data.hasOwnProperty(this.current_tag)) {
             this.current_tag = this._defaultTags[0];
         }
     },
@@ -2145,6 +2188,10 @@ const STS2Mods = {
                 } else {
                     this.enabled_mods[mod_id] = true;
                 }
+                // Sync to current tag data
+                if (this.current_tag && this.tag_data) {
+                    this.tag_data[this.current_tag] = Object.keys(this.enabled_mods).filter(id => this.enabled_mods[id]);
+                }
             } catch (e) {
                 console.warn('[STS2Mods] API toggleMod failed:', e);
                 this._app.notifications.show('操作失败: ' + e.message, 'error');
@@ -2367,6 +2414,10 @@ const STS2Mods = {
                 } else {
                     this.enabled_mods[mod_id] = true;
                 }
+                // Sync to current tag data
+                if (this.current_tag && this.tag_data) {
+                    this.tag_data[this.current_tag] = Object.keys(this.enabled_mods).filter(id => this.enabled_mods[id]);
+                }
             } catch (e) {
                 console.warn('[STS2Mods] API toggleMod failed:', e);
                 this._app.notifications.show('操作失败: ' + e.message, 'error');
@@ -2431,6 +2482,10 @@ const STS2Mods = {
                 if (resp && (resp.success || resp.data?.success)) {
                     // API 调用成功，后端已保存配置
                     ids.forEach(id => { this.enabled_mods[id] = true; });
+          // Sync to current tag data
+          if (this.current_tag && this.tag_data) {
+              this.tag_data[this.current_tag] = Object.keys(this.enabled_mods).filter(id => this.enabled_mods[id]);
+          }
                 } else {
                     throw new Error(resp?.message || resp?.data?.message || '批量启用失败');
                 }
@@ -2442,6 +2497,10 @@ const STS2Mods = {
         } else {
             // 后端未连接时，仅更新本地状态
             ids.forEach(id => { this.enabled_mods[id] = true; });
+          // Sync to current tag data
+          if (this.current_tag && this.tag_data) {
+              this.tag_data[this.current_tag] = Object.keys(this.enabled_mods).filter(id => this.enabled_mods[id]);
+          }
         }
         this.updateStatusBar();
         this._exitBatchMode();
@@ -2473,6 +2532,10 @@ const STS2Mods = {
                 if (resp && (resp.success || resp.data?.success)) {
                     // API 调用成功，后端已保存配置
                     ids.forEach(id => { delete this.enabled_mods[id]; });
+          // Sync to current tag data
+          if (this.current_tag && this.tag_data) {
+              this.tag_data[this.current_tag] = Object.keys(this.enabled_mods).filter(id => this.enabled_mods[id]);
+          }
                 } else {
                     throw new Error(resp?.message || resp?.data?.message || '批量停用失败');
                 }
@@ -2484,6 +2547,10 @@ const STS2Mods = {
         } else {
             // 后端未连接时，仅更新本地状态
             ids.forEach(id => { delete this.enabled_mods[id]; });
+          // Sync to current tag data
+          if (this.current_tag && this.tag_data) {
+              this.tag_data[this.current_tag] = Object.keys(this.enabled_mods).filter(id => this.enabled_mods[id]);
+          }
         }
         this.updateStatusBar();
         this._exitBatchMode();
