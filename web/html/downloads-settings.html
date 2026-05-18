@@ -1,0 +1,153 @@
+<!-- downloads-settings.html - 下载器设置面板 -->
+<!-- Part of WebUI Downloads Settings -->
+
+<!-- 下载器设置面板 -->
+<div id="download-settings-panel" class="settings-panel" style="display: none;">
+    <div class="settings-header">
+        <h3><i class="icon">⚙</i> 下载器设置</h3>
+        <button class="btn-close" onclick="hideDownloadSettings()">✕</button>
+    </div>
+
+    <div class="settings-content">
+        <!-- 下载引擎选择 -->
+        <div class="settings-section">
+            <h4>下载引擎</h4>
+            <div class="engine-selector">
+                <label class="radio-option">
+                    <input type="radio" name="download-engine" value="aria2" id="engine-aria2" checked>
+                    <span class="radio-label">
+                        <strong>Aria2</strong>
+                        <small>多线程并行下载，支持断点续传</small>
+                    </span>
+                </label>
+                <label class="radio-option">
+                    <input type="radio" name="download-engine" value="builtin" id="engine-builtin">
+                    <span class="radio-label">
+                        <strong>内置下载器</strong>
+                        <small>简单可靠，适合小文件</small>
+                    </span>
+                </label>
+            </div>
+        </div>
+
+        <!-- 连接设置 -->
+        <div class="settings-section">
+            <h4>连接设置</h4>
+            <div class="settings-grid">
+                <div class="setting-item">
+                    <label for="max-connections">单文件最大连接数</label>
+                    <div class="input-with-unit">
+                        <input type="number" id="max-connections" min="1" max="64" value="16">
+                        <span class="unit">连接</span>
+                    </div>
+                    <small>每个文件使用的最大连接数 (1-64)</small>
+                </div>
+                <div class="setting-item">
+                    <label for="max-concurrent">全局最大并发</label>
+                    <div class="input-with-unit">
+                        <input type="number" id="max-concurrent" min="1" max="128" value="8">
+                        <span class="unit">任务</span>
+                    </div>
+                    <small>同时下载的文件数量 (1-128)</small>
+                </div>
+                <div class="setting-item">
+                    <label for="split-count">分段数</label>
+                    <div class="input-with-unit">
+                        <input type="number" id="split-count" min="1" max="32" value="16">
+                        <span class="unit">段</span>
+                    </div>
+                    <small>每个文件的分段下载数 (1-32)</small>
+                </div>
+            </div>
+        </div>
+
+        <!-- 速度限制 -->
+        <div class="settings-section">
+            <h4>速度限制</h4>
+            <div class="settings-grid">
+                <div class="setting-item">
+                    <label for="max-download-speed">最大下载速度</label>
+                    <div class="input-with-unit">
+                        <input type="number" id="max-download-speed" min="0" value="0">
+                        <select id="speed-unit-download">
+                            <option value="KB">KB/s</option>
+                            <option value="MB">MB/s</option>
+                        </select>
+                    </div>
+                    <small>0 = 无限制</small>
+                </div>
+                <div class="setting-item">
+                    <label for="max-upload-speed">最大上传速度</label>
+                    <div class="input-with-unit">
+                        <input type="number" id="max-upload-speed" min="0" value="0">
+                        <select id="speed-unit-upload">
+                            <option value="KB">KB/s</option>
+                            <option value="MB">MB/s</option>
+                        </select>
+                    </div>
+                    <small>0 = 无限制</small>
+                </div>
+            </div>
+        </div>
+
+        <!-- 重试设置 -->
+        <div class="settings-section">
+            <h4>重试设置</h4>
+            <div class="settings-grid">
+                <div class="setting-item">
+                    <label for="max-retry">最大重试次数</label>
+                    <div class="input-with-unit">
+                        <input type="number" id="max-retry" min="0" max="10" value="5">
+                        <span class="unit">次</span>
+                    </div>
+                    <small>下载失败时的最大重试次数</small>
+                </div>
+                <div class="setting-item">
+                    <label for="retry-delay">重试等待时间</label>
+                    <div class="input-with-unit">
+                        <input type="number" id="retry-delay" min="1" max="60" value="3">
+                        <span class="unit">秒</span>
+                    </div>
+                    <small>重试前的等待时间</small>
+                </div>
+            </div>
+            <div class="setting-item checkbox-item">
+                <label class="checkbox-label">
+                    <input type="checkbox" id="auto-resume" checked>
+                    <span>断线自动恢复</span>
+                </label>
+                <small>网络断开后自动重新连接并继续下载</small>
+            </div>
+        </div>
+
+        <!-- Aria2 状态 -->
+        <div class="settings-section aria2-status" id="aria2-status" style="display: none;">
+            <h4>Aria2 状态</h4>
+            <div class="status-info">
+                <span class="status-indicator active"></span>
+                <span>Aria2 运行中</span>
+            </div>
+            <div class="aria2-stats">
+                <span>活跃任务: <b id="aria2-active-count">0</b></span>
+                <span>总下载: <b id="aria2-total-speed">0 MB/s</b></span>
+            </div>
+        </div>
+
+        <!-- 保存按钮 -->
+        <div class="settings-actions">
+            <button class="btn btn-primary" onclick="saveDownloadSettings()">
+                保存设置
+            </button>
+            <button class="btn btn-secondary" onclick="resetDownloadSettings()">
+                恢复默认
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- 设置按钮（下载页面右上角） -->
+<div id="download-settings-btn" class="download-header-action" title="下载器设置" onclick="showDownloadSettings()">
+    <svg viewBox="0 0 24 24" width="20" height="20">
+        <path fill="currentColor" d="M19.14 12.94c.04-.31.06-.63.06-.94 0-.31-.02-.63-.06-.94l2.03-1.58c.18-.14.23-.41.12-.61l-1.92-3.32c-.12-.22-.37-.29-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54c-.04-.24-.24-.41-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.04.31-.06.63-.06.94s.02.63.06.94l-2.03 1.58c-.18.14-.23.41-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z"/>
+    </svg>
+</div>

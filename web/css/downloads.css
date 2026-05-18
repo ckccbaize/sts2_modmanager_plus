@@ -344,3 +344,341 @@
     color: var(--text-muted);
     max-width: 300px;
 }
+
+/* =========================================================================
+   DOWNLOAD SETTINGS PANEL
+   ========================================================================= */
+
+#download-settings-panel {
+    position: fixed;
+    top: 0;
+    right: 0;
+    width: 420px;
+    height: 100vh;
+    background-color: var(--bg-primary);
+    border-left: 1px solid var(--border);
+    z-index: 1000;
+    display: flex;
+    flex-direction: column;
+    box-shadow: -4px 0 20px rgba(0, 0, 0, 0.3);
+    animation: slideInRight 0.2s ease-out;
+}
+
+@keyframes slideInRight {
+    from { transform: translateX(100%); }
+    to { transform: translateX(0); }
+}
+
+.settings-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: var(--sp-md) var(--sp-lg);
+    border-bottom: 1px solid var(--border);
+    background-color: var(--bg-surface);
+}
+
+.settings-header h3 {
+    font-size: var(--font-md);
+    font-weight: var(--weight-semibold);
+    color: var(--text-primary);
+    display: flex;
+    align-items: center;
+    gap: var(--sp-sm);
+}
+
+.btn-close {
+    background: none;
+    border: none;
+    font-size: 18px;
+    color: var(--text-secondary);
+    cursor: pointer;
+    padding: var(--sp-xs);
+    border-radius: var(--radius-sm);
+    transition: all var(--transition-fast);
+}
+
+.btn-close:hover {
+    background-color: var(--bg-hover);
+    color: var(--text-primary);
+}
+
+.settings-content {
+    flex: 1;
+    overflow-y: auto;
+    padding: var(--sp-md) var(--sp-lg);
+}
+
+.settings-section {
+    margin-bottom: var(--sp-lg);
+    padding-bottom: var(--sp-md);
+    border-bottom: 1px solid var(--border);
+}
+
+.settings-section:last-of-type {
+    border-bottom: none;
+}
+
+.settings-section h4 {
+    font-size: var(--font-sm);
+    font-weight: var(--weight-semibold);
+    color: var(--text-primary);
+    margin-bottom: var(--sp-md);
+}
+
+/* Engine selector */
+.engine-selector {
+    display: flex;
+    flex-direction: column;
+    gap: var(--sp-sm);
+}
+
+.radio-option {
+    display: flex;
+    align-items: flex-start;
+    padding: var(--sp-md);
+    background-color: var(--bg-surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    cursor: pointer;
+    transition: all var(--transition-fast);
+}
+
+.radio-option:hover {
+    border-color: var(--accent);
+}
+
+.radio-option input[type="radio"] {
+    margin-right: var(--sp-sm);
+    margin-top: 3px;
+}
+
+.radio-label {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.radio-label strong {
+    font-size: var(--font-sm);
+    color: var(--text-primary);
+}
+
+.radio-label small {
+    font-size: var(--font-xs);
+    color: var(--text-muted);
+}
+
+/* Settings grid */
+.settings-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: var(--sp-md);
+}
+
+.setting-item {
+    display: flex;
+    flex-direction: column;
+    gap: var(--sp-xs);
+}
+
+.setting-item label {
+    font-size: var(--font-sm);
+    color: var(--text-secondary);
+}
+
+.input-with-unit {
+    display: flex;
+    align-items: center;
+    gap: var(--sp-xs);
+}
+
+.input-with-unit input {
+    flex: 1;
+    min-width: 0;
+    padding: var(--sp-sm);
+    background-color: var(--bg-surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    color: var(--text-primary);
+    font-size: var(--font-sm);
+}
+
+.input-with-unit input:focus {
+    outline: none;
+    border-color: var(--accent);
+}
+
+.input-with-unit select {
+    padding: var(--sp-sm);
+    background-color: var(--bg-surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    color: var(--text-primary);
+    font-size: var(--font-xs);
+    min-width: 70px;
+}
+
+.unit {
+    font-size: var(--font-xs);
+    color: var(--text-muted);
+    min-width: 40px;
+}
+
+.setting-item small {
+    font-size: var(--font-xs);
+    color: var(--text-muted);
+}
+
+/* Checkbox item */
+.checkbox-item {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: var(--sp-sm);
+    margin-top: var(--sp-sm);
+}
+
+.checkbox-label {
+    display: flex;
+    align-items: center;
+    gap: var(--sp-sm);
+    cursor: pointer;
+    font-size: var(--font-sm);
+    color: var(--text-primary);
+}
+
+.checkbox-label input[type="checkbox"] {
+    width: 16px;
+    height: 16px;
+    accent-color: var(--accent);
+}
+
+/* Aria2 status */
+.aria2-status {
+    background-color: var(--bg-surface);
+    border-radius: var(--radius-md);
+    padding: var(--sp-md);
+}
+
+.status-info {
+    display: flex;
+    align-items: center;
+    gap: var(--sp-sm);
+    margin-bottom: var(--sp-md);
+}
+
+.status-indicator {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background-color: var(--text-muted);
+}
+
+.status-indicator.active {
+    background-color: var(--success);
+    animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.5; }
+}
+
+.aria2-stats {
+    display: flex;
+    gap: var(--sp-lg);
+    font-size: var(--font-sm);
+    color: var(--text-secondary);
+}
+
+.aria2-stats b {
+    color: var(--accent);
+}
+
+/* Settings actions */
+.settings-actions {
+    display: flex;
+    gap: var(--sp-sm);
+    padding: var(--sp-md) 0;
+    margin-top: var(--sp-md);
+}
+
+.settings-actions .btn {
+    flex: 1;
+    padding: var(--sp-sm) var(--sp-md);
+    border-radius: var(--radius-md);
+    font-size: var(--font-sm);
+    font-weight: var(--weight-medium);
+    cursor: pointer;
+    transition: all var(--transition-fast);
+}
+
+.settings-actions .btn-primary {
+    background: linear-gradient(135deg, var(--accent-dark), var(--accent));
+    border: none;
+    color: white;
+}
+
+.settings-actions .btn-primary:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(102, 192, 249, 0.3);
+}
+
+.settings-actions .btn-secondary {
+    background-color: var(--bg-surface);
+    border: 1px solid var(--border);
+    color: var(--text-secondary);
+}
+
+.settings-actions .btn-secondary:hover {
+    border-color: var(--accent);
+    color: var(--text-primary);
+}
+
+/* Download header action button */
+.download-header-action {
+    position: absolute;
+    top: var(--sp-md);
+    right: var(--sp-md);
+    width: 36px;
+    height: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background-color: var(--bg-surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    cursor: pointer;
+    color: var(--text-secondary);
+    transition: all var(--transition-fast);
+}
+
+.download-header-action:hover {
+    border-color: var(--accent);
+    color: var(--accent);
+    background-color: var(--bg-hover);
+}
+
+/* Download stats bar */
+.download-stats-bar {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--sp-lg);
+    padding: var(--sp-sm) var(--sp-md);
+    background-color: var(--bg-surface);
+    border-radius: var(--radius-md);
+    font-size: var(--font-xs);
+    color: var(--text-secondary);
+}
+
+.download-stats-bar span {
+    display: flex;
+    align-items: center;
+    gap: var(--sp-xs);
+}
+
+.download-stats-bar b {
+    color: var(--accent);
+}
