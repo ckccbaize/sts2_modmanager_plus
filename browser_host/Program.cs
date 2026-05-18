@@ -25,6 +25,8 @@ namespace BrowserHost
     [ComVisible(true)]
     public class BrowserHostObject
     {
+        public Aria2Manager? aria2Manager { get; private set; }
+
         // 更新弹窗回调
         private Action<string, string, string, string>? _showUpdateDialogCallback;
         // 导航回调
@@ -649,6 +651,8 @@ namespace BrowserHost
                         Console.WriteLine($"[BrowserHost] 成功连接到端口 {_currentPort}");
                         // 创建 BrowserHostObject 并设置更新弹窗回调
                         var browserHostObj = new BrowserHostObject();
+                        browserHostObj.aria2Manager = new Aria2Manager();
+                        // aria2Manager.CleanupOrphanProcesses() will be called here if needed
                         browserHostObj.SetUpdateDialogCallback((currentVer, newVer, changelog, downloadUrl) =>
                         {
                             Console.WriteLine($"[BrowserHost] 显示更新弹窗: {currentVer} -> {newVer}");
