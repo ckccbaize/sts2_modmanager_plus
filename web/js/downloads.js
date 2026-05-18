@@ -648,7 +648,8 @@ const STS2Downloads = {
 
                     if (existing) {
                         // Merge real API data into existing entry (API takes priority)
-                        if (apiDl.progress !== undefined) existing.progress = apiDl.progress;
+                        // 注意：后端progress范围为0-100，前端使用0-1，需要进行归一化
+                        if (apiDl.progress !== undefined) existing.progress = this._normalizeProgress(apiDl.progress);
                         if (apiDl.speed !== undefined) existing.speed = apiDl.speed;
                         if (apiDl.status !== undefined) existing.status = apiDl.status;
                         if (apiDl.downloaded !== undefined) existing.downloaded = apiDl.downloaded;
@@ -692,7 +693,7 @@ const STS2Downloads = {
                             id: apiDl.id,
                             mod_name: apiDl.mod_name || 'Unknown',
                             url: apiDl.url || '',
-                            progress: apiDl.progress || 0,
+                            progress: this._normalizeProgress(apiDl.progress) || 0,
                             speed: apiDl.speed || 0,
                             status: apiDl.status || 'downloading',
                             started_at: apiDl.started_at || Date.now(),
@@ -849,6 +850,19 @@ const STS2Downloads = {
         this._saveHistory();
         this.renderHistory();
         console.log('[STS2Downloads] History replaced. New total:', this.history.length);
+    },
+
+    /**
+     * Normalize progress value from API (0-100 range) to frontend (0-1 range).
+     * If the value is already in 0-1 range (< 1.5), return as-is.
+     * @param {number} progress - Progress value from API
+     * @returns {number} Normalized progress in 0-1 range
+     * @private
+     */
+    _normalizeProgress(progress) {
+        if (progress === undefined || progress === null) return 0;
+        // API reports progress as 0-100; if > 1.5, assume it's 0-100 and divide
+        return progress > 1.5 ? progress / 100.0 : progress;
     },
 
     /**
