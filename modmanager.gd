@@ -4424,6 +4424,12 @@ func _api_restore_save(params: Dictionary) -> Dictionary:
 	print("[api_restore] Restoring from: ", backup_path)
 	print("[api_restore] Target: ", target_path)
 
+	# 调试：检查路径是否存在
+	if not DirAccess.dir_exists_absolute(backup_path):
+		push_error("[api_restore] Backup path does not exist: " + backup_path)
+	if not DirAccess.dir_exists_absolute(target_path):
+		push_warning("[api_restore] Target path may not exist: " + target_path)
+
 	var success = SaveUtils.restore_backup(backup_path, target_path)
 
 	if success:
@@ -4440,6 +4446,7 @@ func _get_latest_backup_path(steam_id: String, is_imported: bool) -> String:
 
 
 func _api_get_save_backups(params: Dictionary) -> Dictionary:
+	print("[_api_get_save_backups] START")
 	var save_id: String = params.get("save_id", "")
 	if save_id.is_empty():
 		return {"code": 400, "data": {"success": false, "message": "Missing save_id"}}
@@ -4450,9 +4457,12 @@ func _api_get_save_backups(params: Dictionary) -> Dictionary:
 
 	var is_imported: bool = save_info.get("is_imported", false)
 	var steam_id: String = save_info.get("steam_id", "")
+	print("[_api_get_save_backups] is_imported=", is_imported, " steam_id=", steam_id)
 
 	var all_backups = _get_all_backups_for_save(steam_id, is_imported)
+	print("[_api_get_save_backups] Got ", all_backups.size(), " backups")
 
+	# 跳过耗时的 size 计算，避免超时
 	var backups_data = []
 	for backup in all_backups:
 		backups_data.append({
@@ -4460,14 +4470,18 @@ func _api_get_save_backups(params: Dictionary) -> Dictionary:
 			"path": backup.get("path", ""),
 			"time": backup.get("time", ""),
 			"type": backup.get("type", "manual"),
-			"size": _get_folder_size(backup.get("path", ""))
+			"size": 0
 		})
 
+	print("[_api_get_save_backups] Returning ", backups_data.size(), " backups")
 	return {"code": 200, "data": {"success": true, "backups": backups_data}}
 
 
-# 计算文件夹大小
-func _get_folder_size(folder_path: String) -> int:
+# 计算文件夹大小（带安全限制防止卡死）
+func _get_folder_size(folder_path: String, depth: int = 0) -> int:
+	const MAX_DEPTH: int = 10  # 最大递归深度
+	if depth > MAX_DEPTH:
+		return 0
 	var total_size = 0
 	var dir = DirAccess.open(folder_path)
 	if dir == null:
@@ -4479,7 +4493,7 @@ func _get_folder_size(folder_path: String) -> int:
 		if file_name != "." and file_name != "..":
 			var file_path = folder_path.path_join(file_name)
 			if dir.current_is_dir():
-				total_size += _get_folder_size(file_path)
+				total_size += _get_folder_size(file_path, depth + 1)
 			else:
 				var file_obj = FileAccess.open(file_path, FileAccess.READ)
 				if file_obj:
@@ -15706,16 +15720,20 @@ func _on_restore_save_pressed() -> void:
 # 获取存档的所有备份
 func _get_all_backups_for_save(save_id: String, is_imported: bool) -> Array:
 	var backups = []
+	print("[_get_all_backups_for_save] START save_id=", save_id, " is_imported=", is_imported)
 
 	# 扫描用户配置的备份目录
 	if not backup_path.is_empty() and DirAccess.dir_exists_absolute(backup_path):
+		print("[_get_all_backups_for_save] Scanning backup_path: ", backup_path)
 		var found = _scan_backups_in_dir(backup_path, save_id, is_imported)
 		for b in found:
 			backups.append(b)
 
 	# 也扫描 Steam 账号目录下的 backups 文件夹
 	if not is_imported and not save_path.is_empty() and DirAccess.dir_exists_absolute(save_path):
+		print("[_get_all_backups_for_save] Scanning save_path: ", save_path)
 		var accounts = SaveUtils.get_all_steam_accounts(save_path)
+		print("[_get_all_backups_for_save] Found ", accounts.size(), " accounts")
 		for account in accounts:
 			if account["steam_id"] == save_id:
 				var account_backup_dir = account["path"].path_join("backups")
@@ -15726,6 +15744,8 @@ func _get_all_backups_for_save(save_id: String, is_imported: bool) -> Array:
 
 	# 按时间倒序排序（最新在前）
 	backups.sort_custom(func(a, b): return a["name"] > b["name"])
+	print("[_get_all_backups_for_save] END, total: ", backups.size())
+	return backups
 	return backups
 
 

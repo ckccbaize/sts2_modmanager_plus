@@ -415,11 +415,13 @@ const STS2Saves = {
             try {
                 const result = await this._app.api.exportSave(steamId, finalExportPath);
                 // Godot 返回格式: {code: 200, data: {success: true, export_path: "..."}}
-                if (result && result.data && result.data.success) {
+                // 处理两种响应格式：{data: {...}} 或直接 {...}
+                const responseData = result?.data || result;
+                if (responseData && responseData.success) {
                     close();
-                    this._app.notifications.show(`${t('export_success') || '导出成功'}: ${result.data.export_path}`, 'success');
+                    this._app.notifications.show(`${t('export_success') || '导出成功'}: ${responseData.export_path}`, 'success');
                 } else {
-                    throw new Error(result?.data?.message || result?.message || 'Export failed');
+                    throw new Error(responseData?.message || result?.message || 'Export failed');
                 }
             } catch (e) {
                 console.warn('[STS2Saves] Export failed:', e);
@@ -446,17 +448,18 @@ const STS2Saves = {
                 // 传入账号 steam_id，后端会备份整个账号目录（包含所有 profile 和 modded）
                 const result = await this._app.api.backupSave(steamId);
                 console.log('[STS2Saves] Backup API result:', JSON.stringify(result, null, 2));
-                // Godot 返回格式: {code: 200, data: {success: true, backup_path: '...'}}
-                if (result && result.data && result.data.success) {
-                    console.log('[STS2Saves] Backed up account:', steamId, '->', result.data.backup_path);
+                // 处理两种响应格式：{data: {...}} 或直接 {...}
+                const responseData = result?.data || result;
+                if (responseData && responseData.success) {
+                    console.log('[STS2Saves] Backed up account:', steamId, '->', responseData.backup_path);
                     this._app.notifications.show(
-                        `${t('backup_success') || 'Backup created'}: ${result.data.backup_path}`,
+                        `${t('backup_success') || 'Backup created'}: ${responseData.backup_path}`,
                         'success'
                     );
                 } else {
-                    console.warn('[STS2Saves] Backup failed for', steamId, ':', result?.data?.message || result?.message);
+                    console.warn('[STS2Saves] Backup failed for', steamId, ':', responseData?.message || result?.message);
                     this._app.notifications.show(
-                        `${t('backup_failed') || 'Backup failed'}: ${result?.data?.message || result?.message || ''}`,
+                        `${t('backup_failed') || 'Backup failed'}: ${responseData?.message || result?.message || ''}`,
                         'error'
                     );
                 }
@@ -491,14 +494,15 @@ const STS2Saves = {
                 console.log('[Saves] Calling getSaveBackups for:', steamId);
                 const result = await this._app.api.getSaveBackups(steamId);
                 console.log('[Saves] getSaveBackups result:', result);
-                // 后端返回格式: {code: 200, data: {success: true, backups: [...]}}
-                // 检查 result.data 中的 success 和 backups
-                if (result && result.data && result.data.success && result.data.backups && result.data.backups.length > 0) {
+                // 处理两种响应格式：{data: {...}} 或直接 {...}
+                const responseData = result?.data || result;
+                console.log('[Saves] responseData:', responseData);
+                if (responseData && responseData.success && responseData.backups && responseData.backups.length > 0) {
                     // 显示精美的恢复选择对话框
-                    this._showRestoreDialog(steamId, result.data.backups);
+                    this._showRestoreDialog(steamId, responseData.backups);
                 } else {
                     // 无备份或请求失败
-                    console.warn('[STS2Saves] getSaveBackups failed or no backups:', result);
+                    console.warn('[STS2Saves] getSaveBackups failed or no backups:', responseData);
                     this._app.notifications.show(t('no_backup_found') || 'No backups found', 'warning');
                 }
             } else {
@@ -691,33 +695,44 @@ const STS2Saves = {
                     // 执行恢复
                     const result = await this._app.api.restoreSave(steamId, selectedBackup.path);
                     console.log('[Saves] restore result:', result);
-                    // Godot 返回格式: {code: 200, data: {success: true, message: '...'}}
-                    if (result && result.data && result.data.success) {
+                    // 处理两种响应格式：{data: {...}} 或直接 {...}
+                    const responseData = result?.data || result;
+                    console.log('[Saves] responseData:', responseData);
+                    if (responseData && responseData.success) {
                         overlay.remove();
                         this._app.notifications.show(t('save_restored') || 'Save restored', 'success');
                         await this.loadSaves();
                         this.updateSavesUI();
 
-                        // 如果勾选了云同步，执行同步
+                        // 如果勾选了云同步，执行同步（独立处理，不影响主流程）
                         if (syncGse || syncSteam) {
                             let provider = '';
                             if (syncGse && syncSteam) provider = 'both';
                             else if (syncGse) provider = 'gse';
                             else if (syncSteam) provider = 'steam';
                             this._app.notifications.show(t('syncing') || '正在同步...', 'info');
-                            const syncResult = await this._app.api.syncCloud(provider, steamId);
-                            if (syncResult && syncResult.data && syncResult.data.success) {
-                                const syncedPaths = syncResult.data.synced_paths || [];
-                                const successCount = syncedPaths.filter(p => p.status === 'success').length;
-                                this._app.notifications.show(`成功同步到 ${successCount} 个云端位置`, 'success');
+                            try {
+                                const syncResult = await this._app.api.syncCloud(provider, steamId);
+                                const syncData = syncResult?.data || syncResult;
+                                if (syncData && syncData.success) {
+                                    const syncedPaths = syncData.synced_paths || [];
+                                    const successCount = syncedPaths.filter(p => p.status === 'success').length;
+                                    this._app.notifications.show(`成功同步到 ${successCount} 个云端位置`, 'success');
+                                } else {
+                                    console.warn('[Saves] sync failed:', syncData);
+                                    this._app.notifications.show(`云同步失败: ${syncData?.message || '未知错误'}`, 'warning');
+                                }
+                            } catch (syncErr) {
+                                console.warn('[Saves] sync error:', syncErr);
+                                this._app.notifications.show(`云同步失败: ${syncErr.message || '未知错误'}`, 'warning');
                             }
                         }
                     } else {
-                        throw new Error(result?.data?.message || result?.message || 'Restore failed');
+                        throw new Error(responseData?.message || result?.message || 'Restore failed');
                     }
                 } catch (err) {
                     console.warn('[STS2Saves] Restore failed:', err);
-                    this._app.notifications.show(t('restore_failed') || 'Restore failed', 'error');
+                    this._app.notifications.show(`${t('restore_failed') || 'Restore failed'}: ${err.message}`, 'error');
                     confirmBtn.disabled = false;
                     confirmBtn.textContent = t('confirm_restore') || '确认恢复';
                 }
@@ -1493,8 +1508,10 @@ const STS2Saves = {
                 // 调用后端导出 API，后端会弹出原生文件对话框
                 const result = await this._app.api.exportSave(id);
                 // Godot 返回格式: {code: 200, data: {success: true, export_path: '...'}}
-                if (result && result.data && result.data.success) {
-                    const finalPath = result.data.export_path || '';
+                // 处理两种响应格式：{data: {...}} 或直接 {...}
+                    const responseData = result?.data || result;
+                    if (responseData && responseData.success) {
+                    const finalPath = responseData.export_path || '';
                     console.log('[STS2Saves] Exported to:', finalPath);
                     this._app.notifications.show(
                         `${t('save_exported') !== 'save_exported' ? t('save_exported') : 'Save exported'}: ${save.name}.zip`,
@@ -1507,10 +1524,10 @@ const STS2Saves = {
                     );
                 } else {
                     // 用户取消了对话框选择
-                    if (result?.data?.message === 'User canceled') {
+                    if (responseData?.message === 'User canceled') {
                         return;
                     }
-                    throw new Error(result?.data?.message || result?.message || 'Export failed');
+                    throw new Error(responseData?.message || result?.message || 'Export failed');
                 }
                 return;
             } catch (err) {
@@ -1601,10 +1618,11 @@ const STS2Saves = {
         if (this._app && this._app.api && this._app.isBackendConnected()) {
             try {
                 const result = await this._app.api.backupSave(id);
-                // Godot 返回格式: {code: 200, data: {success: true, backup_path: '...'}}
-                if (result && result.data && result.data.success) {
-                    const backupPath = result.data.backup_path || '';
-                    console.log('[STS2Saves] Backed up to:', backupPath);
+                // 处理两种响应格式
+                const responseData = result?.data || result;
+                if (responseData && responseData.success) {
+                    const backupPath = responseData.backup_path || '';
+                    console.log('[Saves] Backed up to:', backupPath);
                     this._app.notifications.show(
                         `${t('backup_success') !== 'backup_success' ? t('backup_success') : 'Backup created successfully'}: ${save.name}`,
                         'success'
@@ -1613,11 +1631,11 @@ const STS2Saves = {
                     await this.loadSaves();
                     this.updateSavesUI();
                 } else {
-                    throw new Error(result?.data?.message || result?.message || 'Backup failed');
+                    throw new Error(responseData?.message || result?.message || 'Backup failed');
                 }
                 return;
             } catch (err) {
-                console.warn('[STS2Saves] API backupSave failed:', err);
+                console.warn('[Saves] API backupSave failed:', err);
                 this._app.notifications.show(t('backup_failed') || 'Backup failed', 'error');
             }
         }
@@ -1639,22 +1657,29 @@ const STS2Saves = {
 
         const t = (key) => this._app.i18n.translate(key);
 
+        // Use steam_id for API call (not full save id)
+        const steamId = save.steam_id || id;
+
         // Try backend API first - get list of backups
         if (this._app && this._app.api && this._app.isBackendConnected()) {
             try {
-                const result = await this._app.api.getSaveBackups(id);
-                // Godot 返回格式: {code: 200, data: {success: true, backups: [...]}}
-                if (result && result.data && result.data.success && result.data.backups && result.data.backups.length > 0) {
+                const result = await this._app.api.getSaveBackups(steamId);
+                console.log('[STS2Saves] getSaveBackups result:', result);
+                // 处理两种响应格式：{data: {...}} 或直接 {...}
+                const responseData = result?.data || result;
+                console.log('[STS2Saves] responseData:', responseData);
+                if (responseData && responseData.success && responseData.backups && responseData.backups.length > 0) {
                     // Show backup selection modal
-                    this._showRestoreBackupModal(id, save, result.data.backups);
+                    this._showRestoreBackupModal(id, save, responseData.backups);
                     return;
                 } else {
                     // No backups found
+                    console.log('[STS2Saves] No backups found, responseData:', responseData);
                     this._app.notifications.show(t('no_backup_found') || 'No backups found', 'warning');
                     return;
                 }
             } catch (err) {
-                console.warn('[STS2Saves] API getSaveBackups failed:', err);
+                console.warn('[Saves] API getSaveBackups failed:', err);
             }
         }
 
@@ -1819,7 +1844,9 @@ const STS2Saves = {
                     const result = await this._app.api.restoreSave(saveId, backups[selectedBackupIndex].path);
                     console.log('[Saves] restore result:', result);
                     // Godot 返回格式: {code: 200, data: {success: true, message: '...'}}
-                    if (result && result.data && result.data.success) {
+                    // 处理两种响应格式：{data: {...}} 或直接 {...}
+                    const responseData = result?.data || result;
+                    if (responseData && responseData.success) {
                         overlay.remove();
                         this._app.notifications.show(`${t('save_restored') !== 'save_restored' ? t('save_restored') : 'Save restored'}: ${save.name}`, 'success');
                         await this.loadSaves();
@@ -1831,19 +1858,28 @@ const STS2Saves = {
                             else if (syncGse) provider = 'gse';
                             else if (syncSteam) provider = 'steam';
                             this._app.notifications.show(t('syncing') || '正在同步...', 'info');
-                            const syncResult = await this._app.api.syncCloud(provider, saveId);
-                            if (syncResult && syncResult.success) {
-                                const syncedPaths = syncResult.synced_paths || [];
-                                const successCount = syncedPaths.filter(p => p.status === 'success').length;
-                                this._app.notifications.show(`成功同步到 ${successCount} 个云端位置`, 'success');
+                            try {
+                                const syncResult = await this._app.api.syncCloud(provider, saveId);
+                                const syncData = syncResult?.data || syncResult;
+                                if (syncData && syncData.success) {
+                                    const syncedPaths = syncData.synced_paths || [];
+                                    const successCount = syncedPaths.filter(p => p.status === 'success').length;
+                                    this._app.notifications.show(`成功同步到 ${successCount} 个云端位置`, 'success');
+                                } else {
+                                    console.warn('[Saves] sync failed:', syncData);
+                                    this._app.notifications.show(`云同步失败: ${syncData?.message || '未知错误'}`, 'warning');
+                                }
+                            } catch (syncErr) {
+                                console.warn('[Saves] sync error:', syncErr);
+                                this._app.notifications.show(`云同步失败: ${syncErr.message || '未知错误'}`, 'warning');
                             }
                         }
                     } else {
-                        throw new Error(result?.data?.message || result?.message || 'Restore failed');
+                        throw new Error(responseData?.message || result?.message || 'Restore failed');
                     }
                 } catch (err) {
                     console.warn('[STS2Saves] Restore failed:', err);
-                    this._app.notifications.show(t('restore_failed') || 'Restore failed', 'error');
+                    this._app.notifications.show(`${t('restore_failed') || 'Restore failed'}: ${err.message}`, 'error');
                     confirmBtn.disabled = false;
                     confirmBtn.textContent = t('confirm_restore') || '确认恢复';
                 }
@@ -2174,8 +2210,9 @@ const STS2Saves = {
 
                             const result = await this._app.api.overwriteSave(direction, targetAccount, createBackupNow, sourceSteamId, sourcePath);
                             console.log('[Saves] overwrite result:', result);
-                            // Godot 返回格式: {code: 200, data: {success: true, message: '...'}}
-                            if (result && result.data && result.data.success === true) {
+                            // 处理两种响应格式：{data: {...}} 或直接 {...}
+                            const responseData = result?.data || result;
+                            if (responseData && responseData.success === true) {
                                 close();
                                 this._app.notifications.show('存档覆盖成功', 'success');
                                 await this.loadSaves();
@@ -2189,15 +2226,16 @@ const STS2Saves = {
                                     else if (syncSteam) provider = 'steam';
                                     this._app.notifications.show(t('syncing') || '正在同步...', 'info');
                                     const syncResult = await this._app.api.syncCloud(provider, targetAccount);
-                                    if (syncResult && syncResult.data && syncResult.data.success) {
-                                        const syncedPaths = syncResult.data.synced_paths || [];
+                                    const syncData = syncResult?.data || syncResult;
+                                    if (syncData && syncData.success) {
+                                        const syncedPaths = syncData.synced_paths || [];
                                         const successCount = syncedPaths.filter(p => p.status === 'success').length;
                                         this._app.notifications.show(`成功同步到 ${successCount} 个云端位置`, 'success');
                                     }
                                 }
                             } else {
                                 console.warn('[Saves] overwrite failed, result:', result);
-                                throw new Error(String(result?.data?.message || result?.message || '操作失败'));
+                                throw new Error(String(responseData?.message || result?.message || '操作失败'));
                             }
                         } else {
                             close();
@@ -2315,12 +2353,14 @@ const STS2Saves = {
 
                     const result = await this._app.api.syncCloud(provider, accountId);
                     // Godot \u8fd4\u56de\u683c\u5f0f: {code: 200, data: {success: true, synced_paths: [...]}}
-                    if (result && result.data && result.data.success) {
-                        const syncedPaths = result.data.synced_paths || [];
+                    // 处理两种响应格式：{data: {...}} 或直接 {...}
+                    const responseData = result?.data || result;
+                    if (responseData && responseData.success) {
+                        const syncedPaths = responseData.synced_paths || [];
                         const successCount = syncedPaths.filter(p => p.status === 'success').length;
                         this._app.notifications.show(`\u6210\u529f\u540c\u6b65\u5230 ${successCount} \u4e2a\u4e91\u7aef\u4f4d\u7f6e`, 'success');
                     } else {
-                        throw new Error(result?.data?.message || result?.message || 'Sync failed');
+                        throw new Error(responseData?.message || result?.message || 'Sync failed');
                     }
                 } catch (e) {
                     console.warn('[STS2Saves] Cloud sync failed:', e);
@@ -2345,7 +2385,9 @@ const STS2Saves = {
             try {
                 const result = await this._app.api.deleteSave(id);
                 // Godot 返回格式: {code: 200, data: {success: true, message: '...'}}
-                if (result && result.data && result.data.success) {
+                // 处理两种响应格式：{data: {...}} 或直接 {...}
+                    const responseData = result?.data || result;
+                    if (responseData && responseData.success) {
                     // 后端删除成功
                     await this.loadSaves();
                     this.updateSavesUI();
@@ -2357,7 +2399,7 @@ const STS2Saves = {
                 } else {
                     // 后端删除失败
                     this._app.notifications.show(
-                        `${t('delete_failed') || 'Delete failed'}: ${result?.data?.message || result?.message || ''}`,
+                        `${t('delete_failed') || 'Delete failed'}: ${responseData?.message || result?.message || ''}`,
                         'error'
                     );
                     return;
