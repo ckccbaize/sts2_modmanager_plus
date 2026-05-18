@@ -30,6 +30,9 @@ const STS2Downloads = {
         // Request browser notification permission
         this._requestNotificationPermission();
 
+        // Sync history from backend immediately on init (before first render)
+        this._fetchBackendHistory();
+
         // Start backend polling when connected
         if (app.api && app.isBackendConnected()) {
             this._startBackendPolling();
@@ -38,6 +41,7 @@ const STS2Downloads = {
         // Listen for backend connection events to start polling when backend connects later
         app.on('backend-connected', () => {
             console.log('[STS2Downloads] Backend connected, starting polling');
+            this._fetchBackendHistory();
             this._startBackendPolling();
         });
 
@@ -114,6 +118,36 @@ const STS2Downloads = {
     /** @private */
     _saveHistory() {
         this._app.store.set('download_history', this.history);
+    },
+
+    /**
+     * Fetch history from backend API immediately (one-shot, no polling).
+     * Ensures download_history.json data is available on initial page load.
+     * @private
+     */
+    async _fetchBackendHistory() {
+        if (!this._app || !this._app.api || !this._app.isBackendConnected()) {
+            return;
+        }
+        try {
+            const resp = await this._app.api.getDownloads();
+            console.log('[STS2Downloads] Initial backend history fetch:', resp);
+
+            let apiHistory = null;
+            if (resp?.data?.history) {
+                apiHistory = resp.data.history;
+            } else if (resp?.history) {
+                apiHistory = resp.history;
+            } else if (resp?.data?.data?.history) {
+                apiHistory = resp.data.data.history;
+            }
+
+            if (apiHistory && Array.isArray(apiHistory)) {
+                this._mergeHistoryFromAPI(apiHistory);
+            }
+        } catch (e) {
+            console.warn('[STS2Downloads] Initial backend history fetch failed:', e);
+        }
     },
 
     // ── Download lifecycle ────────────────────────────────────────
@@ -582,7 +616,7 @@ const STS2Downloads = {
                 } else if (resp?.active !== undefined || resp?.data?.active !== undefined) {
                     // {active, history} 格式
                     apiDownloads = resp.active !== undefined ? resp.active : resp.data?.active;
-                    const apiHistory = resp.history !== undefined ? resp.history : resp.data?.history;
+                    apiHistory = resp.history !== undefined ? resp.history : resp.data?.history;
                     console.log('[STS2Downloads] Active/history format:', apiDownloads?.length, apiHistory?.length);
                 } else {
                     console.warn('[STS2Downloads] Unknown response format:', resp);
@@ -590,6 +624,7 @@ const STS2Downloads = {
 
                 // 同步历史记录（如果有的话）
                 if (apiHistory && Array.isArray(apiHistory) && apiHistory.length > 0) {
+                    console.log('[STS2Downloads] Merging', apiHistory.length, 'history entries from API');
                     this._mergeHistoryFromAPI(apiHistory);
                 }
 
@@ -761,24 +796,37 @@ const STS2Downloads = {
         let historyUpdated = false;
 
         for (const apiEntry of apiHistory) {
-            // 检查是否已存在
+            // 检查是否已存在（基于 id 或 mod_name + date 组合）
             const exists = this.history.some(h =>
                 h.id === apiEntry.id ||
-                (h.mod_name === apiEntry.mod_name && h.date === apiEntry.end_time)
+                (h.mod_name === apiEntry.mod_name && h.date === apiEntry.date)
             );
 
             if (!exists) {
                 // 从API格式转换为本地格式
+                // 后端返回: { id, mod_name, status, date (Unix timestamp), size, duration, source }
+                // 前端存储: { id, mod_name, status, date (ISO string), size, duration, source }
+                let entryDate;
+                if (apiEntry.date) {
+                    // date 是 Unix timestamp（秒），需要转换为毫秒
+                    const timestamp = typeof apiEntry.date === 'number' ? apiEntry.date : parseInt(apiEntry.date);
+                    entryDate = new Date(timestamp * 1000).toISOString();
+                } else {
+                    entryDate = new Date().toISOString();
+                }
+
+                // 处理 status：后端返回 "completed"，前端存储 "success"
+                let status = apiEntry.status || 'success';
+                if (status === 'completed') status = 'success';
+
                 const entry = {
                     id: apiEntry.id || `hist-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
                     mod_name: apiEntry.mod_name || 'Unknown',
-                    source: apiEntry.download_source || 'nexus',
-                    status: apiEntry.status === 'completed' ? 'success' : (apiEntry.status === 'failed' ? 'failed' : 'success'),
-                    date: apiEntry.end_time ? new Date(apiEntry.end_time * 1000).toISOString() : new Date().toISOString(),
-                    size: apiEntry.total_size || apiEntry.downloaded_size || 0,
-                    duration: apiEntry.start_time && apiEntry.end_time
-                        ? (apiEntry.end_time - apiEntry.start_time) * 1000
-                        : 0,
+                    source: apiEntry.source || apiEntry.download_source || 'nexus',
+                    status: status,
+                    date: entryDate,
+                    size: apiEntry.size || apiEntry.total_size || 0,
+                    duration: apiEntry.duration || 0,
                 };
 
                 this.history.unshift(entry);
