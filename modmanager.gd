@@ -7822,30 +7822,19 @@ func _show_windows_notification(title: String, message: String) -> void:
 	if OS.get_name() != "Windows":
 		return
 
-	# 使用 PowerShell 调用 Windows Toast 通知
+	# 使用 PowerShell 调用 Windows BalloonTip 通知（通过 System.Windows.Forms）
 	var ps_script = '''
-[Windows.UI.Notifications.ToastNotificationManager, Windows.UI.Notifications, ContentType = WindowsRuntime] | Out-Null
-[Windows.Data.Xml.Dom.XmlDocument, Windows.Data.Xml.Dom.XmlDocument, ContentType = WindowsRuntime] | Out-Null
-
-$template = @"
-<toast>
-    <visual>
-        <binding template="ToastGeneric">
-            <text>%s</text>
-            <text>%s</text>
-        </binding>
-    </visual>
-</toast>
-"@
-
-$xml = New-Object Windows.Data.Xml.Dom.XmlDocument
-$xml.LoadXml($template)
-$toast = [Windows.UI.Notifications.ToastNotification]::new($xml)
-[Windows.UI.Notifications.ToastNotificationManager]::CreateToastNotifier("SlayTheSpire2ModManager").Show($toast)
+Add-Type -AssemblyName System.Windows.Forms
+$notify = New-Object System.Windows.Forms.NotifyIcon
+$notify.Icon = [System.Drawing.SystemIcons]::Information
+$notify.Visible = $true
+$notify.ShowBalloonTip(5000, '%s', '%s', 'Info')
+Start-Sleep -Seconds 6
+$notify.Dispose()
 ''' % [title, message]
 
-	# 执行 PowerShell（不等待输出）
-	OS.execute("powershell", ["-ExecutionPolicy", "Bypass", "-Command", ps_script], [], true)
+	# 使用 start /B 后台运行，避免阻塞
+	OS.execute("powershell", ["-ExecutionPolicy", "Bypass", "-WindowStyle", "Hidden", "-Command", ps_script], [], true)
 
 
 func _show_download_success_notification(mod_name: String) -> void:
