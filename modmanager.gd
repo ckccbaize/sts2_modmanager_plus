@@ -4628,11 +4628,25 @@ func _api_sync_cloud(params: Dictionary) -> Dictionary:
 	if account_path.is_empty():
 		return {"code": 404, "data": {"success": false, "message": "Account not found"}}
 
-	# 云同步逻辑（简化版）
+	# 解析 provider 确定同步目标
+	var sync_gse: bool = false
+	var sync_steam: bool = false
+	match provider:
+		"gse":
+			sync_gse = true
+		"steam":
+			sync_steam = true
+		"both":
+			sync_gse = true
+			sync_steam = true
+
 	print("[API sync_cloud] Provider: ", provider, ", Account: ", account_path)
 
-	# 返回成功（实际实现需要集成具体云服务）
-	return {"code": 200, "data": {"success": true, "message": "Cloud sync initiated for " + provider}}
+	# 调用 SaveUtils 的云同步功能（与 _do_sync_to_cloud 相同的逻辑）
+	var sync_result = SaveUtils.sync_save_to_all_locations(account_path, steam_id, sync_steam, sync_gse, gse_cloud_path, steam_cloud_path)
+	print("[API sync_cloud] Result: ", sync_result)
+
+	return {"code": 200, "data": sync_result}
 
 
 func _apply_window_border_theme() -> void:
