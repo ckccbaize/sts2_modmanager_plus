@@ -146,7 +146,7 @@ namespace BrowserHost
             };
 
             var response = await SendRpcRequestAsync(request);
-            if (response != null && response.TryGetProperty("result", out var result))
+            if (response != null && response.Value.TryGetProperty("result", out var result))
             {
                 var gid = result.ToString();
                 _activeDownloads[gid] = new Aria2Download
@@ -238,7 +238,7 @@ namespace BrowserHost
             };
 
             var response = await SendRpcRequestAsync(request);
-            if (response != null && response.TryGetProperty("result", out var result))
+            if (response != null && response.Value.TryGetProperty("result", out var result))
             {
                 return ParseDownloadStatus(result);
             }
@@ -265,7 +265,7 @@ namespace BrowserHost
             var response = await SendRpcRequestAsync(request);
             var downloads = new List<Aria2Download>();
 
-            if (response != null && response.TryGetProperty("result", out var result) && result.ValueKind == JsonValueKind.Array)
+            if (response != null && response.Value.TryGetProperty("result", out var result) && result.ValueKind == JsonValueKind.Array)
             {
                 foreach (var item in result.EnumerateArray())
                 {
