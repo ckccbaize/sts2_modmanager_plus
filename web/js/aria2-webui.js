@@ -279,10 +279,30 @@ window.hideDownloadSettings = function() {
 };
 
 window.loadDownloadSettings = async function() {
-    // 加载当前设置
+    // 优先从 localStorage 加载（持久化）
+    const stored = localStorage.getItem('aria2-settings');
+    if (stored) {
+        try {
+            const options = JSON.parse(stored);
+            document.getElementById('max-connections').value = options['max-connection-per-server'] || 16;
+            document.getElementById('max-concurrent').value = options['max-concurrent-downloads'] || 8;
+            document.getElementById('split-count').value = options['split'] || 16;
+            const speedLimit = parseInt(options['max-download-limit'] || '0') / 1024;
+            document.getElementById('max-download-speed').value = speedLimit || 0;
+            document.getElementById('max-retry').value = options['max-tries'] || 5;
+            document.getElementById('retry-delay').value = options['retry-wait'] || 3;
+            document.getElementById('auto-resume').checked = options['auto-resume'] === 'true';
+            console.log('[DownloadSettings] Loaded from localStorage');
+            return;
+        } catch (e) {
+            console.warn('[DownloadSettings] Failed to parse stored settings:', e);
+        }
+    }
+
+    // 尝试从 Aria2 加载
     try {
         const options = await Aria2.getOptions();
-        if (options) {
+        if (options && Object.keys(options).length > 0) {
             document.getElementById('max-connections').value = options['max-connection-per-server'] || 16;
             document.getElementById('max-concurrent').value = options['max-concurrent-downloads'] || 8;
             document.getElementById('split-count').value = options['split'] || 16;
@@ -293,7 +313,7 @@ window.loadDownloadSettings = async function() {
             document.getElementById('auto-resume').checked = options['auto-resume'] === 'true';
         }
     } catch (e) {
-        console.log('[DownloadSettings] Failed to load settings:', e);
+        console.log('[DownloadSettings] Failed to load from Aria2:', e);
     }
 };
 
@@ -308,15 +328,24 @@ window.saveDownloadSettings = async function() {
         'auto-resume': document.getElementById('auto-resume').checked ? 'true' : 'false'
     };
 
-    try {
-        await Aria2.setOptions(settings);
-        window.hideDownloadSettings();
+    // 保存到 localStorage（持久化）
+    localStorage.setItem('aria2-settings', JSON.stringify(settings));
+    console.log('[DownloadSettings] Saved to localStorage:', settings);
 
-        // 显示成功通知
-        if (window.app?.notifications) {
-            window.app.notifications.show('下载器设置已保存', 'success');
-        }
+    try {
+        // 同时保存到 Aria2
+        await Aria2.setOptions(settings);
     } catch (e) {
+        console.warn('[DownloadSettings] Failed to save to Aria2:', e);
+    }
+
+    window.hideDownloadSettings();
+
+    // 显示成功通知
+    if (window.app?.notifications) {
+        window.app.notifications.show('下载器设置已保存', 'success');
+    }
+};
         console.error('[DownloadSettings] Failed to save:', e);
     }
 };
