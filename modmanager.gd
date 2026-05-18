@@ -4297,13 +4297,20 @@ func _api_export_save(params: Dictionary) -> Dictionary:
 	if save_id.is_empty():
 		return {"code": 400, "data": {"success": false, "message": "Missing save_id"}}
 
+	# 检查 save_path 配置
+	print("[api_export_save] save_path: ", save_path)
+	if save_path.is_empty():
+		return {"code": 500, "data": {"success": false, "message": "Save path not configured"}}
+
 	# 使用 _find_save_by_id() 直接查找存档数据
 	var save_data = _find_save_by_id(save_id)
+	print("[api_export_save] save_data: ", save_data)
 	if save_data.is_empty():
 		return {"code": 404, "data": {"success": false, "message": "Save not found"}}
 
 	# 复用原版 _on_export_save_pressed 的逻辑
 	var profile_path = save_data.get("path", "")
+	print("[api_export_save] profile_path: ", profile_path)
 	if profile_path.is_empty():
 		return {"code": 404, "data": {"success": false, "message": "Save path not found"}}
 
@@ -4313,6 +4320,12 @@ func _api_export_save(params: Dictionary) -> Dictionary:
 		account_path = account_path.get_base_dir()
 	if "/saves" in account_path:
 		account_path = account_path.get_base_dir()
+	print("[api_export_save] account_path: ", account_path)
+
+	# 检查账号目录是否存在
+	if not DirAccess.dir_exists_absolute(account_path):
+		print("[api_export_save] account_path not exists: ", account_path)
+		return {"code": 500, "data": {"success": false, "message": "Account path not exists: " + account_path}}
 
 	# 获取账号 ID 用于文件名
 	var steam_id = save_data.get("steam_id", "")
@@ -4331,8 +4344,11 @@ func _api_export_save(params: Dictionary) -> Dictionary:
 		DirAccess.make_dir_recursive_absolute(export_path)
 		final_export_path = export_path.path_join(steam_id + ".zip")
 
+	print("[api_export_save] final_export_path: ", final_export_path)
+
 	# 使用账号目录路径进行导出
 	var result = SaveUtils.export_save(account_path, final_export_path)
+	print("[api_export_save] result: ", result)
 	if result.get("success", false):
 		return {"code": 200, "data": {"success": true, "message": "Save exported", "export_path": final_export_path}}
 	return {"code": 500, "data": {"success": false, "message": result.get("message", "Export failed")}}
