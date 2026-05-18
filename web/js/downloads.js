@@ -655,12 +655,13 @@ const STS2Downloads = {
                         if (apiDl.mod_name !== undefined) existing.mod_name = apiDl.mod_name;
 
                         // Handle terminal states from API
-                        if (apiDl.status === 'complete' || apiDl.status === 'failed') {
+                        if (apiDl.status === 'complete' || apiDl.status === 'completed' || apiDl.status === 'failed') {
                             if (existing.timer_id) {
                                 clearInterval(existing.timer_id);
                                 existing.timer_id = null;
                             }
                             existing.speed = 0;
+                            existing.status = apiDl.status === 'failed' ? 'failed' : 'complete';
 
                             // Add to history if not already there
                             const histExists = this.history.some(h => h.id === apiDl.id);
@@ -668,12 +669,14 @@ const STS2Downloads = {
                                 this.history.unshift({
                                     id: apiDl.id,
                                     mod_name: apiDl.mod_name,
-                                    status: apiDl.status === 'complete' ? 'success' : 'failed',
+                                    status: (apiDl.status === 'complete' || apiDl.status === 'completed') ? 'success' : 'failed',
                                     date: new Date().toISOString(),
                                     size: apiDl.total_size || 0,
                                     duration: 0,
                                 });
                                 this._saveHistory();
+                                console.log('[STS2Downloads] Download completed:', apiDl.mod_name);
+                                this._app.notifications.show(`下载完成: ${apiDl.mod_name}`, 'success');
                             }
                         }
                     } else {
