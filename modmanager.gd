@@ -4004,6 +4004,9 @@ func _api_handle_request(type: String, params: Dictionary, request_id: String = 
 		"detect_game_path": return _api_detect_game_path(params)
 		"detect_save_path": return _api_detect_save_path(params)
 		"get_downloads": return _api_get_downloads(params)
+		"pause_download": return _api_pause_download(params)
+		"resume_download": return _api_resume_download(params)
+		"cancel_download": return _api_cancel_download(params)
 		"launch_game": return _api_launch_game(params)
 		_: return {"code": 404, "data": {"error": "Unknown request type: " + type}}
 
@@ -8802,6 +8805,9 @@ func _on_server_download_request(data: Dictionary) -> void:
 			show_notification(translate("nxm_link_needs_api_key"), false)
 			if local_server:
 				local_server.notify_download_complete(false, mod_name, "API Key required for NXM downloads")
+			# 标记任务为失败并从活跃任务中移除
+			if not download_id.is_empty():
+				_update_download_task_status(download_id, "failed", "NXM下载需要API Key")
 			return
 		return
 
@@ -8825,9 +8831,15 @@ func _on_server_download_request(data: Dictionary) -> void:
 				show_notification(translate("nxm_link_needs_api_key"), false)
 				if local_server:
 					local_server.notify_download_complete(false, mod_name, "API Key required for NXM downloads")
+				# 标记任务为失败并从活跃任务中移除
+				if not download_id.is_empty():
+					_update_download_task_status(download_id, "failed", "NXM下载需要API Key")
 			return
 		else:
 			show_notification(translate("cannot_parse_nxm_link"), false)
+			# 标记任务为失败
+			if not download_id.is_empty():
+				_update_download_task_status(download_id, "failed", "无法解析NXM链接")
 			return
 
 	# 如果没有任何 URL 信息，尝试使用 Nexus API（需要 API key）
@@ -19435,6 +19447,42 @@ func _format_download_history_for_api(history: Array) -> Array:
 			"source": item.get("download_source", "nexus"),
 		})
 	return result
+
+
+func _api_pause_download(params: Dictionary) -> Dictionary:
+	var download_id: String = params.get("download_id", "")
+	if download_id.is_empty():
+		return {"code": 400, "data": {"success": false, "message": "Missing download_id"}}
+
+	if not download_tasks.has(download_id):
+		return {"code": 404, "data": {"success": false, "message": "Download not found"}}
+
+	_pause_download(download_id)
+	return {"code": 200, "data": {"success": true, "message": "Download paused"}}
+
+
+func _api_resume_download(params: Dictionary) -> Dictionary:
+	var download_id: String = params.get("download_id", "")
+	if download_id.is_empty():
+		return {"code": 400, "data": {"success": false, "message": "Missing download_id"}}
+
+	if not download_tasks.has(download_id):
+		return {"code": 404, "data": {"success": false, "message": "Download not found"}}
+
+	_resume_download(download_id)
+	return {"code": 200, "data": {"success": true, "message": "Download resumed"}}
+
+
+func _api_cancel_download(params: Dictionary) -> Dictionary:
+	var download_id: String = params.get("download_id", "")
+	if download_id.is_empty():
+		return {"code": 400, "data": {"success": false, "message": "Missing download_id"}}
+
+	if not download_tasks.has(download_id):
+		return {"code": 404, "data": {"success": false, "message": "Download not found"}}
+
+	_on_download_cancel_pressed(download_id)
+	return {"code": 200, "data": {"success": true, "message": "Download cancelled"}}
 
 
 # ── 启动游戏 API ───────────────────────────────────────────────
