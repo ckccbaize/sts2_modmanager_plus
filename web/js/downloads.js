@@ -1,18 +1,19 @@
 /**
  * STS2Downloads - Download management module
  *
- * Manages active downloads (simulated) and download history.
- * Active downloads use setInterval-based progress simulation.
+ * Manages active downloads (via Aria2) and download history.
+ * Active downloads use Aria2 for real multi-threaded downloads.
  * History persists in localStorage.
  */
 const STS2Downloads = {
 
     // ── State ─────────────────────────────────────────────────────
-    active_downloads: {},  // { id: { id, mod_name, url, progress, speed, status, started_at, timer_id, total_size } }
+    active_downloads: {},  // { id: { id, mod_name, url, progress, speed, status, started_at, gid, timer_id, total_size } }
     history: [],           // [ { id, mod_name, status, date, size, duration } ]
     _app: null,
     _initialized: false,
     _backendPollTimer: null,  // interval handle for backend download polling
+    _aria2PollTimer: null,    // interval handle for Aria2 progress polling
 
     // ── Polling termination state ─────────────────────────────────
     _lastPollData: null,      // 上次轮询的响应数据（用于比较）
@@ -30,6 +31,9 @@ const STS2Downloads = {
         // Request browser notification permission
         this._requestNotificationPermission();
 
+        // Initialize Aria2
+        this._initAria2();
+
         // Sync history from backend immediately on init (before first render)
         this._fetchBackendHistory();
 
@@ -46,6 +50,187 @@ const STS2Downloads = {
         });
 
         console.log('[STS2Downloads] Initialized.');
+    },
+
+    /**
+     * Initialize Aria2 connection and register callbacks.
+     * @private
+     */
+    async _initAria2() {
+        try {
+            // 等待 Aria2 初始化
+            const initialized = await window.Aria2?.init();
+            if (initialized) {
+                console.log('[STS2Downloads] Aria2 initialized successfully');
+
+                // 注册进度回调
+                window.Aria2.on('progress', (data) => {
+                    this._onAria2Progress(data);
+                });
+
+                window.Aria2.on('complete', (data) => {
+                    this._onAria2Complete(data);
+                });
+
+                window.Aria2.on('error', (data) => {
+                    this._onAria2Error(data);
+                });
+
+                // 启动 Aria2 状态轮询
+                this._startAria2Polling();
+            } else {
+                console.log('[STS2Downloads] Aria2 not available, using simulated downloads');
+            }
+        } catch (e) {
+            console.warn('[STS2Downloads] Aria2 init failed:', e);
+        }
+    },
+
+    /**
+     * Start polling Aria2 for download status.
+     * @private
+     */
+    _startAria2Polling() {
+        this._stopAria2Polling();
+        this._aria2PollTimer = setInterval(async () => {
+            try {
+                const active = await window.Aria2?.getAllActive();
+                if (active && Array.isArray(active)) {
+                    for (const dl of active) {
+                        this._updateDownloadFromAria2(dl);
+                    }
+                }
+            } catch (e) {
+                // Ignore polling errors
+            }
+        }, 500); // 每 500ms 轮询一次
+    },
+
+    /**
+     * Stop Aria2 polling.
+     * @private
+     */
+    _stopAria2Polling() {
+        if (this._aria2PollTimer) {
+            clearInterval(this._aria2PollTimer);
+            this._aria2PollTimer = null;
+        }
+    },
+
+    /**
+     * Update download from Aria2 status.
+     * @param {object} aria2Dl - Aria2 download status
+     * @private
+     */
+    _updateDownloadFromAria2(aria2Dl) {
+        // 查找对应的下载（通过 GID 或其他标识）
+        for (const [id, dl] of Object.entries(this.active_downloads)) {
+            if (dl.gid === aria2Dl.gid) {
+                // 更新进度
+                if (aria2Dl.totalLength > 0) {
+                    dl.total_size = parseInt(aria2Dl.totalLength);
+                    dl.downloaded = parseInt(aria2Dl.completedLength);
+                    dl.progress = dl.total_size > 0 ? dl.downloaded / dl.total_size : 0;
+                }
+                dl.speed = parseInt(aria2Dl.downloadSpeed) || 0;
+                dl.status = aria2Dl.status === 'active' ? 'downloading' : aria2Dl.status;
+
+                this.renderActiveDownloads();
+                return;
+            }
+        }
+    },
+
+    /**
+     * Handle Aria2 progress event.
+     * @param {object} data
+     * @private
+     */
+    _onAria2Progress(data) {
+        console.log('[STS2Downloads] Aria2 progress:', data);
+        // 进度更新通过轮询处理
+    },
+
+    /**
+     * Handle Aria2 complete event.
+     * @param {object} data
+     * @private
+     */
+    _onAria2Complete(data) {
+        console.log('[STS2Downloads] Aria2 download complete:', data);
+        // 查找并标记完成
+        for (const [id, dl] of Object.entries(this.active_downloads)) {
+            if (dl.gid === data.gid) {
+                dl.status = 'complete';
+                dl.progress = 1;
+                dl.speed = 0;
+
+                // 添加到历史
+                this.history.unshift({
+                    id: dl.id,
+                    mod_name: dl.mod_name,
+                    source: dl.source || 'local',
+                    status: 'success',
+                    date: new Date().toISOString(),
+                    size: dl.total_size,
+                    duration: Date.now() - dl.started_at,
+                });
+                this._saveHistory();
+
+                this.renderActiveDownloads();
+                this.renderHistory();
+
+                const t = (key) => this._app.i18n.translate(key);
+                const completeMsg = t('download_complete') !== 'download_complete' ? t('download_complete') : 'Download complete';
+                this._app.notifications.show(`${completeMsg}: ${dl.mod_name}`, 'success');
+
+                // 通知 Godot 安装
+                this._notifyDownloadComplete(dl);
+                return;
+            }
+        }
+    },
+
+    /**
+     * Handle Aria2 error event.
+     * @param {object} data
+     * @private
+     */
+    _onAria2Error(data) {
+        console.log('[STS2Downloads] Aria2 download error:', data);
+        for (const [id, dl] of Object.entries(this.active_downloads)) {
+            if (dl.gid === data.gid) {
+                dl.status = 'failed';
+                dl.speed = 0;
+
+                this.history.unshift({
+                    id: dl.id,
+                    mod_name: dl.mod_name,
+                    status: 'failed',
+                    date: new Date().toISOString(),
+                    size: dl.downloaded,
+                    duration: Date.now() - dl.started_at,
+                });
+                this._saveHistory();
+
+                this.renderActiveDownloads();
+                this.renderHistory();
+                return;
+            }
+        }
+    },
+
+    /**
+     * Notify Godot that download is complete.
+     * @param {object} dl
+     * @private
+     */
+    _notifyDownloadComplete(dl) {
+        if (this._app?.api) {
+            this._app.api.notifyDownloadComplete(dl.id, dl.SavePath).catch(e => {
+                console.warn('[STS2Downloads] Notify complete failed:', e);
+            });
+        }
     },
 
     _requestNotificationPermission() {
@@ -158,13 +343,13 @@ const STS2Downloads = {
     // ── Download lifecycle ────────────────────────────────────────
 
     /**
-     * Start a new simulated download.
+     * Start a new download via Aria2.
      * @param {string|object} mod_name - mod name string, or a download object from nexus module
      * @param {string} [url]
      * @param {string} [source] - 'nexus', 'local', 'url', etc.
      * @returns {string} download id
      */
-    addDownload(mod_name, url = '', source = 'local') {
+    async addDownload(mod_name, url = '', source = 'local') {
         // 重置轮询终止计数器并恢复轮询（如果有新下载）
         this._pollEmptyCount = 0;
         this._lastPollData = null;
@@ -172,33 +357,19 @@ const STS2Downloads = {
             this._startBackendPolling();
         }
 
+        const id = 'dl-' + STS2Utils.generateId();
+        let totalSize = Math.floor(Math.random() * 150000000) + 10000000; // 10-160 MB default
+
         // Handle object form (from nexus module)
         if (typeof mod_name === 'object' && mod_name !== null) {
             const obj = mod_name;
-            const id = obj.id || 'dl-' + STS2Utils.generateId();
-            const dl = {
-                id: id,
-                mod_name: obj.name || obj.mod_name || 'Unknown',
-                url: obj.url || '',
-                source: obj.source || 'nexus',
-                progress: obj.progress || 0,
-                speed: obj.speed || 0,
-                status: obj.status || 'downloading',
-                started_at: obj.started_at || Date.now(),
-                total_size: obj.size || obj.total_size || Math.floor(Math.random() * 50 + 5) * 1024 * 1024,
-                downloaded: obj.downloaded || 0,
-                timer_id: null,
-            };
-            this.active_downloads[id] = dl;
-            this._simulateProgress(id);
-            this.renderActiveDownloads();
-            this._app.emit('download-started', { id, mod_name: dl.mod_name });
-            return id;
+            url = obj.url || url;
+            source = obj.source || 'nexus';
+            totalSize = obj.size || obj.total_size || totalSize;
+            mod_name = obj.name || obj.mod_name || 'Unknown';
         }
 
-        const id = 'dl-' + STS2Utils.generateId();
-        const totalSize = Math.floor(Math.random() * 150000000) + 10000000; // 10-160 MB
-
+        // 创建下载记录
         const dl = {
             id: id,
             mod_name: mod_name,
@@ -206,18 +377,40 @@ const STS2Downloads = {
             source: source,
             progress: 0,
             speed: 0,
-            status: 'downloading',  // downloading | paused | complete | failed
+            status: 'downloading',
             started_at: Date.now(),
             total_size: totalSize,
             downloaded: 0,
+            gid: null,  // Aria2 GID
             timer_id: null,
         };
 
         this.active_downloads[id] = dl;
+
+        // 尝试通过 Aria2 下载
+        if (window.Aria2?.isConnected() && url) {
+            try {
+                const gid = await window.Aria2.addDownload(url, '', {
+                    'split': '16',
+                    'max-connection-per-server': '16',
+                    'continue': 'true',
+                });
+
+                if (gid) {
+                    dl.gid = gid;
+                    console.log('[STS2Downloads] Aria2 download started:', gid);
+                    this.renderActiveDownloads();
+                    this._app.emit('download-started', { id, mod_name: dl.mod_name });
+                    return id;
+                }
+            } catch (e) {
+                console.warn('[STS2Downloads] Aria2 add failed, using simulation:', e);
+            }
+        }
+
+        // Aria2 不可用时使用模拟进度
         this._simulateProgress(id);
         this.renderActiveDownloads();
-
-        // Emit event
         this._app.emit('download-started', { id, mod_name });
 
         return id;
@@ -225,11 +418,20 @@ const STS2Downloads = {
 
     /**
      * Pause an active download.
-     * @param {string} id - download id (from backend, e.g., "download_2")
+     * @param {string} id - download id
      */
     async pauseDownload(id) {
         const dl = this.active_downloads[id];
         if (!dl || dl.status !== 'downloading') return;
+
+        // 如果有 GID，通过 Aria2 暂停
+        if (dl.gid && window.Aria2?.isConnected()) {
+            try {
+                await window.Aria2.pause(dl.gid);
+            } catch (e) {
+                console.warn('[STS2Downloads] Aria2 pause failed:', e);
+            }
+        }
 
         // 先更新本地状态
         dl.status = 'paused';
@@ -253,11 +455,20 @@ const STS2Downloads = {
 
     /**
      * Resume a paused download.
-     * @param {string} id - download id (from backend, e.g., "download_2")
+     * @param {string} id - download id
      */
     async resumeDownload(id) {
         const dl = this.active_downloads[id];
         if (!dl || dl.status !== 'paused') return;
+
+        // 如果有 GID，通过 Aria2 恢复
+        if (dl.gid && window.Aria2?.isConnected()) {
+            try {
+                await window.Aria2.resume(dl.gid);
+            } catch (e) {
+                console.warn('[STS2Downloads] Aria2 resume failed:', e);
+            }
+        }
 
         // 先更新本地状态
         dl.status = 'downloading';
@@ -282,6 +493,15 @@ const STS2Downloads = {
     async cancelDownload(id) {
         const dl = this.active_downloads[id];
         if (!dl) return;
+
+        // 如果有 GID，通过 Aria2 取消
+        if (dl.gid && window.Aria2?.isConnected()) {
+            try {
+                await window.Aria2.remove(dl.gid);
+            } catch (e) {
+                console.warn('[STS2Downloads] Aria2 remove failed:', e);
+            }
+        }
 
         if (dl.timer_id) {
             clearInterval(dl.timer_id);

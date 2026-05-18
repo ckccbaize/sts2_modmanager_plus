@@ -289,6 +289,13 @@ class STS2API {
         return this._request('DELETE', `/api/downloads/${encodeURIComponent(id)}`);
     }
 
+    async notifyDownloadComplete(id, filePath) {
+        return this._request('POST', '/api/downloads/notify-complete', {
+            id: id,
+            file_path: filePath
+        });
+    }
+
     // ── Launch ──────────────────────────────────────────────────
 
     async launchGame(mode) {

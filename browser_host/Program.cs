@@ -25,7 +25,7 @@ namespace BrowserHost
     [ComVisible(true)]
     public class BrowserHostObject
     {
-        public Aria2Manager? aria2Manager { get; private set; }
+        public Aria2Manager? aria2Manager { get; set; }
 
         // 更新弹窗回调
         private Action<string, string, string, string>? _showUpdateDialogCallback;
