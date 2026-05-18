@@ -793,61 +793,38 @@ const STS2Downloads = {
     _mergeHistoryFromAPI(apiHistory) {
         if (!Array.isArray(apiHistory) || apiHistory.length === 0) return;
 
-        let historyUpdated = false;
+        console.log('[STS2Downloads] Current local history count:', this.history.length);
 
-        for (const apiEntry of apiHistory) {
-            // 检查是否已存在（基于 id 或 mod_name + date 组合）
-            // 注意：apiEntry.date 是 Unix timestamp（秒），this.history 中的 date 是 ISO string
-            const exists = this.history.some(h => {
-                // ID 匹配
-                if (h.id && apiEntry.id && h.id === apiEntry.id) return true;
-                // mod_name 匹配且日期接近（同分钟内）
-                if (h.mod_name === apiEntry.mod_name) {
-                    const hDate = new Date(h.date).getTime();
-                    const apiDate = (apiEntry.date || 0) * 1000;
-                    if (Math.abs(hDate - apiDate) < 60000) return true;
-                }
-                return false;
-            });
-
-            if (!exists) {
-                // 从API格式转换为本地格式
-                // 后端返回: { id, mod_name, status, date (Unix timestamp), size, duration, source }
-                // 前端存储: { id, mod_name, status, date (ISO string), size, duration, source }
-                let entryDate;
-                if (apiEntry.date) {
-                    // date 是 Unix timestamp（秒），需要转换为毫秒
-                    const timestamp = typeof apiEntry.date === 'number' ? apiEntry.date : parseInt(apiEntry.date);
-                    entryDate = new Date(timestamp * 1000).toISOString();
-                } else {
-                    entryDate = new Date().toISOString();
-                }
-
-                // 处理 status：后端返回 "completed"，前端存储 "success"
-                let status = apiEntry.status || 'success';
-                if (status === 'completed') status = 'success';
-
-                const entry = {
-                    id: apiEntry.id || `hist-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-                    mod_name: apiEntry.mod_name || 'Unknown',
-                    source: apiEntry.source || apiEntry.download_source || 'nexus',
-                    status: status,
-                    date: entryDate,
-                    size: apiEntry.size || apiEntry.total_size || 0,
-                    duration: apiEntry.duration || 0,
-                };
-
-                this.history.unshift(entry);
-                historyUpdated = true;
-                console.log('[STS2Downloads] Added history entry:', entry.mod_name);
+        // 简化：直接用后端数据替换本地历史（后端是真实来源）
+        // 转换格式：Unix timestamp -> ISO string, status: completed -> success
+        const convertedHistory = apiHistory.map(apiEntry => {
+            let entryDate;
+            if (apiEntry.date) {
+                const timestamp = typeof apiEntry.date === 'number' ? apiEntry.date : parseInt(apiEntry.date);
+                entryDate = new Date(timestamp * 1000).toISOString();
+            } else {
+                entryDate = new Date().toISOString();
             }
-        }
 
-        if (historyUpdated) {
-            this._saveHistory();
-            this.renderHistory();
-            console.log('[STS2Downloads] History updated, total entries:', this.history.length);
-        }
+            let status = apiEntry.status || 'success';
+            if (status === 'completed') status = 'success';
+
+            return {
+                id: apiEntry.id || `hist-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+                mod_name: apiEntry.mod_name || 'Unknown',
+                source: apiEntry.source || apiEntry.download_source || 'nexus',
+                status: status,
+                date: entryDate,
+                size: apiEntry.size || apiEntry.total_size || 0,
+                duration: apiEntry.duration || 0,
+            };
+        });
+
+        // 直接用后端数据
+        this.history = convertedHistory;
+        this._saveHistory();
+        this.renderHistory();
+        console.log('[STS2Downloads] History replaced with API data, total:', this.history.length);
     },
 
     /**
