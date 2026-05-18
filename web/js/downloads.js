@@ -448,7 +448,7 @@ const STS2Downloads = {
             el.className = `download-item ${dl.status}`;
             el.dataset.downloadId = id;
 
-            const pct = isFinite(dl.progress) ? Math.floor(dl.progress * 100) : 0;
+            const pct = isFinite(dl.progress) ? Math.min(100, Math.floor(dl.progress * 100)) : 0;
             const speedStr = dl.status === 'downloading' && dl.speed > 0 ? STS2Utils.formatSize(Math.floor(dl.speed)) + '/s' : '';
             const etaStr = dl.status === 'downloading' && dl.speed > 0 && dl.total_size > dl.downloaded
                 ? this._formatETA((dl.total_size - dl.downloaded) / dl.speed)
