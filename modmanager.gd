@@ -19396,7 +19396,18 @@ func _api_get_downloads(_params: Dictionary) -> Dictionary:
 			"downloaded": task.get("downloaded", 0),
 		})
 
-	return {"code": 200, "data": {"active": active, "history": download_history}}
+	return {"code": 200, "data": {
+		"active": active,
+		"history": download_history.map(func(item): return {
+			"id": item.get("download_id", item.get("id", "")),
+			"mod_name": item.get("mod_name", ""),
+			"status": "completed" if item.get("status") == "completed" else ("failed" if item.get("status") == "failed" else "success"),
+			"date": item.get("end_time", 0) as int > 0 ? item.get("end_time") : int(Time.get_unix_time_from_system()),
+			"size": item.get("downloaded_size", item.get("total_size", 0)),
+			"duration": item.get("end_time", 0) as int > 0 and item.get("start_time", 0) as int > 0 ? int((item.get("end_time", 0) as int - item.get("start_time", 0) as int) * 1000) : 0,
+			"source": item.get("download_source", "nexus"),
+		})
+	}}
 
 
 # ── 启动游戏 API ───────────────────────────────────────────────

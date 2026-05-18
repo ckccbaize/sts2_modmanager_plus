@@ -35,6 +35,12 @@ const STS2Downloads = {
             this._startBackendPolling();
         }
 
+        // Listen for backend connection events to start polling when backend connects later
+        app.on('backend-connected', () => {
+            console.log('[STS2Downloads] Backend connected, starting polling');
+            this._startBackendPolling();
+        });
+
         console.log('[STS2Downloads] Initialized.');
     },
 
