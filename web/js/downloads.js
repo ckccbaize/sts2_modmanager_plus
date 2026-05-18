@@ -225,7 +225,7 @@ const STS2Downloads = {
 
     /**
      * Pause an active download.
-     * @param {string} id
+     * @param {string} id - download id (from backend, e.g., "download_2")
      */
     async pauseDownload(id) {
         const dl = this.active_downloads[id];
@@ -242,8 +242,8 @@ const STS2Downloads = {
 
         // 调用后端 API
         try {
-            await this._app.api.pauseDownload(id);
-            console.log('[STS2Downloads] Download paused on backend:', id);
+            const result = await this._app.api.pauseDownload(id);
+            console.log('[STS2Downloads] Download paused on backend:', id, result);
         } catch (e) {
             console.error('[STS2Downloads] Failed to pause download on backend:', e);
         }
@@ -253,7 +253,7 @@ const STS2Downloads = {
 
     /**
      * Resume a paused download.
-     * @param {string} id
+     * @param {string} id - download id (from backend, e.g., "download_2")
      */
     async resumeDownload(id) {
         const dl = this.active_downloads[id];
@@ -266,8 +266,8 @@ const STS2Downloads = {
 
         // 调用后端 API
         try {
-            await this._app.api.resumeDownload(id);
-            console.log('[STS2Downloads] Download resumed on backend:', id);
+            const result = await this._app.api.resumeDownload(id);
+            console.log('[STS2Downloads] Download resumed on backend:', id, result);
         } catch (e) {
             console.error('[STS2Downloads] Failed to resume download on backend:', e);
         }
@@ -448,9 +448,9 @@ const STS2Downloads = {
             el.className = `download-item ${dl.status}`;
             el.dataset.downloadId = id;
 
-            const pct = Math.floor(dl.progress * 100);
-            const speedStr = dl.status === 'downloading' ? STS2Utils.formatSize(Math.floor(dl.speed)) + '/s' : '';
-            const etaStr = dl.status === 'downloading' && dl.speed > 0
+            const pct = isFinite(dl.progress) ? Math.floor(dl.progress * 100) : 0;
+            const speedStr = dl.status === 'downloading' && dl.speed > 0 ? STS2Utils.formatSize(Math.floor(dl.speed)) + '/s' : '';
+            const etaStr = dl.status === 'downloading' && dl.speed > 0 && dl.total_size > dl.downloaded
                 ? this._formatETA((dl.total_size - dl.downloaded) / dl.speed)
                 : '';
 
