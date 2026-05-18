@@ -140,9 +140,14 @@ const STS2Downloads = {
                 apiHistory = resp.history;
             } else if (resp?.data?.data?.history) {
                 apiHistory = resp.data.data.history;
+            } else if (resp?.data?.active !== undefined) {
+                // 响应是 {active: [...], history: [...]} 没有 data 包装
+                apiHistory = resp.data?.history || resp.history;
             }
 
-            if (apiHistory && Array.isArray(apiHistory)) {
+            console.log('[STS2Downloads] Extracted apiHistory:', apiHistory?.length);
+
+            if (apiHistory && Array.isArray(apiHistory) && apiHistory.length > 0) {
                 this._mergeHistoryFromAPI(apiHistory);
             }
         } catch (e) {
