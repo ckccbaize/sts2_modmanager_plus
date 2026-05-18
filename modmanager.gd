@@ -19398,16 +19398,43 @@ func _api_get_downloads(_params: Dictionary) -> Dictionary:
 
 	return {"code": 200, "data": {
 		"active": active,
-		"history": download_history.map(func(item): return {
+		"history": _format_download_history_for_api(download_history)
+	}}
+
+
+func _format_download_history_for_api(history: Array) -> Array:
+	var result: Array = []
+	for item in history:
+		var end_time_val = item.get("end_time", 0)
+		var start_time_val = item.get("start_time", 0)
+		var is_end_time_valid = end_time_val != null and end_time_val != 0
+		var is_start_time_valid = start_time_val != null and start_time_val != 0
+
+		var date_val = int(Time.get_unix_time_from_system())
+		if is_end_time_valid:
+			date_val = int(end_time_val)
+
+		var duration_val = 0
+		if is_end_time_valid and is_start_time_valid:
+			duration_val = int((int(end_time_val) - int(start_time_val)) * 1000)
+
+		var status_str = "success"
+		var item_status = item.get("status", "")
+		if item_status == "completed":
+			status_str = "completed"
+		elif item_status == "failed":
+			status_str = "failed"
+
+		result.append({
 			"id": item.get("download_id", item.get("id", "")),
 			"mod_name": item.get("mod_name", ""),
-			"status": "completed" if item.get("status") == "completed" else ("failed" if item.get("status") == "failed" else "success"),
-			"date": item.get("end_time", 0) as int > 0 ? item.get("end_time") : int(Time.get_unix_time_from_system()),
+			"status": status_str,
+			"date": date_val,
 			"size": item.get("downloaded_size", item.get("total_size", 0)),
-			"duration": item.get("end_time", 0) as int > 0 and item.get("start_time", 0) as int > 0 ? int((item.get("end_time", 0) as int - item.get("start_time", 0) as int) * 1000) : 0,
+			"duration": duration_val,
 			"source": item.get("download_source", "nexus"),
 		})
-	}}
+	return result
 
 
 # ── 启动游戏 API ───────────────────────────────────────────────
