@@ -797,10 +797,18 @@ const STS2Downloads = {
 
         for (const apiEntry of apiHistory) {
             // 检查是否已存在（基于 id 或 mod_name + date 组合）
-            const exists = this.history.some(h =>
-                h.id === apiEntry.id ||
-                (h.mod_name === apiEntry.mod_name && h.date === apiEntry.date)
-            );
+            // 注意：apiEntry.date 是 Unix timestamp（秒），this.history 中的 date 是 ISO string
+            const exists = this.history.some(h => {
+                // ID 匹配
+                if (h.id && apiEntry.id && h.id === apiEntry.id) return true;
+                // mod_name 匹配且日期接近（同分钟内）
+                if (h.mod_name === apiEntry.mod_name) {
+                    const hDate = new Date(h.date).getTime();
+                    const apiDate = (apiEntry.date || 0) * 1000;
+                    if (Math.abs(hDate - apiDate) < 60000) return true;
+                }
+                return false;
+            });
 
             if (!exists) {
                 // 从API格式转换为本地格式
@@ -831,12 +839,14 @@ const STS2Downloads = {
 
                 this.history.unshift(entry);
                 historyUpdated = true;
+                console.log('[STS2Downloads] Added history entry:', entry.mod_name);
             }
         }
 
         if (historyUpdated) {
             this._saveHistory();
             this.renderHistory();
+            console.log('[STS2Downloads] History updated, total entries:', this.history.length);
         }
     },
 
