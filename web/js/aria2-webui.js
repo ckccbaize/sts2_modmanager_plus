@@ -19,8 +19,9 @@ window.Aria2 = {
 
         try {
             // 检查 BrowserHost.aria2Manager 是否可用
-            const host = window.chrome?.webview?.hostObjects?.browserHost?.aria2Manager;
-            if (!host) {
+            const browserHost = window.chrome?.webview?.hostObjects?.browserHost;
+            const aria2Manager = browserHost?.aria2Manager;
+            if (!aria2Manager) {
                 console.log('[Aria2] Aria2Manager not available');
                 return false;
             }
@@ -37,7 +38,8 @@ window.Aria2 = {
             let started = false;
             for (const path of aria2Paths) {
                 try {
-                    const result = await host.Start(path);
+                    // 通过 browserHost.Start 调用
+                    const result = await browserHost.Start(path);
                     if (result) {
                         console.log('[Aria2] Aria2 started from:', path);
                         started = true;
@@ -52,7 +54,7 @@ window.Aria2 = {
             // 尝试使用 PATH 中的 aria2c
             if (!started) {
                 try {
-                    const result = await host.Start('aria2c.exe');
+                    const result = await browserHost.Start('aria2c.exe');
                     if (result) {
                         console.log('[Aria2] Aria2 started from PATH');
                         this._initialized = true;

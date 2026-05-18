@@ -27,6 +27,16 @@ namespace BrowserHost
     {
         public Aria2Manager? aria2Manager { get; set; }
 
+        // Aria2 便捷方法
+        public bool Start(string aria2Path)
+        {
+            if (aria2Manager != null)
+            {
+                return aria2Manager.Start(aria2Path);
+            }
+            return false;
+        }
+
         // 更新弹窗回调
         private Action<string, string, string, string>? _showUpdateDialogCallback;
         // 导航回调
