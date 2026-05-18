@@ -1426,4 +1426,29 @@ static func _check_and_sync_profiles(source_base: String, target_base: String) -
 			print("[_check_and_sync_profiles] Failed to copy profile: ", source_profile, " -> ", target_profile)
 			success = false
 
+	# 同步 modded 目录（包含模组版存档）
+	var source_modded = source_base.path_join("modded")
+	var target_modded = target_base.path_join("modded")
+	if DirAccess.dir_exists_absolute(source_modded):
+		# 删除目标 modded 目录
+		if DirAccess.dir_exists_absolute(target_modded):
+			if not delete_directory(target_modded):
+				print("[_check_and_sync_profiles] Failed to delete target modded: ", target_modded)
+				success = false
+			else:
+				# 复制 modded 目录
+				if not copy_directory(source_modded, target_modded):
+					print("[_check_and_sync_profiles] Failed to copy modded: ", source_modded, " -> ", target_modded)
+					success = false
+
+	# 同步配置文件（profile.save, settings.save）
+	var config_files = ["profile.save", "settings.save"]
+	for config_file in config_files:
+		var source_file = source_base.path_join(config_file)
+		var target_file = target_base.path_join(config_file)
+		if FileAccess.file_exists(source_file):
+			if not copy_file(source_file, target_file):
+				print("[_check_and_sync_profiles] Failed to copy config file: ", source_file, " -> ", target_file)
+				success = false
+
 	return success
