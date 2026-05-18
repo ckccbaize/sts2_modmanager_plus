@@ -27,10 +27,11 @@ window.Aria2 = {
 
             // 查找 aria2c.exe（与 BrowserHost.exe 同目录，或 PATH 中）
             const aria2Paths = [
-                'aria2c.exe',  // 同目录
-                '.\\aria2c.exe',
+                '.\\aria2c.exe',  // 同目录（相对路径）
+                'E:\\modmanager_project\\sts-2-modmanager\\browser_host\\publish\\aria2c.exe',
                 'C:\\aria2\\aria2c.exe',
-                'C:\\Program Files\\aria2\\aria2c.exe'
+                'C:\\Program Files\\aria2\\aria2c.exe',
+                'aria2c.exe'  // PATH 中
             ];
 
             let started = false;
