@@ -21,6 +21,14 @@ namespace BrowserHost
         private bool _isRunning = false;
         private readonly object _lock = new object();
 
+        // Aria2 默认路径
+        private static readonly string[] _defaultAria2Paths = {
+            ".\\aria2c.exe",
+            "E:\\modmanager_project\\sts-2-modmanager\\browser_host\\publish\\aria2c.exe",
+            "C:\\aria2\\aria2c.exe",
+            "C:\\Program Files\\aria2\\aria2c.exe"
+        };
+
         // 下载任务状态缓存
         private Dictionary<string, Aria2Download> _activeDownloads = new();
 
