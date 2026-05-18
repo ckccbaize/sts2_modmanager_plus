@@ -25,9 +25,10 @@ window.Aria2 = {
                 return false;
             }
 
-            // 查找 aria2c.exe 并启动
+            // 查找 aria2c.exe（与 BrowserHost.exe 同目录，或 PATH 中）
             const aria2Paths = [
-                'aria2c.exe',
+                'aria2c.exe',  // 同目录
+                '.\\aria2c.exe',
                 'C:\\aria2\\aria2c.exe',
                 'C:\\Program Files\\aria2\\aria2c.exe'
             ];
