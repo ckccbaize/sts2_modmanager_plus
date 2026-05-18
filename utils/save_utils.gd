@@ -746,17 +746,30 @@ static func export_save(save_path: String, export_path: String) -> Dictionary:
 	if not export_path.to_lower().ends_with(".zip"):
 		export_path += ".zip"
 
+	# 规范化路径：把 / 替换成 \（Windows 路径）
+	save_path = save_path.replace("/", "\\")
+	export_path = export_path.replace("/", "\\")
+
 	# 使用PowerShell压缩为ZIP文件
 	# 先删除已存在的文件
 	if FileAccess.file_exists(export_path):
 		DirAccess.remove_absolute(export_path)
 
-	var ps_command = 'Compress-Archive -Path "%s\\*" -DestinationPath "%s" -Force' % [save_path, export_path]
+	# 确保目标目录存在
+	var export_dir = export_path.get_base_dir()
+	if not DirAccess.dir_exists_absolute(export_dir):
+		DirAccess.make_dir_recursive_absolute(export_dir)
+
+	# PowerShell 命令需要正确引用带空格的路径
+	var ps_command = 'Compress-Archive -Path \'' + save_path + '\\*\' -DestinationPath \'' + export_path + '\' -Force'
+	print("[export_save] PowerShell command: ", ps_command)
 	var output = []
 	var exit_code = OS.execute("powershell", ["-Command", ps_command], output)
+	print("[export_save] PowerShell output: ", output)
+	print("[export_save] Exit code: ", exit_code)
 
 	if exit_code != 0:
-		result["message"] = "无法创建ZIP文件"
+		result["message"] = "无法创建ZIP文件: " + str(output)
 		return result
 
 	result["success"] = true
@@ -780,7 +793,7 @@ static func create_save_zip(save_path: String, zip_path: String) -> bool:
 		DirAccess.remove_absolute(zip_path)
 
 	# 使用PowerShell压缩为ZIP文件
-	var ps_command = 'Compress-Archive -Path "%s\\*" -DestinationPath "%s" -Force' % [save_path, zip_path]
+	var ps_command = 'Compress-Archive -Path \'' + save_path + '\\*\' -DestinationPath \'' + zip_path + '\' -Force'
 	var output = []
 	var exit_code = OS.execute("powershell", ["-Command", ps_command], output)
 
@@ -1406,20 +1419,42 @@ static func _sync_profiles_to_target(source_base: String, target_base: String, s
 static func _check_and_sync_profiles(source_base: String, target_base: String) -> bool:
 	var success = true
 
-	# 同步 profile1, profile2, profile3
-	for profile_num in range(1, 4):
-		var source_profile = source_base.path_join("profile" + str(profile_num))
-		var target_profile = target_base.path_join("profile" + str(profile_num))
+	# 1. 先清理目标目录下所有 profile 开头的文件夹（与 overwrite_save 逻辑一致）
+	var target_profiles_to_clean = []
+	var dir = DirAccess.open(target_base)
+	if dir != null:
+		dir.list_dir_begin()
+		var folder_name = dir.get_next()
+		while folder_name != "":
+			if dir.current_is_dir() and folder_name.begins_with("profile"):
+				target_profiles_to_clean.append(folder_name)
+			folder_name = dir.get_next()
+		dir.list_dir_end()
+
+	for profile in target_profiles_to_clean:
+		var target_profile = target_base.path_join(profile)
+		if not delete_directory(target_profile):
+			print("[_check_and_sync_profiles] Failed to delete target profile: ", target_profile)
+			success = false
+
+	# 2. 同步源目录中所有存在的 profile（动态获取，不限于 profile1-3）
+	var source_profiles_to_sync = []
+	dir = DirAccess.open(source_base)
+	if dir != null:
+		dir.list_dir_begin()
+		var folder_name = dir.get_next()
+		while folder_name != "":
+			if dir.current_is_dir() and folder_name.begins_with("profile"):
+				source_profiles_to_sync.append(folder_name)
+			folder_name = dir.get_next()
+		dir.list_dir_end()
+
+	for profile in source_profiles_to_sync:
+		var source_profile = source_base.path_join(profile)
+		var target_profile = target_base.path_join(profile)
 
 		if not DirAccess.dir_exists_absolute(source_profile):
 			continue
-
-		# 删除目标目录
-		if DirAccess.dir_exists_absolute(target_profile):
-			if not delete_directory(target_profile):
-				print("[_check_and_sync_profiles] Failed to delete target profile: ", target_profile)
-				success = false
-				continue
 
 		# 复制源到目标
 		if not copy_directory(source_profile, target_profile):
