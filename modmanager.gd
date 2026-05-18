@@ -8790,7 +8790,7 @@ func _on_server_download_request(data: Dictionary) -> void:
 	# 优先使用直链 URL
 	if not download_url.is_empty() and (download_url.begins_with("https://") or download_url.begins_with("http://")):
 		print("[_on_server_download_request] Using direct download URL")
-		_download_mod_direct(download_url, mod_name)
+		_download_mod_direct(download_url, mod_name, download_id)
 		return
 
 	# 如果有 NXM 参数 (key, expires, user_id)
@@ -8799,7 +8799,7 @@ func _on_server_download_request(data: Dictionary) -> void:
 		# NXM URL 需要 API key 来获取正确的下载链接（包含文件名）
 		if nexus_api and not nexus_api.api_key.is_empty():
 			print("[_on_server_download_request] Using Nexus API to get download link")
-			_download_mod_via_nexus_api_with_params(mod_id, mod_name, file_id, key, expires, user_id)
+			_download_mod_via_nexus_api_with_params(mod_id, mod_name, file_id, key, expires, user_id, download_id)
 		else:
 			print("[_on_server_download_request] No API key available, cannot download NXM URL")
 			show_notification(translate("nxm_link_needs_api_key"), false)
@@ -8825,7 +8825,7 @@ func _on_server_download_request(data: Dictionary) -> void:
 			# NXM URL 需要 API key 来获取正确的下载链接
 			if nexus_api and not nexus_api.api_key.is_empty():
 				print("[_on_server_download_request] Using Nexus API to get download link")
-				_download_mod_via_nexus_api_with_params(parsed_mod_id, mod_name, parsed_file_id, parsed_key, parsed_expires, parsed_user_id)
+				_download_mod_via_nexus_api_with_params(parsed_mod_id, mod_name, parsed_file_id, parsed_key, parsed_expires, parsed_user_id, download_id)
 			else:
 				print("[_on_server_download_request] No API key available, cannot download NXM URL")
 				show_notification(translate("nxm_link_needs_api_key"), false)
@@ -8844,11 +8844,17 @@ func _on_server_download_request(data: Dictionary) -> void:
 
 	# 如果没有任何 URL 信息，尝试使用 Nexus API（需要 API key）
 	print("[_on_server_download_request] No direct URL, falling back to Nexus API (requires API key)")
-	_download_mod_via_nexus_api(mod_id, mod_name)
+	_download_mod_via_nexus_api(mod_id, mod_name, download_id)
 
 
-func _download_mod_via_nexus_api(mod_id: int, mod_name: String) -> void:
-	"""通过 Nexus API 下载模组（作为回退方案）"""
+func _download_mod_via_nexus_api(mod_id: int, mod_name: String, existing_download_id: String = "") -> void:
+	"""通过 Nexus API 下载模组（作为回退方案）
+
+	Args:
+		mod_id: 模组ID
+		mod_name: 模组名称
+		existing_download_id: 如果传入已有的下载ID，则使用该ID而不是创建新任务
+	"""
 	# 获取 Nexus API（使用独立的 API 实例，不依赖 Nexus UI）
 	if not nexus_api:
 		if local_server:
@@ -8943,12 +8949,22 @@ func _download_mod_via_nexus_api(mod_id: int, mod_name: String) -> void:
 
 	show_notification(translate_fmt("downloading_mod", [mod_name]), true)
 
-	# 下载文件
-	await _download_mod_file(download_url, save_path, mod_name)
+	# 下载文件，传递已有的下载ID以避免重复创建任务
+	await _download_mod_file(download_url, save_path, mod_name, existing_download_id)
 
 
-func _download_mod_via_nexus_api_with_params(mod_id: int, mod_name: String, file_id: int, key: String, expires: int, user_id: int) -> void:
-	"""通过 Nexus API 下载模组，使用 key/expires/user_id 参数（非Premium用户）"""
+func _download_mod_via_nexus_api_with_params(mod_id: int, mod_name: String, file_id: int, key: String, expires: int, user_id: int, existing_download_id: String = "") -> void:
+	"""通过 Nexus API 下载模组，使用 key/expires/user_id 参数（非Premium用户）
+
+	Args:
+		mod_id: 模组ID
+		mod_name: 模组名称
+		file_id: 文件ID
+		key: 下载密钥
+		expires: 过期时间戳
+		user_id: 用户ID
+		existing_download_id: 如果传入已有的下载ID，则使用该ID而不是创建新任务
+	"""
 	print("[_download_mod_via_nexus_api_with_params] mod_id=", mod_id, ", file_id=", file_id, ", key=", key.substr(0, 10) if key else "", ", expires=", expires, ", user_id=", user_id)
 
 	# 获取 Nexus API（使用独立的 API 实例，不依赖 Nexus UI）
@@ -8985,8 +9001,8 @@ func _download_mod_via_nexus_api_with_params(mod_id: int, mod_name: String, file
 
 	show_notification(translate_fmt("downloading_mod", [mod_name]), true)
 
-	# 下载文件
-	await _download_mod_file(download_url, save_path, mod_name)
+	# 下载文件，传递已有的下载ID以避免重复创建任务
+	await _download_mod_file(download_url, save_path, mod_name, existing_download_id)
 
 
 func _parse_nxm_url(nxm_url: String) -> Dictionary:
@@ -9751,8 +9767,14 @@ func _resolve_download_conflicts(download_id: String, conflicts: Array) -> void:
 		call_deferred("_delayed_load_mods")
 
 
-func _download_mod_direct(url: String, mod_name: String) -> void:
-	"""使用直链直接下载模组"""
+func _download_mod_direct(url: String, mod_name: String, existing_download_id: String = "") -> void:
+	"""使用直链直接下载模组
+
+	Args:
+		url: 下载URL
+		mod_name: 模组名称
+		existing_download_id: 如果传入已有的下载ID，则使用该ID而不是创建新任务
+	"""
 	print("[_download_mod_direct] Using URL: ", url)
 
 	# 检查是否是直链 URL（来自 "click here" 链接）
@@ -9811,13 +9833,20 @@ func _download_mod_direct(url: String, mod_name: String) -> void:
 
 	show_notification(translate_fmt("downloading_mod", [mod_name]), true)
 
-	# 直接下载 URL
-	await _download_mod_file(actual_url, save_path, mod_name)
+	# 直接下载 URL，传递已有的下载ID以避免重复创建任务
+	await _download_mod_file(actual_url, save_path, mod_name, existing_download_id)
 	# _download_mod_file 内部已经调用 notify_download_complete，无需重复调用
 
 
-func _download_mod_file(url: String, save_path: String, mod_name: String) -> void:
-	"""下载模组文件并自动安装"""
+func _download_mod_file(url: String, save_path: String, mod_name: String, existing_download_id: String = "") -> void:
+	"""下载模组文件并自动安装
+
+	Args:
+		url: 下载URL
+		save_path: 保存路径
+		mod_name: 模组名称
+		existing_download_id: 如果传入已有的下载ID，则使用该ID而不是创建新任务
+	"""
 	print("[_download_mod_file] Downloading: ", mod_name, " to: ", save_path)
 
 	# 检查save_path是否有效
@@ -9839,8 +9868,16 @@ func _download_mod_file(url: String, save_path: String, mod_name: String) -> voi
 		save_path = base_path + file_ext
 		print("[_download_mod_file] Corrected extension: ", save_path)
 
-	# 创建下载任务
-	var download_id = _create_download_task(mod_name, url)
+	# 使用已有的下载ID，或者创建新任务
+	var download_id: String
+	if not existing_download_id.is_empty() and download_tasks.has(existing_download_id):
+		download_id = existing_download_id
+		print("[_download_mod_file] Using existing download task: ", download_id)
+		# 更新URL
+		download_tasks[download_id]["download_url"] = url
+	else:
+		download_id = _create_download_task(mod_name, url)
+		print("[_download_mod_file] Created new download task: ", download_id)
 
 	# 自动检测下载来源（基于URL）
 	var auto_source = ""
