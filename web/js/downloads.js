@@ -510,6 +510,7 @@ const STS2Downloads = {
     /** Render download history in the #download-history container. */
     renderHistory() {
         const container = document.getElementById('download-history');
+        console.log('[STS2Downloads] renderHistory called. Container:', !!container, 'History count:', this.history.length);
         if (!container) return;
 
         const t = (key) => this._app.i18n.translate(key);
@@ -523,6 +524,7 @@ const STS2Downloads = {
             return;
         }
 
+        console.log('[STS2Downloads] Rendering', this.history.length, 'history items');
         container.innerHTML = '';
         const sourceLabels = {
             nexus: 'Nexus',
@@ -794,10 +796,10 @@ const STS2Downloads = {
         if (!Array.isArray(apiHistory) || apiHistory.length === 0) return;
 
         console.log('[STS2Downloads] Current local history count:', this.history.length);
+        console.log('[STS2Downloads] API history count:', apiHistory.length);
 
-        // 简化：直接用后端数据替换本地历史（后端是真实来源）
         // 转换格式：Unix timestamp -> ISO string, status: completed -> success
-        const convertedHistory = apiHistory.map(apiEntry => {
+        const convertedHistory = apiHistory.map((apiEntry, idx) => {
             let entryDate;
             if (apiEntry.date) {
                 const timestamp = typeof apiEntry.date === 'number' ? apiEntry.date : parseInt(apiEntry.date);
@@ -809,8 +811,8 @@ const STS2Downloads = {
             let status = apiEntry.status || 'success';
             if (status === 'completed') status = 'success';
 
-            return {
-                id: apiEntry.id || `hist-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+            const entry = {
+                id: apiEntry.id || `hist-${Date.now()}-${idx}`,
                 mod_name: apiEntry.mod_name || 'Unknown',
                 source: apiEntry.source || apiEntry.download_source || 'nexus',
                 status: status,
@@ -818,13 +820,15 @@ const STS2Downloads = {
                 size: apiEntry.size || apiEntry.total_size || 0,
                 duration: apiEntry.duration || 0,
             };
+            console.log('[STS2Downloads] Converted entry', idx, ':', entry.mod_name, 'date:', entry.date);
+            return entry;
         });
 
-        // 直接用后端数据
+        // 直接用后端数据替换本地历史
         this.history = convertedHistory;
         this._saveHistory();
         this.renderHistory();
-        console.log('[STS2Downloads] History replaced with API data, total:', this.history.length);
+        console.log('[STS2Downloads] History replaced. New total:', this.history.length);
     },
 
     /**
