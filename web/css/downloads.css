@@ -27,7 +27,7 @@
     flex-direction: column;
     gap: var(--sp-sm);
     flex: 1 1 0;
-    min-height: 200px;
+    min-height: 400px;
 }
 
 .section-header {
