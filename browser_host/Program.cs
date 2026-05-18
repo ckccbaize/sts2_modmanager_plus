@@ -205,19 +205,220 @@ namespace BrowserHost
                 Console.WriteLine($"[BrowserHost] SendDownloadRequest called");
                 Console.WriteLine($"[BrowserHost] Download request: {jsonData?.Substring(0, Math.Min(200, jsonData?.Length ?? 0))}...");
 
-                // Forward to Godot backend API using sync call
+                // 解析请求
+                var doc = System.Text.Json.JsonDocument.Parse(jsonData ?? "{}");
+                var root = doc.RootElement;
+                var downloadType = root.TryGetProperty("type", out var t) ? t.GetString() : "";
+                var modName = root.TryGetProperty("mod_name", out var mn) ? mn.GetString() : "mod";
+                var downloadUrl = root.TryGetProperty("download_url", out var du) ? du.GetString() : "";
+
+                // 如果有直链 URL，优先使用 Aria2 下载
+                if (!string.IsNullOrEmpty(downloadUrl) && downloadUrl.StartsWith("http"))
+                {
+                    Console.WriteLine($"[BrowserHost] Using Aria2 for direct URL download");
+
+                    // 构建保存路径
+                    var safeName = modName.Replace("/", "_").Replace("\\", "_").Replace(":", "_")
+                        .Replace("*", "_").Replace("?", "_").Replace("\"", "_")
+                        .Replace("<", "_").Replace(">", "_").Replace("|", "_");
+                    var downloadsDir = Path.Combine(
+                        Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
+                        "Downloads", "STS2Mods");
+                    Directory.CreateDirectory(downloadsDir);
+                    var savePath = Path.Combine(downloadsDir, safeName + ".zip");
+
+                    // 使用 Aria2 下载
+                    if (aria2Manager != null && aria2Manager.IsRunning)
+                    {
+                        var options = new Dictionary<string, string>
+                        {
+                            { "out", Path.GetFileName(savePath) },
+                            { "dir", Path.GetDirectoryName(savePath) ?? downloadsDir }
+                        };
+
+                        try
+                        {
+                            var gid = aria2Manager.AddDownloadAsync(downloadUrl, savePath, options).GetAwaiter().GetResult();
+                            if (!string.IsNullOrEmpty(gid))
+                            {
+                                Console.WriteLine($"[BrowserHost] Aria2 download started: {gid}");
+
+                                // 通知 Godot 下载已开始
+                                ForwardToGodot(jsonData, gid, "aria2");
+                            }
+                            else
+                            {
+                                Console.WriteLine($"[BrowserHost] Aria2 AddDownload failed");
+                                // 降级到 Godot 下载
+                                ForwardToGodot(jsonData, null, "fallback");
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            Console.WriteLine($"[BrowserHost] Aria2 error: {ex.Message}");
+                            ForwardToGodot(jsonData, null, "error");
+                        }
+                    }
+                    else
+                    {
+                        Console.WriteLine($"[BrowserHost] Aria2 not running, forwarding to Godot");
+                        ForwardToGodot(jsonData, null, "no-aria2");
+                    }
+                    return;
+                }
+
+                // 对于 NXM URL，BrowserHost 直接调用 Nexus API 获取真实下载链接，然后使用 Aria2
+                Console.WriteLine($"[BrowserHost] Processing NXM URL with Aria2");
+                _ProcessNxmWithAria2(jsonData);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[BrowserHost] SendDownloadRequest error: {ex.Message}");
+            }
+        }
+
+        private async void _ProcessNxmWithAria2(string jsonData)
+        {
+            try
+            {
+                var doc = System.Text.Json.JsonDocument.Parse(jsonData ?? "{}");
+                var root = doc.RootElement;
+
+                var modId = root.TryGetProperty("mod_id", out var mi) ? mi.GetInt32() : 0;
+                var fileId = root.TryGetProperty("file_id", out var fi) ? fi.GetInt32() : 0;
+                var modName = root.TryGetProperty("mod_name", out var mn) ? mn.GetString() : "mod";
+                var apiKey = root.TryGetProperty("key", out var ak) ? ak.GetString() : "";
+                var expires = root.TryGetProperty("expires", out var exp) ? exp.GetInt64() : 0;
+                var userId = root.TryGetProperty("user_id", out var uid) ? uid.GetInt64() : 0;
+
+                if (modId == 0 || fileId == 0)
+                {
+                    Console.WriteLine($"[BrowserHost] Invalid NXM params, forwarding to Godot");
+                    ForwardToGodot(jsonData, null, "invalid-nxm");
+                    return;
+                }
+
+                // 调用 Nexus API 获取真实下载链接
+                Console.WriteLine($"[BrowserHost] Getting download link from Nexus API: mod={modId}, file={fileId}");
+                var downloadUrl = await _GetNexusDownloadLink(modId, fileId, apiKey, expires, userId);
+
+                if (string.IsNullOrEmpty(downloadUrl))
+                {
+                    Console.WriteLine($"[BrowserHost] Failed to get download link, forwarding to Godot");
+                    ForwardToGodot(jsonData, null, "api-failed");
+                    return;
+                }
+
+                Console.WriteLine($"[BrowserHost] Got download URL, using Aria2");
+
+                // 使用 Aria2 下载
+                var safeName = modName.Replace("/", "_").Replace("\\", "_").Replace(":", "_")
+                    .Replace("*", "_").Replace("?", "_").Replace("\"", "_")
+                    .Replace("<", "_").Replace(">", "_").Replace("|", "_");
+                var downloadsDir = Path.Combine(
+                    Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
+                    "Downloads", "STS2Mods");
+                Directory.CreateDirectory(downloadsDir);
+                var savePath = Path.Combine(downloadsDir, safeName + ".zip");
+
+                if (aria2Manager != null && aria2Manager.IsRunning)
+                {
+                    var options = new Dictionary<string, string>
+                    {
+                        { "out", Path.GetFileName(savePath) },
+                        { "dir", Path.GetDirectoryName(savePath) ?? downloadsDir }
+                    };
+
+                    var gid = await aria2Manager.AddDownloadAsync(downloadUrl, savePath, options);
+                    if (!string.IsNullOrEmpty(gid))
+                    {
+                        Console.WriteLine($"[BrowserHost] Aria2 download started via NXM: {gid}");
+                        ForwardToGodot(jsonData, gid, "aria2");
+                    }
+                    else
+                    {
+                        Console.WriteLine($"[BrowserHost] Aria2 AddDownload failed");
+                        ForwardToGodot(jsonData, null, "aria2-failed");
+                    }
+                }
+                else
+                {
+                    Console.WriteLine($"[BrowserHost] Aria2 not running, forwarding to Godot");
+                    ForwardToGodot(jsonData, null, "no-aria2");
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[BrowserHost] NXM processing error: {ex.Message}");
+                ForwardToGodot(jsonData, null, "error");
+            }
+        }
+
+        private async Task<string?> _GetNexusDownloadLink(int modId, int fileId, string apiKey, long expires, long userId)
+        {
+            try
+            {
+                var httpClient = new System.Net.Http.HttpClient();
+                httpClient.DefaultRequestHeaders.Add("Accept", "application/json");
+
+                // 调用 Nexus API 获取下载链接
+                var url = $"https://api.nexusmods.com/v1/games/slaythespire2/mods/{modId}/files/{fileId}/download_link.json?key={apiKey}";
+                Console.WriteLine($"[BrowserHost] Calling Nexus API: {url}");
+
+                var response = await httpClient.GetAsync(url);
+                if (response.IsSuccessStatusCode)
+                {
+                    var json = await response.Content.ReadAsStringAsync();
+                    var doc = System.Text.Json.JsonDocument.Parse(json);
+                    if (doc.RootElement.ValueKind == System.Text.Json.JsonValueKind.Array &&
+                        doc.RootElement.GetArrayLength() > 0)
+                    {
+                        return doc.RootElement[0].GetString();
+                    }
+                }
+                else
+                {
+                    Console.WriteLine($"[BrowserHost] Nexus API error: {response.StatusCode}");
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[BrowserHost] Nexus API call failed: {ex.Message}");
+            }
+            return null;
+        }
+
+        private void ForwardToGodot(string jsonData, string? aria2Gid, string downloadType)
+        {
+            try
+            {
+                // 如果有 Aria2 GID，修改 JSON 添加 aria2_gid
+                string dataToSend = jsonData ?? "{}";
+                if (!string.IsNullOrEmpty(aria2Gid))
+                {
+                    var doc = System.Text.Json.JsonDocument.Parse(jsonData ?? "{}");
+                    var dict = new Dictionary<string, object>();
+                    foreach (var prop in doc.RootElement.EnumerateObject())
+                    {
+                        dict[prop.Name] = prop.Value.ValueKind == System.Text.Json.JsonValueKind.String
+                            ? prop.Value.GetString() ?? ""
+                            : prop.Value.ToString();
+                    }
+                    dict["aria2_gid"] = aria2Gid;
+                    dict["download_type"] = downloadType;
+                    dataToSend = System.Text.Json.JsonSerializer.Serialize(dict);
+                }
+
                 var httpClient = new System.Net.Http.HttpClient();
                 httpClient.Timeout = TimeSpan.FromSeconds(30);
-
-                // Cancel any pending download request first (prevent thread pool starvation)
                 Program.CancelPendingRequests();
 
-                var content = new StringContent(jsonData ?? "{}", System.Text.Encoding.UTF8, "application/json");
+                var content = new StringContent(dataToSend, System.Text.Encoding.UTF8, "application/json");
                 var response = httpClient.PostAsync($"http://localhost:{Program.GetCurrentPort()}/api/download", content).GetAwaiter().GetResult();
 
                 if (response.IsSuccessStatusCode)
                 {
-                    Console.WriteLine($"[BrowserHost] Download request forwarded successfully");
+                    Console.WriteLine($"[BrowserHost] Download request forwarded successfully (type: {downloadType})");
                 }
                 else
                 {
@@ -226,7 +427,7 @@ namespace BrowserHost
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"[BrowserHost] SendDownloadRequest error: {ex.Message}");
+                Console.WriteLine($"[BrowserHost] ForwardToGodot error: {ex.Message}");
             }
         }
     }
