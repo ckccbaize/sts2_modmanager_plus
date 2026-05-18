@@ -455,7 +455,7 @@ func _handle_download(method: String, headers: Dictionary, body: String) -> Dict
 	var mod_name = request_data.get("mod_name", request_data.get("modName", "Unknown"))
 	var mod_page_url = request_data.get("mod_page_url", request_data.get("modPageUrl", ""))
 	var version = request_data.get("version", request_data.get("version", ""))
-	var download_url = request_data.get("download_url", request_data.get("downloadUrl", ""))
+	var download_url = request_data.get("download_url", request_data.get("downloadUrl", request_data.get("nxm_url", "")))
 	var key = request_data.get("key", request_data.get("key", ""))
 	var expires = request_data.get("expires", request_data.get("expires", 0))
 	var user_id = request_data.get("user_id", request_data.get("userId", 0))
@@ -479,6 +479,7 @@ func _handle_download(method: String, headers: Dictionary, body: String) -> Dict
 		"mod_page_url": mod_page_url,
 		"version": version,
 		"download_url": download_url,
+		"nxm_url": request_data.get("nxm_url", ""),
 		"key": key,
 		"expires": expires,
 		"user_id": user_id,

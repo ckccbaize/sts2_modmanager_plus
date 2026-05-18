@@ -8756,6 +8756,7 @@ func _on_server_download_request(data: Dictionary) -> void:
 
 	var mod_name = data.get("mod_name", "Unknown")
 	var download_url = data.get("download_url", "")  # 直链下载
+	var nxm_url = data.get("nxm_url", "")  # NXM URL（来自浏览器扩展）
 	var key = data.get("key", "")  # NXM URL 中的 key 参数
 	var expires = data.get("expires", 0)  # NXM URL 中的 expires 参数
 	var user_id = data.get("user_id", 0)  # NXM URL 中的 user_id 参数
@@ -8776,6 +8777,10 @@ func _on_server_download_request(data: Dictionary) -> void:
 		download_tasks[download_id]["download_source"] = "nexus"
 
 	# 关键逻辑：所有下载都使用直链，不依赖 Nexus API
+	# 优先使用直链 URL，如果没有则尝试 nxm_url
+	if download_url.is_empty() and not nxm_url.is_empty():
+		download_url = nxm_url
+
 	# 优先使用直链 URL
 	if not download_url.is_empty() and (download_url.begins_with("https://") or download_url.begins_with("http://")):
 		print("[_on_server_download_request] Using direct download URL")

@@ -448,7 +448,8 @@ const STS2Downloads = {
             el.className = `download-item ${dl.status}`;
             el.dataset.downloadId = id;
 
-            const pct = isFinite(dl.progress) ? Math.min(100, Math.floor(dl.progress * 100)) : 0;
+            const rawProgress = dl.progress > 1 ? dl.progress : dl.progress * 100;
+            const pct = isFinite(rawProgress) ? Math.min(100, Math.floor(rawProgress)) : 0;
             const speedStr = dl.status === 'downloading' && dl.speed > 0 ? STS2Utils.formatSize(Math.floor(dl.speed)) + '/s' : '';
             const etaStr = dl.status === 'downloading' && dl.speed > 0 && dl.total_size > dl.downloaded
                 ? this._formatETA((dl.total_size - dl.downloaded) / dl.speed)
@@ -805,6 +806,17 @@ const STS2Downloads = {
 
         console.log('[STS2Downloads] Current local history count:', this.history.length);
         console.log('[STS2Downloads] API history count:', apiHistory.length);
+
+        // 【修复 Task #10】清理已进入历史记录的活跃任务
+        // 如果后端下载任务失败或完成进入了历史记录，前端必须停止本地模拟并从活跃列表中移除
+        for (const apiEntry of apiHistory) {
+            if (this.active_downloads[apiEntry.id]) {
+                const dl = this.active_downloads[apiEntry.id];
+                if (dl.timer_id) clearInterval(dl.timer_id);
+                delete this.active_downloads[apiEntry.id];
+            }
+        }
+        this.renderActiveDownloads();
 
         // 转换格式：Unix timestamp -> ISO string, status: completed -> success
         const convertedHistory = apiHistory.map((apiEntry, idx) => {
