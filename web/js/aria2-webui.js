@@ -12,7 +12,7 @@ window.Aria2 = {
     _callbacks: {},
 
     /**
-     * Initialize Aria2 connection - 启动 Aria2 进程
+     * Initialize Aria2 connection - 检查是否已连接
      */
     async init() {
         console.log('[Aria2] Initializing...');
@@ -26,43 +26,16 @@ window.Aria2 = {
                 return false;
             }
 
-            // 查找 aria2c.exe（与 BrowserHost.exe 同目录，或 PATH 中）
-            const aria2Paths = [
-                '.\\aria2c.exe',  // 同目录（相对路径）
-                'E:\\modmanager_project\\sts-2-modmanager\\browser_host\\publish\\aria2c.exe',
-                'C:\\aria2\\aria2c.exe',
-                'C:\\Program Files\\aria2\\aria2c.exe',
-                'aria2c.exe'  // PATH 中
-            ];
-
-            let started = false;
-            for (const path of aria2Paths) {
-                try {
-                    // 通过 browserHost.Start 调用
-                    const result = await browserHost.Start(path);
-                    if (result) {
-                        console.log('[Aria2] Aria2 started from:', path);
-                        started = true;
-                        this._initialized = true;
-                        return true;
-                    }
-                } catch (e) {
-                    console.log('[Aria2] Path not found:', path);
+            // 检查 Aria2 是否已经在运行（通过获取全局选项验证 RPC 连接）
+            try {
+                const options = await browserHost.GetGlobalOptionsAsync();
+                if (options && typeof options === 'object') {
+                    console.log('[Aria2] Connected (Aria2 already running)');
+                    this._initialized = true;
+                    return true;
                 }
-            }
-
-            // 尝试使用 PATH 中的 aria2c
-            if (!started) {
-                try {
-                    const result = await browserHost.Start('aria2c.exe');
-                    if (result) {
-                        console.log('[Aria2] Aria2 started from PATH');
-                        this._initialized = true;
-                        return true;
-                    }
-                } catch (e) {
-                    console.log('[Aria2] PATH check failed:', e);
-                }
+            } catch (e) {
+                console.log('[Aria2] RPC check failed:', e.message || e);
             }
         } catch (e) {
             console.error('[Aria2] Init failed:', e);
@@ -214,8 +187,14 @@ window.Aria2 = {
      * @returns {Promise<object>}
      */
     async getOptions() {
-        // TODO: 需要 Aria2Manager 实现 GetGlobalOptions
-        return {};
+        try {
+            const host = window.chrome.webview.hostObjects.browserHost.aria2Manager;
+            const options = await host.GetGlobalOptionsAsync();
+            return options || {};
+        } catch (e) {
+            console.error('[Aria2] GetOptions failed:', e);
+            return {};
+        }
     },
 
     /**
@@ -344,9 +323,6 @@ window.saveDownloadSettings = async function() {
     // 显示成功通知
     if (window.app?.notifications) {
         window.app.notifications.show('下载器设置已保存', 'success');
-    }
-};
-        console.error('[DownloadSettings] Failed to save:', e);
     }
 };
 

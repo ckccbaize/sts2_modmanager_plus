@@ -5,6 +5,8 @@ class_name LocalServer
 
 const DEFAULT_PORT: int = 28900  # 使用 28900 开始，避开被僵尸进程占用的端口
 const BACKUP_PORTS: Array[int] = [28901, 28902, 28903, 28904]
+const PORT_POOL_START: int = 29000  # 动态扩展端口池起始
+const PORT_POOL_MAX: int = 29100     # 最大扩展到 29100
 
 var _server_port: int = DEFAULT_PORT
 var _actual_port: int = DEFAULT_PORT  # 实际使用的端口
@@ -54,7 +56,7 @@ func start() -> bool:
 
 	_actual_port = _server_port  # 重置为配置的端口
 
-	# 直接尝试绑定端口，不做任何清理
+	# 尝试绑定主端口
 	_server = TCPServer.new()
 	var err = _server.listen(_server_port, "127.0.0.1")
 	if err != OK:
@@ -63,10 +65,25 @@ func start() -> bool:
 		err = _try_bind_backup_ports()
 
 	if err != OK:
-		print("[LocalServer] Failed to start server on all ports: ", err)
-		server_error.emit("Failed to start server on all ports: " + str(err))
-		_server = null
-		return false
+		# 所有固定端口都不可用，自动扩展端口池
+		print("[LocalServer] All fixed ports occupied, searching for available port...")
+		var new_port = _find_available_port()
+		if new_port > 0:
+			_actual_port = new_port
+			print("[LocalServer] Using dynamic port: ", new_port)
+			# 成功绑定动态端口，直接返回
+			_is_running = true
+			server_status_changed.emit(true)
+			_write_port_to_file()
+			_thread = Thread.new()
+			_thread.start(_thread_loop.bind(self), Thread.PRIORITY_NORMAL)
+			print("[LocalServer] Server started on port ", _actual_port)
+			return true
+		else:
+			print("[LocalServer] Failed to start server: no available port")
+			server_error.emit("Failed to start server: no available port")
+			_server = null
+			return false
 
 	_is_running = true
 	server_status_changed.emit(true)
@@ -96,6 +113,47 @@ func _try_bind_backup_ports() -> int:
 
 	print("[LocalServer] All backup ports failed")
 	return FAILED
+
+
+func _find_available_port() -> int:
+	# 从 28905 开始搜索可用端口
+	var port = 29005  # 从 29005 开始避免与固定端口冲突
+	var max_port = 29100
+	var output = []
+
+	while port <= max_port:
+		var test_server = TCPServer.new()
+		var err = test_server.listen(port, "127.0.0.1")
+		if err == OK:
+			# 成功绑定，释放测试 server 并使用这个端口
+			test_server.stop()
+			test_server = null
+			_server = TCPServer.new()
+			err = _server.listen(port, "127.0.0.1")
+			if err == OK:
+				print("[LocalServer] Found available port: ", port)
+				return port
+		test_server = null
+
+		# 检查端口是否被占用（用于日志）
+		OS.execute("netstat", ["-ano"], output, false)
+		var is_occupied = false
+		for line in output:
+			if ":" + str(port) in line and "LISTENING" in line:
+				is_occupied = true
+				break
+
+		if not is_occupied:
+			# 端口未被占用但绑定失败，可能是其他问题
+			print("[LocalServer] Port ", port, " not occupied but bind failed")
+		else:
+			# 端口被占用，尝试下一个
+			pass
+
+		port += 1
+
+	print("[LocalServer] No available port found in range ", PORT_POOL_START, "-", max_port)
+	return -1
 
 
 func _write_port_to_file() -> void:

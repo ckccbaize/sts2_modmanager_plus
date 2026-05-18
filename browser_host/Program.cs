@@ -37,6 +37,16 @@ namespace BrowserHost
             return false;
         }
 
+        // 获取全局选项
+        public async Task<object> GetGlobalOptionsAsync()
+        {
+            if (aria2Manager != null)
+            {
+                return await aria2Manager.GetGlobalOptionsAsync();
+            }
+            return new Dictionary<string, string>();
+        }
+
         // 更新弹窗回调
         private Action<string, string, string, string>? _showUpdateDialogCallback;
         // 导航回调
@@ -662,6 +672,12 @@ namespace BrowserHost
                         // 创建 BrowserHostObject 并设置更新弹窗回调
                         var browserHostObj = new BrowserHostObject();
                         browserHostObj.aria2Manager = new Aria2Manager();
+
+                        // 立即启动 Aria2，确保页面加载前已就绪
+                        // 使用相对路径（与 BrowserHost.exe 同目录）
+                        string aria2Path = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "aria2c.exe");
+                        browserHostObj.aria2Manager.Start(aria2Path);
+
                         // aria2Manager.CleanupOrphanProcesses() will be called here if needed
                         browserHostObj.SetUpdateDialogCallback((currentVer, newVer, changelog, downloadUrl) =>
                         {

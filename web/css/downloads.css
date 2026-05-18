@@ -375,7 +375,8 @@
     align-items: center;
     padding: var(--sp-md) var(--sp-lg);
     border-bottom: 1px solid var(--border);
-    background-color: var(--bg-surface);
+    background-color: var(--bg-light);
+    position: relative;
 }
 
 .settings-header h3 {

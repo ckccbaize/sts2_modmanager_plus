@@ -38,9 +38,12 @@ public partial class WebUiMain : Godot.Control
 			// 查找 BrowserHost.exe
 			var possiblePaths = new string[]
 			{
+				"E:\\modmanager_project\\sts-2-modmanager\\browser_host\\publish\\BrowserHost.exe",
 				"E:\\modmanager_project\\sts-2-modmanager\\browser_host\\bin\\Release\\net8.0-windows\\BrowserHost.exe",
 				ProjectSettings.GlobalizePath("res://browser_host/bin/Release/net8.0-windows/BrowserHost.exe"),
-                ".\\browser_host\\bin\\Release\\net8.0-windows\\BrowserHost.exe"
+				ProjectSettings.GlobalizePath("res://browser_host/publish/BrowserHost.exe"),
+				".\\browser_host\\bin\\Release\\net8.0-windows\\BrowserHost.exe",
+				".\\browser_host\\publish\\BrowserHost.exe"
 			};
 
 			string? exePath = null;

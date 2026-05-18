@@ -307,6 +307,33 @@ namespace BrowserHost
         }
 
         /// <summary>
+        /// 获取全局选项
+        /// </summary>
+        public async Task<Dictionary<string, string>> GetGlobalOptionsAsync()
+        {
+            var request = new
+            {
+                jsonrpc = "2.0",
+                id = Guid.NewGuid().ToString(),
+                method = "aria2.getGlobalOptions",
+                @params = new object[] { $"token:{_rpcToken}" }
+            };
+
+            var response = await SendRpcRequestAsync(request);
+            var options = new Dictionary<string, string>();
+
+            if (response != null && response.Value.TryGetProperty("result", out var result) && result.ValueKind == JsonValueKind.Object)
+            {
+                foreach (var prop in result.EnumerateObject())
+                {
+                    options[prop.Name] = prop.Value.ToString();
+                }
+            }
+
+            return options;
+        }
+
+        /// <summary>
         /// 轮询下载状态（后台任务）
         /// </summary>
         private async Task PollStatusAsync()
