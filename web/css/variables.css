@@ -6,6 +6,7 @@
 :root {
 
     /* ── Color: Backgrounds ──────────────────────────────────────────────── */
+    --bg-primary:    #12171e;       /* Primary background (same as bg-deep)      */
     --bg-deep:       #12171e;       /* Deepest background, app canvas          */
     --bg-light:      #1b2838;       /* Elevated panels, modal bodies           */
     --bg-surface:    rgba(42, 71, 94, 0.15);  /* Cards, list rows, subtle fill  */

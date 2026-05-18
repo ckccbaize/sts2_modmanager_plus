@@ -355,12 +355,12 @@
     right: 0;
     width: 420px;
     height: 100vh;
-    background-color: var(--bg-primary);
+    background-color: #1b2838;  /* 不透明背景，确保清晰可见 */
     border-left: 1px solid var(--border);
     z-index: 1000;
     display: flex;
     flex-direction: column;
-    box-shadow: -4px 0 20px rgba(0, 0, 0, 0.3);
+    box-shadow: -4px 0 20px rgba(0, 0, 0, 0.5);
     animation: slideInRight 0.2s ease-out;
 }
 
