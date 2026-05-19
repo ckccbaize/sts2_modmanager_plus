@@ -19816,7 +19816,7 @@ func _get_aria2_progress(gid: String) -> Dictionary:
 		return {}
 
 	# 发送 GET 请求获取进度
-	err = http_client.request(HTTPClient.METHOD_GET, "/aria2-progress?gid=" + gid)
+	err = http_client.request(HTTPClient.METHOD_GET, "/aria2-progress?gid=" + gid, [])
 	if err != OK:
 		http_client.close()
 		return {}
@@ -19870,7 +19870,7 @@ func _on_aria2_download_complete(download_id: String) -> void:
 
 		# 显示通知
 		var mod_name = task.get("name", "Mod")
-		_show_download_complete_notification(mod_name, save_path)
+		show_notification("Download complete: " + mod_name, true)
 
 		# 自动安装 mod
 		print("[_on_aria2_download_complete] Auto-installing mod: ", abs_save_path)
@@ -19886,12 +19886,12 @@ func _install_mod_from_downloaded_file(download_id: String, zip_path: String) ->
 	var result = ModUtils.install_mod(zip_path, "", "nexus", mod_required_fields)
 	if result.success:
 		print("[_install_mod_from_downloaded_file] Mod installed successfully")
-		_show_notification(translate("mod_installed_successfully"), true)
+		show_notification("Mod installed successfully", true)
 		# 刷新模组列表
 		load_mods()
 	else:
 		print("[_install_mod_from_downloaded_file] Install failed: ", result.message)
-		_show_notification(translate("install_failed") + ": " + result.message, false)
+		show_notification("Install failed: " + result.message, false)
 
 
 func _get_browser_host_port() -> int:
