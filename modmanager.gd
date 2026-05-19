@@ -19652,9 +19652,9 @@ func _aria2_download_via_http(url: String, save_path: String, existing_download_
 	# 调用 BrowserHost 的 Aria2 API (使用 18765 端口)
 	var http_client = HTTPClient.new()
 	var browser_port = 18765  # BrowserHost Aria2 HTTP API 端口
-	print("[_aria2_download_via_http] Connecting to BrowserHost on port ", browser_port)
+	print("[_aria2_download_via_http] Connecting to BrowserHost on 127.0.0.1:", browser_port)
 
-	var err = http_client.connect_to_host("localhost", browser_port)
+	var err = http_client.connect_to_host("127.0.0.1", browser_port)
 	if err != OK:
 		print("[_aria2_download_via_http] Failed to connect to BrowserHost: ", err)
 		return {"success": false, "error": "Failed to connect to BrowserHost"}
