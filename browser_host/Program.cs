@@ -657,6 +657,10 @@ namespace BrowserHost
                 {
                     HandleAria2Download(context);
                 }
+                else if (path == "/aria2-progress" && context.Request.HttpMethod == "GET")
+                {
+                    HandleAria2Progress(context);
+                }
                 else if (path == "/api/health")
                 {
                     context.Response.StatusCode = 200;
@@ -744,6 +748,63 @@ namespace BrowserHost
             catch (Exception ex)
             {
                 Console.WriteLine($"[Program] HandleAria2Download error: {ex.Message}");
+                context.Response.StatusCode = 500;
+            }
+        }
+
+        private static void HandleAria2Progress(HttpListenerContext context)
+        {
+            try
+            {
+                // 获取 GID 参数
+                var gid = context.Request.QueryString["gid"] ?? "";
+
+                if (string.IsNullOrEmpty(gid))
+                {
+                    context.Response.StatusCode = 400;
+                    var buffer = Encoding.UTF8.GetBytes("{\"error\":\"gid required\"}");
+                    context.Response.ContentType = "application/json";
+                    context.Response.OutputStream.Write(buffer);
+                    return;
+                }
+
+                if (_sharedAria2Manager == null || !_sharedAria2Manager.IsRunning)
+                {
+                    context.Response.StatusCode = 500;
+                    var buffer = Encoding.UTF8.GetBytes("{\"error\":\"Aria2 not running\"}");
+                    context.Response.ContentType = "application/json";
+                    context.Response.OutputStream.Write(buffer);
+                    return;
+                }
+
+                // 获取下载状态
+                var status = _sharedAria2Manager.GetStatusAsync(gid).GetAwaiter().GetResult();
+
+                if (status == null)
+                {
+                    context.Response.StatusCode = 200;
+                    context.Response.ContentType = "application/json";
+                    var buffer = Encoding.UTF8.GetBytes("{\"completed\":true,\"gid\":\"" + gid + "\"}");
+                    context.Response.OutputStream.Write(buffer);
+                    return;
+                }
+
+                context.Response.StatusCode = 200;
+                context.Response.ContentType = "application/json";
+                var response = System.Text.Json.JsonSerializer.Serialize(new
+                {
+                    gid = gid,
+                    totalLength = status.TotalLength,
+                    completedLength = status.CompletedLength,
+                    downloadSpeed = status.Speed,
+                    status = status.Status
+                });
+                var respBuffer = Encoding.UTF8.GetBytes(response);
+                context.Response.OutputStream.Write(respBuffer);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[Program] HandleAria2Progress error: {ex.Message}");
                 context.Response.StatusCode = 500;
             }
         }

@@ -19816,7 +19816,8 @@ func _get_aria2_progress(gid: String) -> Dictionary:
 		return {}
 
 	# 发送 GET 请求获取进度
-	err = http_client.request(HTTPClient.METHOD_GET, "/aria2-progress?gid=" + gid, [])
+	var headers = PackedStringArray(["Accept: application/json"])
+	err = http_client.request(HTTPClient.METHOD_GET, "/aria2-progress?gid=" + gid, headers)
 	if err != OK:
 		http_client.close()
 		return {}
