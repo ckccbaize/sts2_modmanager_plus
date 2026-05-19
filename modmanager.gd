@@ -19817,11 +19817,11 @@ func _get_aria2_progress(gid: String) -> Dictionary:
 		http_client.close()
 		return {}
 
-	# 发送 GET 请求获取进度
+	# 发送 GET 请求获取进度（使用完整 URL）
 	var headers = PackedStringArray(["Accept: application/json"])
-	var url = "/aria2-progress?gid=" + gid
-	print("[_get_aria2_progress] Requesting: ", url)
-	err = http_client.request(HTTPClient.METHOD_GET, url, headers)
+	var full_url = "http://127.0.0.1:" + str(browser_port) + "/aria2-progress?gid=" + gid
+	print("[_get_aria2_progress] Requesting: ", full_url)
+	err = http_client.request(HTTPClient.METHOD_GET, full_url, headers)
 	if err != OK:
 		http_client.close()
 		return {}
