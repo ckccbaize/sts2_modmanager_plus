@@ -779,12 +779,15 @@ namespace BrowserHost
 
                 // 获取下载状态
                 var status = _sharedAria2Manager.GetStatusAsync(gid).GetAwaiter().GetResult();
+                Console.WriteLine($"[Program] HandleAria2Progress: gid={gid}, status={(status != null ? status.Status : "null")}, total={status?.TotalLength}, completed={status?.CompletedLength}");
 
                 if (status == null)
                 {
+                    // status == null 可能是因为 GID 无效或下载已被移除
+                    // 不应该假设下载完成，返回未完成状态让监控继续
                     context.Response.StatusCode = 200;
                     context.Response.ContentType = "application/json";
-                    var buffer = Encoding.UTF8.GetBytes("{\"completed\":true,\"gid\":\"" + gid + "\"}");
+                    var buffer = Encoding.UTF8.GetBytes("{\"gid\":\"" + gid + "\",\"completed\":false,\"status\":\"unknown\"}");
                     context.Response.OutputStream.Write(buffer);
                     return;
                 }
