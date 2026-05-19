@@ -610,8 +610,10 @@ namespace BrowserHost
 
         private static async Task HttpListenerLoop(int port, CancellationToken ct)
         {
+            Console.WriteLine($"[Program] Starting HTTP listener on port {port}");
             _httpListener = new HttpListener();
             _httpListener.Prefixes.Add($"http://localhost:{port}/");
+            Console.WriteLine($"[Program] HttpListener prefix registered");
             try
             {
                 _httpListener.Start();
@@ -624,13 +626,18 @@ namespace BrowserHost
                         var context = await _httpListener.GetContextAsync();
                         _ = Task.Run(() => HandleHttpRequest(context));
                     }
-                    catch (HttpListenerException) { break; }
+                    catch (HttpListenerException hex)
+                    {
+                        Console.WriteLine($"[Program] HttpListenerException: {hex.Message}, ErrorCode: {hex.ErrorCode}");
+                        break;
+                    }
                     catch (ObjectDisposedException) { break; }
                 }
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"[Program] HTTP listener error: {ex.Message}");
+                Console.WriteLine($"[Program] HTTP listener error: {ex.GetType().Name}: {ex.Message}");
+                Console.WriteLine($"[Program] Inner: {ex.InnerException?.Message}");
             }
         }
 
@@ -1168,8 +1175,13 @@ namespace BrowserHost
                         // 设置共享 Aria2Manager 并启动 HTTP 监听器
                         // 使用固定端口 18765 作为 Aria2 HTTP API 端口
                         Program.SetAria2Manager(browserHostObj.aria2Manager);
+                        Console.WriteLine($"[BrowserHost] Shared Aria2Manager set, IsRunning: {browserHostObj.aria2Manager.IsRunning}");
                         Program.StartHttpListener(18765);
                         Console.WriteLine($"[BrowserHost] Aria2 HTTP API listening on port 18765");
+
+                        // 等待一小段时间后验证 HTTP 监听器是否真的启动
+                        await Task.Delay(500);
+                        Console.WriteLine($"[BrowserHost] HTTP listener status check: {_httpListener?.IsListening}");
 
                         // aria2Manager.CleanupOrphanProcesses() will be called here if needed
                         browserHostObj.SetUpdateDialogCallback((currentVer, newVer, changelog, downloadUrl) =>
