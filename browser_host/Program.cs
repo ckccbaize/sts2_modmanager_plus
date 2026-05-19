@@ -146,7 +146,7 @@ namespace BrowserHost
     public class BrowserHostObject
     {
         public Aria2Manager? aria2Manager { get; set; }
-        public WebView2.WebView2? _webView { get; set; }  // 用于执行 JavaScript
+        public Microsoft.Web.WebView2.WinForms.WebView2? _webView { get; set; }  // 用于执行 JavaScript
 
         // Aria2 便捷方法
         public bool Start(string aria2Path)
@@ -656,6 +656,10 @@ namespace BrowserHost
         private static CancellationTokenSource? _httpListenerCts;
         private static Aria2Manager? _sharedAria2Manager;
         private static bool _httpListenerStarted = false;
+        private static Microsoft.Web.WebView2.WinForms.WebView2? _webView;
+
+        public static Microsoft.Web.WebView2.WinForms.WebView2? WebView => _webView;
+        public static void SetWebView(Microsoft.Web.WebView2.WinForms.WebView2? webView) => _webView = webView;
 
         public static int GetCurrentPort() => _staticPort;
         public static void SetCurrentPort(int port) => _staticPort = port;
@@ -896,7 +900,7 @@ namespace BrowserHost
                 Console.WriteLine($"[Program] Download complete notification: {body}");
 
                 // 通知 WebView2 JavaScript
-                if (_webView?.CoreWebView2 != null)
+                if (WebView?.CoreWebView2 != null)
                 {
                     var script = $@"
                         (function() {{
@@ -909,7 +913,7 @@ namespace BrowserHost
                             console.log('[BrowserHost] Download complete event dispatched:', data.mod_name);
                         }})();
                     ";
-                    var _ = _webView.CoreWebView2.ExecuteScriptAsync(script);
+                    var _ = WebView.CoreWebView2.ExecuteScriptAsync(script);
                 }
 
                 context.Response.StatusCode = 200;
@@ -933,7 +937,7 @@ namespace BrowserHost
                 Console.WriteLine($"[Program] Install complete notification: {body}");
 
                 // 通知 WebView2 JavaScript
-                if (_webView?.CoreWebView2 != null)
+                if (WebView?.CoreWebView2 != null)
                 {
                     var script = $@"
                         (function() {{
@@ -945,7 +949,7 @@ namespace BrowserHost
                             console.log('[BrowserHost] Install complete event dispatched:', data.mod_name);
                         }})();
                     ";
-                    var _ = _webView.CoreWebView2.ExecuteScriptAsync(script);
+                    var _ = WebView.CoreWebView2.ExecuteScriptAsync(script);
                 }
 
                 context.Response.StatusCode = 200;
@@ -957,6 +961,39 @@ namespace BrowserHost
             {
                 Console.WriteLine($"[Program] HandleInstallComplete error: {ex.Message}");
                 context.Response.StatusCode = 500;
+            }
+        }
+
+        // 通知 WebUI 下载完成（静态方法，供 Aria2 事件回调调用）
+        public static void NotifyWebUIOfDownloadComplete(string modName, string downloadId)
+        {
+            try
+            {
+                if (WebView?.CoreWebView2 == null)
+                {
+                    Console.WriteLine("[Program] NotifyWebUIOfDownloadComplete: WebView not available");
+                    return;
+                }
+
+                var escapedName = modName.Replace("'", "\\'").Replace("\"", "\\\"").Replace("\n", " ").Replace("\r", "");
+                var escapedId = downloadId.Replace("'", "\\'").Replace("\"", "\\\"");
+                var body = System.Text.Json.JsonSerializer.Serialize(new { id = escapedId, mod_name = escapedName, status = "completed" });
+
+                var script = $@"
+                    (function() {{
+                        var data = {body};
+                        window.dispatchEvent(new CustomEvent('sts2-download-complete', {{
+                            detail: {{ id: data.id, mod_name: data.mod_name, status: data.status }}
+                        }}));
+                        console.log('[BrowserHost] Aria2 download complete notified to WebUI:', data.mod_name);
+                    }})();
+                ";
+                var _ = WebView.CoreWebView2.ExecuteScriptAsync(script);
+                Console.WriteLine($"[Program] NotifyWebUIOfDownloadComplete: {modName}, id={downloadId}");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[Program] NotifyWebUIOfDownloadComplete error: {ex.Message}");
             }
         }
 
@@ -1083,7 +1120,9 @@ namespace BrowserHost
             }
         }
 
-        private Microsoft.Web.WebView2.WinForms.WebView2? _webView;
+        private static Microsoft.Web.WebView2.WinForms.WebView2? _webView;
+
+        // Static accessor for WebView (used by static handlers) - moved to Program class
         private readonly int _defaultPort;
         private readonly int[] _backupPorts = { 28901, 28902, 28903, 28904 };
         private int _currentPort;
@@ -1312,6 +1351,9 @@ namespace BrowserHost
                 _webView = new Microsoft.Web.WebView2.WinForms.WebView2();
                 _webView.Dock = DockStyle.Fill;
 
+                // Register WebView with Program class for static handlers
+                Program.SetWebView(_webView);
+
                 _container!.Controls.Add(_webView);
                 _container!.FormBorderStyle = FormBorderStyle.None;
                 _container!.WindowState = FormWindowState.Normal;
@@ -1406,6 +1448,26 @@ namespace BrowserHost
                         // 使用固定端口 18765 作为 Aria2 HTTP API 端口
                         Program.SetAria2Manager(browserHostObj.aria2Manager);
                         Console.WriteLine($"[BrowserHost] Shared Aria2Manager set, IsRunning: {browserHostObj.aria2Manager.IsRunning}");
+
+                        // 连接 Aria2 下载完成事件（用于通知 WebUI）
+                        browserHostObj.aria2Manager.DownloadComplete += (sender, dl) => {
+                            Console.WriteLine($"[BrowserHost] Aria2 download complete: GID={dl.Gid}, path={dl.SavePath}");
+                            // 从下载路径提取文件名作为 mod_name
+                            var modName = Path.GetFileNameWithoutExtension(dl.SavePath);
+                            // 从缓存的发送数据获取 download_id（通过 GID 匹配）
+                            // 这里直接使用文件名作为标识
+                            var downloadId = $"aria2_{dl.Gid}";
+                            Program.NotifyWebUIOfDownloadComplete(modName, downloadId);
+                        };
+
+                        // 连接下载进度事件（用于更新 WebUI）
+                        browserHostObj.aria2Manager.ProgressChanged += (sender, progressData) => {
+                            var (gid, progress, speed) = progressData;
+                            // 进度更新可以通过轮询机制传递到 WebUI
+                            // 目前暂时不实现实时进度推送（WebUI 通过 /api/downloads 轮询获取活跃任务）
+                            // Console.WriteLine($"[BrowserHost] Aria2 progress: GID={gid}, {progress}%, {speed} bytes/s");
+                        };
+
                         Program.StartHttpListener(18765);
                         Console.WriteLine($"[BrowserHost] Aria2 HTTP API listening on port 18765");
 

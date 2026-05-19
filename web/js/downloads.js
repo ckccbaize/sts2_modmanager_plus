@@ -1086,10 +1086,10 @@ const STS2Downloads = {
     // ── Helpers ───────────────────────────────────────────────────
 
     /**
-     * Check if a mod already exists locally by name or URL.
+     * Check if a mod is currently being downloaded.
      * @param {string} modName - The name of the mod
      * @param {string} url - The URL of the mod
-     * @returns {boolean} - True if mod exists locally
+     * @returns {boolean} - True if mod is currently being downloaded
      * @private
      */
     _checkModExistsLocally(modName, url) {
@@ -1097,61 +1097,18 @@ const STS2Downloads = {
 
         const normalizedName = modName.toLowerCase().trim();
 
-        // 1. Check download history for successful downloads with same mod name
-        const inHistory = this.history.some(h => 
-            h.mod_name && h.mod_name.toLowerCase().trim() === normalizedName && h.status === 'success'
-        );
-        if (inHistory) return true;
-
-        // 2. Check installed mods via app.mods.mods
-        if (this._app && this._app.mods && this._app.mods.mods) {
-            const installedMods = this._app.mods.mods;
-            const modExists = installedMods.some(mod => {
-                const modNameLower = (mod.name || mod.mod_name || '').toLowerCase().trim();
-                return modNameLower === normalizedName;
-            });
-            if (modExists) return true;
-        }
-
-        // 3. Check active downloads for same mod (avoid duplicate active downloads)
+        // 1. Check active downloads for same mod (avoid duplicate active downloads)
+        // 注意：只检查正在下载的，不要检查历史记录！
+        // 一个模组可以被下载多次（比如更新版本）
         const activeExists = Object.values(this.active_downloads).some(dl =>
             dl.mod_name && dl.mod_name.toLowerCase().trim() === normalizedName
         );
         if (activeExists) return true;
 
-        // 4. Check by URL if provided
+        // 2. Check by URL if provided (only active downloads)
         if (url) {
-            const urlInHistory = this.history.some(h => 
-                h.url === url && h.status === 'success'
-            );
-            if (urlInHistory) return true;
-
             const urlInActive = Object.values(this.active_downloads).some(dl => dl.url === url);
             if (urlInActive) return true;
-        }
-
-        // 5. Check by filename extracted from URL
-        if (url) {
-            try {
-                const urlObj = new URL(url);
-                const pathname = urlObj.pathname;
-                const filename = pathname.split('/').pop();
-                if (filename) {
-                    const filenameInHistory = this.history.some(h => {
-                        if (!h.url) return false;
-                        try {
-                            const hUrl = new URL(h.url);
-                            const hFilename = hUrl.pathname.split('/').pop();
-                            return hFilename === filename && h.status === 'success';
-                        } catch (e) {
-                            return false;
-                        }
-                    });
-                    if (filenameInHistory) return true;
-                }
-            } catch (e) {
-                // URL parsing failed, skip filename check
-            }
         }
 
         return false;
