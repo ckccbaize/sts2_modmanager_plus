@@ -19973,8 +19973,10 @@ func _install_mod_from_downloaded_file(download_id: String, zip_path: String) ->
 
 	# 获取下载任务的原始来源（nexus, steam_workshop 等），而不是 aria2
 	var download_source = "nexus"  # 默认值
+	var download_mod_name = "Mod"  # 默认模组名称
 	if download_id and download_tasks.has(download_id):
 		var source = download_tasks[download_id].get("download_source", "nexus")
+		download_mod_name = download_tasks[download_id].get("mod_name", "Mod")
 		# aria2 只是下载方式，不是真正的来源
 		if source == "aria2":
 			download_source = "nexus"  # 保持原有的 nexus 来源
@@ -19987,11 +19989,11 @@ func _install_mod_from_downloaded_file(download_id: String, zip_path: String) ->
 		print("[_install_mod_from_downloaded_file] Mod installed successfully")
 		# 更新已安装模组的 JSON 文件中的下载来源
 		var installed_mods = result.get("installed_mods", [])
-		var installed_mod_name = ""
+		var installed_mod_name = download_mod_name
 		if not installed_mods.is_empty():
 			var mod_info = installed_mods[0]
 			var mod_path = mod_info.get("path", "")
-			installed_mod_name = mod_info.get("name", mod_name)
+			installed_mod_name = mod_info.get("name", download_mod_name)
 			if not mod_path.is_empty():
 				_update_mod_json_download_source(mod_path, download_source)
 				print("[_install_mod_from_downloaded_file] Updated mod JSON: ", mod_path)
@@ -20112,8 +20114,8 @@ func _notify_webui_install_complete(download_id: String, mod_name: String) -> vo
 			http_client.close()
 			return
 
-	response_code = http_client.get_response_code()
-	resp_body = http_client.read_response_body_chunk().get_string_from_utf8()
+	var response_code = http_client.get_response_code()
+	var resp_body = http_client.read_response_body_chunk().get_string_from_utf8()
 	http_client.close()
 	print("[_notify_webui_install_complete] Response: ", response_code, " ", resp_body)
 
