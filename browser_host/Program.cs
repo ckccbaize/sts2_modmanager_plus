@@ -1166,8 +1166,10 @@ namespace BrowserHost
                         Console.WriteLine($"[BrowserHost] Aria2 started: {aria2Started}");
 
                         // 设置共享 Aria2Manager 并启动 HTTP 监听器
+                        // 使用固定端口 18765 作为 Aria2 HTTP API 端口
                         Program.SetAria2Manager(browserHostObj.aria2Manager);
-                        Program.StartHttpListener(Program.GetCurrentPort());
+                        Program.StartHttpListener(18765);
+                        Console.WriteLine($"[BrowserHost] Aria2 HTTP API listening on port 18765");
 
                         // aria2Manager.CleanupOrphanProcesses() will be called here if needed
                         browserHostObj.SetUpdateDialogCallback((currentVer, newVer, changelog, downloadUrl) =>
