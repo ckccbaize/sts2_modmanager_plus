@@ -44,6 +44,23 @@ namespace BrowserHost
             _httpClient.Timeout = TimeSpan.FromSeconds(30);
         }
 
+        // 获取进程路径
+        [System.Runtime.InteropServices.DllImport("psapi.dll")]
+        private static extern uint GetModuleFileNameEx(IntPtr hProcess, IntPtr hModule, System.Text.StringBuilder lpFilename, int nSize);
+
+        private static string GetProcessPath(int pid)
+        {
+            try
+            {
+                var process = System.Diagnostics.Process.GetProcessById(pid);
+                return process.MainModule?.FileName ?? "unknown";
+            }
+            catch
+            {
+                return "access denied";
+            }
+        }
+
         /// <summary>
         /// 启动 Aria2 RPC 服务器
         /// </summary>
@@ -55,19 +72,47 @@ namespace BrowserHost
 
                 try
                 {
+                    // 诊断日志
+                    Console.WriteLine($"[Aria2Manager] Start called with path: {aria2Path}");
+                    Console.WriteLine($"[Aria2Manager] File exists: {System.IO.File.Exists(aria2Path)}");
+                    Console.WriteLine($"[Aria2Manager] BaseDirectory: {AppDomain.CurrentDomain.BaseDirectory}");
+
+                    // 检查进程是否已经在运行
+                    var existingProcesses = System.Diagnostics.Process.GetProcessesByName("aria2c");
+                    Console.WriteLine($"[Aria2Manager] Existing aria2c processes: {existingProcesses.Length}");
+                    foreach (var p in existingProcesses)
+                    {
+                        Console.WriteLine($"[Aria2Manager] Found: PID={p.Id}, Path={GetProcessPath(p.Id)}");
+                    }
+
                     // 构建启动参数
                     var args = new List<string>
                     {
                         "--enable-rpc",
                         $"--rpc-listen-port={rpcPort}",
                         "--rpc-listen-all",
+                        "--rpc-secret=sts2-mod-manager",
                         "--continue=true",
                         "--split=16",
                         "--max-connection-per-server=16",
                         "--min-split-size=10M",
                         "--disk-cache=32M",
                         "--enable-http-pipelining=true",
-                        "--http-accept-gzip=true"
+                        "--http-accept-gzip=true",
+                        // 禁用 SSL 证书验证（Nexus CDN 等站点需要）
+                        "--check-certificate=false",
+                        "--check-serve-cache=true",
+                        // 禁用 IPv6 避免连接问题
+                        "--disable-ipv6=true",
+                        // 清除代理设置
+                        "--all-proxy=",
+                        "--all-proxy-user=",
+                        "--all-proxy-pass=",
+                        // 更多连接选项
+                        "--retry-wait=5",
+                        "--max-file-not-found=5",
+                        // 输出级别
+                        "-l", "aria2.log"
                     };
 
                     var startInfo = new ProcessStartInfo
@@ -77,12 +122,23 @@ namespace BrowserHost
                         UseShellExecute = false,
                         RedirectStandardOutput = true,
                         RedirectStandardError = true,
-                        CreateNoWindow = true
+                        CreateNoWindow = true,
+                        WorkingDirectory = System.IO.Path.GetDirectoryName(aria2Path) ?? "."
                     };
+
+                    Console.WriteLine($"[Aria2Manager] Working directory: {startInfo.WorkingDirectory}");
+                    Console.WriteLine($"[Aria2Manager] Full command: {aria2Path} {string.Join(" ", args)}");
 
                     _aria2Process = Process.Start(startInfo);
                     if (_aria2Process != null)
                     {
+                        Console.WriteLine($"[Aria2Manager] Process started, PID={_aria2Process.Id}, HasExited={_aria2Process.HasExited}");
+
+                        if (_aria2Process.HasExited)
+                        {
+                            Console.WriteLine($"[Aria2Manager] Process exited immediately with code: {_aria2Process.ExitCode}");
+                        }
+
                         _aria2Process.OutputDataReceived += (s, e) => Console.WriteLine($"[Aria2] {e.Data}");
                         _aria2Process.ErrorDataReceived += (s, e) => Console.WriteLine($"[Aria2 Error] {e.Data}");
                         _aria2Process.BeginOutputReadLine();
@@ -104,10 +160,15 @@ namespace BrowserHost
                             Console.WriteLine("[Aria2Manager] Aria2 started but RPC not ready");
                         }
                     }
+                    else
+                    {
+                        Console.WriteLine("[Aria2Manager] Process.Start returned null");
+                    }
                 }
                 catch (Exception ex)
                 {
-                    Console.WriteLine("[Aria2Manager] Failed to start: " + ex.Message);
+                    Console.WriteLine($"[Aria2Manager] Failed to start: {ex.GetType().Name}: {ex.Message}");
+                    Console.WriteLine($"[Aria2Manager] Stack trace: {ex.StackTrace}");
                 }
 
                 return false;
@@ -263,10 +324,13 @@ namespace BrowserHost
         }
 
         /// <summary>
-        /// 获取下载状态
+        /// 获取下载状态（增强版：同时检查活跃和已停止列表）
         /// </summary>
         public async Task<Aria2Download?> GetStatusAsync(string gid)
         {
+            Console.WriteLine($"[Aria2Manager] GetStatusAsync called for gid={gid}, IsRunning={_isRunning}");
+
+            // 首先尝试 tellStatus 直接查询
             var request = new
             {
                 jsonrpc = "2.0",
@@ -276,16 +340,88 @@ namespace BrowserHost
                 {
                     $"token:{_rpcToken}",
                     gid,
-                    new[] { "status", "totalLength", "completedLength", "downloadSpeed", "files" }
+                    new[] { "status", "totalLength", "completedLength", "downloadSpeed", "files", "errorCode", "errorMessage" }
                 }
             };
 
             var response = await SendRpcRequestAsync(request);
-            if (response != null && response.Value.TryGetProperty("result", out var result))
+            if (response != null && response.Value.TryGetProperty("result", out var result) && result.ValueKind == JsonValueKind.Object)
             {
+                Console.WriteLine($"[Aria2Manager] tellStatus returned result for {gid}");
                 return ParseDownloadStatus(result);
             }
+
+            // 检查 RPC 响应是否有错误
+            if (response != null && response.Value.TryGetProperty("error", out var error))
+            {
+                Console.WriteLine($"[Aria2Manager] tellStatus RPC error: {error.GetRawText()}");
+            }
+            else if (response == null)
+            {
+                Console.WriteLine($"[Aria2Manager] tellStatus returned null (RPC call failed)");
+            }
+
+            // fallback: 尝试从活跃列表中查找
+            Console.WriteLine($"[Aria2Manager] Trying to find in active downloads...");
+            var activeDownloads = await GetAllDownloadsAsync();
+            Console.WriteLine($"[Aria2Manager] Active downloads count: {activeDownloads.Count}");
+            var found = activeDownloads.FirstOrDefault(d => d.Gid == gid);
+            if (found != null)
+            {
+                Console.WriteLine($"[Aria2Manager] Found in active list: {gid}");
+                return found;
+            }
+
+            // fallback: 检查已停止/完成列表（最近 100 个）
+            Console.WriteLine($"[Aria2Manager] Trying to find in stopped downloads...");
+            var stoppedResult = await GetStoppedDownloadsAsync();
+            if (stoppedResult != null)
+            {
+                Console.WriteLine($"[Aria2Manager] Stopped downloads count: {stoppedResult.Count}");
+                found = stoppedResult.FirstOrDefault(d => d.Gid == gid);
+                if (found != null)
+                {
+                    Console.WriteLine($"[Aria2Manager] Found in stopped: GID={gid}, status={found.Status}, errorCode={found.ErrorCode}, errorMessage={found.ErrorMessage}");
+                    return found;
+                }
+            }
+
+            Console.WriteLine($"[Aria2Manager] GetStatusAsync: GID={gid} not found anywhere");
             return null;
+        }
+
+        /// <summary>
+        /// 获取已停止的下载（包括完成、错误、已移除）
+        /// </summary>
+        public async Task<List<Aria2Download>> GetStoppedDownloadsAsync()
+        {
+            var request = new
+            {
+                jsonrpc = "2.0",
+                id = Guid.NewGuid().ToString(),
+                method = "aria2.tellStopped",
+                @params = new object[]
+                {
+                    $"token:{_rpcToken}",
+                    0,
+                    100,
+                    new[] { "status", "totalLength", "completedLength", "downloadSpeed", "files", "errorCode", "errorMessage" }
+                }
+            };
+
+            var response = await SendRpcRequestAsync(request);
+            var downloads = new List<Aria2Download>();
+
+            if (response != null && response.Value.TryGetProperty("result", out var result) && result.ValueKind == JsonValueKind.Array)
+            {
+                foreach (var item in result.EnumerateArray())
+                {
+                    var dl = ParseDownloadStatus(item);
+                    if (dl != null) downloads.Add(dl);
+                }
+            }
+
+            return downloads;
         }
 
         /// <summary>
@@ -425,19 +561,28 @@ namespace BrowserHost
             try
             {
                 var json = JsonSerializer.Serialize(request);
+                Console.WriteLine($"[Aria2Manager] RPC Request: {json.Substring(0, Math.Min(200, json.Length))}...");
+
                 var content = new StringContent(json, Encoding.UTF8, "application/json");
                 var response = await _httpClient.PostAsync(_rpcUrl, content);
 
+                var statusCode = (int)response.StatusCode;
+                var responseBody = await response.Content.ReadAsStringAsync();
+                Console.WriteLine($"[Aria2Manager] RPC Response ({statusCode}): {responseBody.Substring(0, Math.Min(300, responseBody.Length))}...");
+
                 if (response.IsSuccessStatusCode)
                 {
-                    var responseBody = await response.Content.ReadAsStringAsync();
                     var doc = JsonDocument.Parse(responseBody);
                     return doc.RootElement;
+                }
+                else
+                {
+                    Console.WriteLine($"[Aria2Manager] RPC failed with status {statusCode}");
                 }
             }
             catch (Exception ex)
             {
-                Console.WriteLine("[Aria2Manager] RPC error: " + ex.Message);
+                Console.WriteLine($"[Aria2Manager] RPC error: {ex.GetType().Name}: {ex.Message}");
             }
             return null;
         }
@@ -452,7 +597,9 @@ namespace BrowserHost
                     Status = result.GetProperty("status").GetString() ?? "unknown",
                     TotalLength = result.TryGetProperty("totalLength", out var tl) ? long.Parse(tl.GetString() ?? "0") : 0,
                     CompletedLength = result.TryGetProperty("completedLength", out var cl) ? long.Parse(cl.GetString() ?? "0") : 0,
-                    Speed = result.TryGetProperty("downloadSpeed", out var sp) ? long.Parse(sp.GetString() ?? "0") : 0
+                    Speed = result.TryGetProperty("downloadSpeed", out var sp) ? long.Parse(sp.GetString() ?? "0") : 0,
+                    ErrorCode = result.TryGetProperty("errorCode", out var ec) ? ec.GetString() : null,
+                    ErrorMessage = result.TryGetProperty("errorMessage", out var em) ? em.GetString() : null
                 };
 
                 if (result.TryGetProperty("files", out var files) && files.ValueKind == JsonValueKind.Array)
@@ -486,5 +633,7 @@ namespace BrowserHost
         public long CompletedLength { get; set; }
         public long Speed { get; set; }
         public int Progress { get; set; }
+        public string? ErrorCode { get; set; }
+        public string? ErrorMessage { get; set; }
     }
 }
