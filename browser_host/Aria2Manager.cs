@@ -348,12 +348,24 @@ namespace BrowserHost
             var response = await SendRpcRequestAsync(request);
             if (response != null && response.Value.TryGetProperty("result", out var result))
             {
+                Console.WriteLine($"[Aria2Manager] tellStatus result type: {result.ValueKind}");
                 // result 可能是对象或数组（包含一个对象）
                 JsonElement statusResult;
                 if (result.ValueKind == JsonValueKind.Array)
                 {
+                    Console.WriteLine($"[Aria2Manager] result is array, count: {result.GetArrayLength()}");
                     // 如果是数组，取第一个元素
-                    statusResult = result.EnumerateArray().FirstOrDefault();
+                    var enumerator = result.EnumerateArray();
+                    if (enumerator.MoveNext())
+                    {
+                        statusResult = enumerator.Current;
+                        Console.WriteLine($"[Aria2Manager] Using first array element");
+                    }
+                    else
+                    {
+                        Console.WriteLine($"[Aria2Manager] Array is empty!");
+                        statusResult = default;
+                    }
                 }
                 else
                 {
@@ -364,6 +376,10 @@ namespace BrowserHost
                 {
                     Console.WriteLine($"[Aria2Manager] tellStatus returned result for {gid}");
                     return ParseDownloadStatus(statusResult);
+                }
+                else
+                {
+                    Console.WriteLine($"[Aria2Manager] statusResult is not object: {statusResult.ValueKind}");
                 }
             }
 
@@ -611,9 +627,9 @@ namespace BrowserHost
                 {
                     Gid = result.GetProperty("gid").GetString() ?? "",
                     Status = result.GetProperty("status").GetString() ?? "unknown",
-                    TotalLength = result.TryGetProperty("totalLength", out var tl) ? long.Parse(tl.GetString() ?? "0") : 0,
-                    CompletedLength = result.TryGetProperty("completedLength", out var cl) ? long.Parse(cl.GetString() ?? "0") : 0,
-                    Speed = result.TryGetProperty("downloadSpeed", out var sp) ? long.Parse(sp.GetString() ?? "0") : 0,
+                    TotalLength = GetJsonValueAsLong(result, "totalLength"),
+                    CompletedLength = GetJsonValueAsLong(result, "completedLength"),
+                    Speed = GetJsonValueAsLong(result, "downloadSpeed"),
                     ErrorCode = result.TryGetProperty("errorCode", out var ec) ? ec.GetString() : null,
                     ErrorMessage = result.TryGetProperty("errorMessage", out var em) ? em.GetString() : null
                 };
@@ -629,9 +645,43 @@ namespace BrowserHost
 
                 return dl;
             }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[Aria2Manager] ParseDownloadStatus error: {ex.Message}");
+                return null;
+            }
+        }
+
+        // 安全地获取 JSON 数值（处理字符串或数字类型）
+        private static long GetJsonValueAsLong(JsonElement parent, string propertyName)
+        {
+            try
+            {
+                if (!parent.TryGetProperty(propertyName, out var element))
+                    return 0;
+
+                // 如果是数字类型，直接返回
+                if (element.ValueKind == JsonValueKind.Number)
+                    return element.GetInt64();
+
+                // 如果是字符串类型，解析字符串
+                if (element.ValueKind == JsonValueKind.String)
+                {
+                    var str = element.GetString();
+                    if (!string.IsNullOrEmpty(str))
+                    {
+                        if (long.TryParse(str, out var result))
+                            return result;
+                        if (double.TryParse(str, out var dbl))
+                            return (long)dbl;
+                    }
+                }
+
+                return 0;
+            }
             catch
             {
-                return null;
+                return 0;
             }
         }
     }
