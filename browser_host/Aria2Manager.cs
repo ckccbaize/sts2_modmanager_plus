@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Linq;
 using System.Net.Http;
 using System.Text;
 using System.Text.Json;
@@ -345,10 +346,25 @@ namespace BrowserHost
             };
 
             var response = await SendRpcRequestAsync(request);
-            if (response != null && response.Value.TryGetProperty("result", out var result) && result.ValueKind == JsonValueKind.Object)
+            if (response != null && response.Value.TryGetProperty("result", out var result))
             {
-                Console.WriteLine($"[Aria2Manager] tellStatus returned result for {gid}");
-                return ParseDownloadStatus(result);
+                // result 可能是对象或数组（包含一个对象）
+                JsonElement statusResult;
+                if (result.ValueKind == JsonValueKind.Array)
+                {
+                    // 如果是数组，取第一个元素
+                    statusResult = result.EnumerateArray().FirstOrDefault();
+                }
+                else
+                {
+                    statusResult = result;
+                }
+
+                if (statusResult.ValueKind == JsonValueKind.Object)
+                {
+                    Console.WriteLine($"[Aria2Manager] tellStatus returned result for {gid}");
+                    return ParseDownloadStatus(statusResult);
+                }
             }
 
             // 检查 RPC 响应是否有错误
