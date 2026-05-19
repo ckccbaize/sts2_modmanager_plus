@@ -8787,7 +8787,7 @@ func _on_server_download_request(data: Dictionary) -> void:
 		if download_tasks.has(download_id):
 			download_tasks[download_id]["status"] = "aria2_downloading"
 			download_tasks[download_id]["aria2_gid"] = aria2_gid
-			_update_download_item_status(download_id, "aria2_downloading")
+			_update_download_task_status(download_id, "aria2_downloading")
 		return
 
 	# 如果 BrowserHost 的 Aria2 下载失败或不可用，继续使用 Godot 下载

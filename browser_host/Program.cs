@@ -880,7 +880,10 @@ namespace BrowserHost
                         // 立即启动 Aria2，确保页面加载前已就绪
                         // 使用相对路径（与 BrowserHost.exe 同目录）
                         string aria2Path = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "aria2c.exe");
-                        browserHostObj.aria2Manager.Start(aria2Path);
+                        Console.WriteLine($"[BrowserHost] Aria2 path: {aria2Path}");
+                        Console.WriteLine($"[BrowserHost] Aria2 exists: {File.Exists(aria2Path)}");
+                        var aria2Started = browserHostObj.aria2Manager.Start(aria2Path);
+                        Console.WriteLine($"[BrowserHost] Aria2 started: {aria2Started}");
 
                         // aria2Manager.CleanupOrphanProcesses() will be called here if needed
                         browserHostObj.SetUpdateDialogCallback((currentVer, newVer, changelog, downloadUrl) =>
