@@ -946,17 +946,34 @@ namespace BrowserHost
                 // 通知 WebView2 JavaScript
                 if (WebView?.CoreWebView2 != null)
                 {
+                    Console.WriteLine("[Program] WebView available, dispatching event...");
+                    // 解析 JSON 并安全地构建 JavaScript 代码
+                    var jsonDoc = System.Text.Json.JsonDocument.Parse(body);
+                    var id = jsonDoc.RootElement.GetProperty("id").GetString() ?? "";
+                    var modName = jsonDoc.RootElement.GetProperty("mod_name").GetString() ?? "";
+                    var status = jsonDoc.RootElement.GetProperty("status").GetString() ?? "";
+
+                    // 安全转义模组名称（处理特殊字符）
+                    var safeModName = modName
+                        .Replace("\\", "\\\\")
+                        .Replace("'", "\\'")
+                        .Replace("\n", " ")
+                        .Replace("\r", "");
+
                     var script = $@"
                         (function() {{
-                            var data = {body};
-                            // 触发自定义事件让 WebUI 处理安装完成通知
                             window.dispatchEvent(new CustomEvent('sts2-install-complete', {{
-                                detail: {{ id: data.id, mod_name: data.mod_name, status: data.status }}
+                                detail: {{ id: '{id}', mod_name: '{safeModName}', status: '{status}' }}
                             }}));
-                            console.log('[BrowserHost] Install complete event dispatched:', data.mod_name);
+                            console.log('[BrowserHost] Install complete event dispatched: {safeModName}');
                         }})();
                     ";
                     var _ = WebView.CoreWebView2.ExecuteScriptAsync(script);
+                    Console.WriteLine("[Program] Script executed");
+                }
+                else
+                {
+                    Console.WriteLine("[Program] ERROR: WebView not available!");
                 }
 
                 context.Response.StatusCode = 200;
