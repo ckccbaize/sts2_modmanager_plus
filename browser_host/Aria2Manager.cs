@@ -88,13 +88,21 @@ namespace BrowserHost
                         _aria2Process.BeginOutputReadLine();
                         _aria2Process.BeginErrorReadLine();
 
-                        _isRunning = true;
-                        Console.WriteLine("[Aria2Manager] Aria2 started on port " + rpcPort);
+                        // 等待 RPC 服务器就绪（最多等待 5 秒）
+                        if (_waitForRpcReady(rpcPort, 5000))
+                        {
+                            _isRunning = true;
+                            Console.WriteLine("[Aria2Manager] Aria2 started and RPC ready on port " + rpcPort);
 
-                        // 启动状态轮询
-                        _ = PollStatusAsync();
+                            // 启动状态轮询
+                            _ = PollStatusAsync();
 
-                        return true;
+                            return true;
+                        }
+                        else
+                        {
+                            Console.WriteLine("[Aria2Manager] Aria2 started but RPC not ready");
+                        }
                     }
                 }
                 catch (Exception ex)
@@ -104,6 +112,33 @@ namespace BrowserHost
 
                 return false;
             }
+        }
+
+        /// <summary>
+        /// 等待 RPC 服务器就绪
+        /// </summary>
+        private bool _waitForRpcReady(int port, int timeoutMs)
+        {
+            var deadline = DateTime.Now.AddMilliseconds(timeoutMs);
+            while (DateTime.Now < deadline)
+            {
+                try
+                {
+                    // 尝试连接 RPC 端口
+                    using var client = new System.Net.Sockets.TcpClient();
+                    var result = client.BeginConnect("localhost", port, null, null);
+                    var waitResult = result.AsyncWaitHandle.WaitOne(500);
+                    if (waitResult && client.Connected)
+                    {
+                        client.EndConnect(result);
+                        Console.WriteLine("[Aria2Manager] RPC port " + port + " is ready");
+                        return true;
+                    }
+                }
+                catch { }
+                System.Threading.Thread.Sleep(100);
+            }
+            return false;
         }
 
         /// <summary>
