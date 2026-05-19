@@ -19787,7 +19787,8 @@ func _on_aria2_progress_timer(download_id: String) -> void:
 	_update_download_task_progress(download_id, progress, str(download_speed) + " B/s", download_speed, completed_length, total_length, dl_status)
 
 	# 检查下载是否完成
-	if dl_status == "complete" or dl_status == "finished":
+	if dl_status == "complete" or dl_status == "finished" or progress_info.get("completed", false):
+		print("[_on_aria2_progress_timer] Download completed, calling _on_aria2_download_complete")
 		_on_aria2_download_complete(download_id)
 
 
@@ -19817,11 +19818,11 @@ func _get_aria2_progress(gid: String) -> Dictionary:
 		http_client.close()
 		return {}
 
-	# 发送 GET 请求获取进度（使用完整 URL）
+	# 发送 GET 请求获取进度（只使用路径部分，query string 会被正确传递）
 	var headers = PackedStringArray(["Accept: application/json"])
-	var full_url = "http://127.0.0.1:" + str(browser_port) + "/aria2-progress?gid=" + gid
-	print("[_get_aria2_progress] Requesting: ", full_url)
-	err = http_client.request(HTTPClient.METHOD_GET, full_url, headers)
+	var request_path = "/aria2-progress?gid=" + gid
+	print("[_get_aria2_progress] Requesting path: ", request_path)
+	err = http_client.request(HTTPClient.METHOD_GET, request_path, headers)
 	if err != OK:
 		http_client.close()
 		return {}
@@ -19842,21 +19843,6 @@ func _get_aria2_progress(gid: String) -> Dictionary:
 	http_client.close()
 
 	print("[_get_aria2_progress] Response: ", resp_body)
-
-	# 等待响应
-	poll_count = 0
-	while http_client.get_status() == HTTPClient.STATUS_REQUESTING:
-		http_client.poll()
-		OS.delay_msec(10)
-		poll_count += 1
-		if poll_count > 100:  # 1 秒超时
-			http_client.close()
-			return {}
-
-	var resp_body = ""
-	if http_client.get_status() == HTTPClient.STATUS_BODY:
-		resp_body = http_client.read_response_body_chunk().get_string_from_utf8()
-	http_client.close()
 
 	# 解析 JSON 响应
 	var json = JSON.new()
