@@ -591,6 +591,7 @@ namespace BrowserHost
         private static HttpListener? _httpListener;
         private static CancellationTokenSource? _httpListenerCts;
         private static Aria2Manager? _sharedAria2Manager;
+        private static bool _httpListenerStarted = false;
 
         public static int GetCurrentPort() => _staticPort;
         public static void SetCurrentPort(int port) => _staticPort = port;
@@ -601,9 +602,11 @@ namespace BrowserHost
             _sharedAria2Manager = manager;
         }
 
-        // 启动 HTTP 监听器
+        // 启动 HTTP 监听器（防止重复启动）
         public static void StartHttpListener(int port)
         {
+            if (_httpListenerStarted) return;
+            _httpListenerStarted = true;
             _httpListenerCts = new CancellationTokenSource();
             Task.Run(() => HttpListenerLoop(port, _httpListenerCts.Token));
         }
@@ -612,8 +615,10 @@ namespace BrowserHost
         {
             Console.WriteLine($"[Program] Starting HTTP listener on port {port}");
             _httpListener = new HttpListener();
+            // 同时监听 localhost 和 127.0.0.1，因为 Godot 可能用两者之一
             _httpListener.Prefixes.Add($"http://localhost:{port}/");
-            Console.WriteLine($"[Program] HttpListener prefix registered: http://localhost:{port}/");
+            _httpListener.Prefixes.Add($"http://127.0.0.1:{port}/");
+            Console.WriteLine($"[Program] HttpListener prefix registered: http://localhost:{port}/ and http://127.0.0.1:{port}/");
             try
             {
                 _httpListener.Start();
