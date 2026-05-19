@@ -729,6 +729,10 @@ namespace BrowserHost
                 {
                     HandleDownloadComplete(context);
                 }
+                else if (path == "/install-complete" && context.Request.HttpMethod == "POST")
+                {
+                    HandleInstallComplete(context);
+                }
                 else if (path == "/api/health")
                 {
                     context.Response.StatusCode = 200;
@@ -916,6 +920,42 @@ namespace BrowserHost
             catch (Exception ex)
             {
                 Console.WriteLine($"[Program] HandleDownloadComplete error: {ex.Message}");
+                context.Response.StatusCode = 500;
+            }
+        }
+
+        private static void HandleInstallComplete(HttpListenerContext context)
+        {
+            try
+            {
+                using var reader = new StreamReader(context.Request.InputStream);
+                var body = reader.ReadToEnd();
+                Console.WriteLine($"[Program] Install complete notification: {body}");
+
+                // 通知 WebView2 JavaScript
+                if (_webView?.CoreWebView2 != null)
+                {
+                    var script = $@"
+                        (function() {{
+                            var data = {body};
+                            // 触发自定义事件让 WebUI 处理安装完成通知
+                            window.dispatchEvent(new CustomEvent('sts2-install-complete', {{
+                                detail: {{ id: data.id, mod_name: data.mod_name, status: data.status }}
+                            }}));
+                            console.log('[BrowserHost] Install complete event dispatched:', data.mod_name);
+                        }})();
+                    ";
+                    var _ = _webView.CoreWebView2.ExecuteScriptAsync(script);
+                }
+
+                context.Response.StatusCode = 200;
+                context.Response.ContentType = "application/json";
+                var buffer = Encoding.UTF8.GetBytes("{\"success\":true}");
+                context.Response.OutputStream.Write(buffer);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[Program] HandleInstallComplete error: {ex.Message}");
                 context.Response.StatusCode = 500;
             }
         }

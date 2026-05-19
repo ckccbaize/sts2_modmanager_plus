@@ -57,6 +57,13 @@ const STS2Downloads = {
             this._onBrowserHostDownloadComplete(id, mod_name, status);
         });
 
+        // 监听安装完成通知
+        window.addEventListener('sts2-install-complete', (event) => {
+            console.log('[STS2Downloads] Received install complete event:', event.detail);
+            const { id, mod_name, status } = event.detail;
+            this._onBrowserHostInstallComplete(id, mod_name, status);
+        });
+
         // 暴露全局函数供 BrowserHost 调用
         window.STS2Downloads = this;
         window._onBrowserHostDownloadComplete = (id, mod_name, status) => {
@@ -107,7 +114,34 @@ const STS2Downloads = {
         }
 
         // 显示通知
-        this._app.notifications.show(`下载完成: ${mod_name}`, 'success', 3000);
+        this._app.notifications.show(`下载完成: ${mod_name}，正在安装...`, 'success', 4000);
+
+        // 通知模组页面刷新（后端已完成自动安装）
+        if (this._app) {
+            console.log('[STS2Downloads] Emitting download-complete event for mod refresh');
+            this._app.emit('download-complete', { id, mod_name });
+        }
+    },
+
+    /**
+     * Handle install complete notification from BrowserHost (active push, not polling).
+     * @param {string} id - download id
+     * @param {string} mod_name - mod name
+     * @param {string} status - install status
+     * @private
+     */
+    _onBrowserHostInstallComplete(id, mod_name, status) {
+        console.log('[STS2Downloads] BrowserHost install complete:', id, mod_name, status);
+        // 安装完成时不需要再次检查 _completedNotificationIds，因为同一个 id 已经添加过了
+
+        // 显示安装完成通知
+        this._app.notifications.show(`已自动安装: ${mod_name}`, 'success', 3000);
+
+        // 通知模组页面刷新列表
+        if (this._app) {
+            console.log('[STS2Downloads] Emitting install-complete event for mod refresh');
+            this._app.emit('install-complete', { id, mod_name });
+        }
     },
 
     /**

@@ -19804,7 +19804,7 @@ func _on_aria2_progress_timer(download_id: String) -> void:
 	var status = task.get("status", "")
 
 	# 下载完成或失败则停止监控
-	if status == "complete" or status == "failed" or status == "paused":
+	if status == "complete" or status == "completed" or status == "failed" or status == "paused":
 		var timer = find_child("aria2_progress_" + download_id, true, false)
 		if timer:
 			timer.stop()
@@ -19987,13 +19987,16 @@ func _install_mod_from_downloaded_file(download_id: String, zip_path: String) ->
 		print("[_install_mod_from_downloaded_file] Mod installed successfully")
 		# 更新已安装模组的 JSON 文件中的下载来源
 		var installed_mods = result.get("installed_mods", [])
+		var installed_mod_name = ""
 		if not installed_mods.is_empty():
 			var mod_info = installed_mods[0]
 			var mod_path = mod_info.get("path", "")
+			installed_mod_name = mod_info.get("name", mod_name)
 			if not mod_path.is_empty():
 				_update_mod_json_download_source(mod_path, download_source)
 				print("[_install_mod_from_downloaded_file] Updated mod JSON: ", mod_path)
-		# 不再显示弹窗，WebUI 已经通过主动推送通知了
+		# 通知 WebUI 安装完成
+		_notify_webui_install_complete(download_id, installed_mod_name)
 		# 刷新模组列表
 		load_mods()
 	else:
@@ -20060,6 +20063,59 @@ func _notify_webui_download_complete(download_id: String, mod_name: String) -> v
 	var resp_body = http_client.read_response_body_chunk().get_string_from_utf8()
 	http_client.close()
 	print("[_notify_webui_download_complete] Response: ", response_code, " ", resp_body)
+
+
+func _notify_webui_install_complete(download_id: String, mod_name: String) -> void:
+	"""主动通知 WebUI 安装完成（不依赖轮询）"""
+	print("[_notify_webui_install_complete] Notifying WebUI - id=", download_id, ", mod_name=", mod_name)
+	var http_client = HTTPClient.new()
+	var browser_port = 18765  # BrowserHost HTTP API 端口
+
+	var err = http_client.connect_to_host("127.0.0.1", browser_port)
+	if err != OK:
+		print("[_notify_webui_install_complete] Failed to connect to BrowserHost: ", err)
+		return
+
+	# 等待连接
+	var poll_count = 0
+	while http_client.get_status() == HTTPClient.STATUS_CONNECTING:
+		http_client.poll()
+		OS.delay_msec(10)
+		poll_count += 1
+		if poll_count > 100:  # 1 秒超时
+			print("[_notify_webui_install_complete] Connection timeout")
+			http_client.close()
+			return
+
+	if http_client.get_status() != HTTPClient.STATUS_CONNECTED:
+		print("[_notify_webui_install_complete] Not connected, status: ", http_client.get_status())
+		http_client.close()
+		return
+
+	# 发送通知
+	var body = JSON.stringify({"id": download_id, "mod_name": mod_name, "status": "install_complete"})
+	var headers = PackedStringArray(["Content-Type: application/json"])
+	err = http_client.request(HTTPClient.METHOD_POST, "/install-complete", headers, body)
+	if err != OK:
+		print("[_notify_webui_install_complete] Failed to send request: ", err)
+		http_client.close()
+		return
+
+	# 等待响应
+	poll_count = 0
+	while http_client.get_status() == HTTPClient.STATUS_REQUESTING:
+		http_client.poll()
+		OS.delay_msec(10)
+		poll_count += 1
+		if poll_count > 100:  # 1 秒超时
+			print("[_notify_webui_install_complete] Request timeout")
+			http_client.close()
+			return
+
+	response_code = http_client.get_response_code()
+	resp_body = http_client.read_response_body_chunk().get_string_from_utf8()
+	http_client.close()
+	print("[_notify_webui_install_complete] Response: ", response_code, " ", resp_body)
 
 
 func _api_aria2_status(_params: Dictionary) -> Dictionary:

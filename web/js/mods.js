@@ -125,6 +125,16 @@ const STS2Mods = {
                 console.log('[STS2Mods] Bundle disabled, reloading mods...');
                 this.loadMods();
             });
+            // 监听下载完成事件，自动刷新模组列表
+            this._app.on('download-complete', (data) => {
+                console.log('[STS2Mods] Download complete, reloading mods:', data.mod_name);
+                this.loadMods();
+            });
+            // 监听安装完成事件，自动刷新模组列表
+            this._app.on('install-complete', (data) => {
+                console.log('[STS2Mods] Install complete, reloading mods:', data.mod_name);
+                this.loadMods();
+            });
         }
 
         // 【关键修复】页面关闭前保存当前标签的配置（模仿Godot的_exit_tree）
