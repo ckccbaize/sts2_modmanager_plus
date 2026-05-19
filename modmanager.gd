@@ -7668,7 +7668,7 @@ func _download_bundle(url: String) -> void:
 	download_tasks[download_id]["save_path"] = save_path
 
 	# 开始下载
-	_download_with_powershell_async(url, save_path, download_id, bundle_name)
+	# _download_with_powershell_async(url, save_path, download_id, bundle_name)
 
 	show_notification(translate("download_started"), true)
 
@@ -9911,7 +9911,7 @@ func _download_mod_file(url: String, save_path: String, mod_name: String, existi
 
 	# 使用 PowerShell 在后台下载（异步执行避免卡顿）
 	print("[_download_mod_file] Starting background download...")
-	_download_with_powershell_async(url, save_path, download_id, mod_name)
+	# _download_with_powershell_async(url, save_path, download_id, mod_name)
 
 	# 保留下载的压缩包，不删除
 
@@ -19675,6 +19675,7 @@ func _aria2_download_via_http(url: String, save_path: String, existing_download_
 
 	# 发送 JSON 请求
 	var body = JSON.stringify({"url": url, "save_path": abs_save_path})
+	print("[_aria2_download_via_http] Request body: ", body)
 	var headers = PackedStringArray(["Content-Type: application/json"])
 	err = http_client.request(HTTPClient.METHOD_POST, "/aria2-download", headers, body)
 	if err != OK:

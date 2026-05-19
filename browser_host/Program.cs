@@ -613,7 +613,7 @@ namespace BrowserHost
             Console.WriteLine($"[Program] Starting HTTP listener on port {port}");
             _httpListener = new HttpListener();
             _httpListener.Prefixes.Add($"http://localhost:{port}/");
-            Console.WriteLine($"[Program] HttpListener prefix registered");
+            Console.WriteLine($"[Program] HttpListener prefix registered: http://localhost:{port}/");
             try
             {
                 _httpListener.Start();
@@ -678,6 +678,17 @@ namespace BrowserHost
                 using var reader = new StreamReader(context.Request.InputStream);
                 var body = reader.ReadToEnd();
                 Console.WriteLine($"[Program] Aria2 download request: {body}");
+                Console.WriteLine($"[Program] Body length: {body.Length}, empty: {string.IsNullOrEmpty(body)}");
+
+                if (string.IsNullOrWhiteSpace(body))
+                {
+                    Console.WriteLine("[Program] ERROR: Empty request body!");
+                    context.Response.StatusCode = 400;
+                    var buffer = Encoding.UTF8.GetBytes("{\"error\":\"Empty request body\"}");
+                    context.Response.ContentType = "application/json";
+                    context.Response.OutputStream.Write(buffer);
+                    return;
+                }
 
                 var doc = System.Text.Json.JsonDocument.Parse(body);
                 var url = "";
@@ -687,6 +698,8 @@ namespace BrowserHost
                     url = urlProp.GetString() ?? "";
                 if (doc.RootElement.TryGetProperty("save_path", out var pathProp))
                     savePath = pathProp.GetString() ?? "";
+
+                Console.WriteLine($"[Program] Parsed - url: {(string.IsNullOrEmpty(url) ? "EMPTY" : url.Substring(0, Math.Min(50, url.Length)) + "...")}, save_path: {savePath}");
 
                 if (string.IsNullOrEmpty(url) || string.IsNullOrEmpty(savePath))
                 {
@@ -1178,10 +1191,6 @@ namespace BrowserHost
                         Console.WriteLine($"[BrowserHost] Shared Aria2Manager set, IsRunning: {browserHostObj.aria2Manager.IsRunning}");
                         Program.StartHttpListener(18765);
                         Console.WriteLine($"[BrowserHost] Aria2 HTTP API listening on port 18765");
-
-                        // 等待一小段时间后验证 HTTP 监听器是否真的启动
-                        await Task.Delay(500);
-                        Console.WriteLine($"[BrowserHost] HTTP listener status check: {_httpListener?.IsListening}");
 
                         // aria2Manager.CleanupOrphanProcesses() will be called here if needed
                         browserHostObj.SetUpdateDialogCallback((currentVer, newVer, changelog, downloadUrl) =>
