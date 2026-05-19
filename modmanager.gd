@@ -19758,21 +19758,140 @@ func _on_aria2_progress_timer(download_id: String) -> void:
 			timer.queue_free()
 		return
 
-	# 检查文件是否存在并获取进度
+	# 获取 Aria2 GID
+	var aria2_gid = task.get("aria2_gid", "")
+	if aria2_gid.is_empty():
+		return
+
+	# 从 BrowserHost 获取下载进度
+	var progress_info = _get_aria2_progress(aria2_gid)
+	if progress_info.is_empty():
+		return
+
+	var total_length = progress_info.get("totalLength", 0)
+	var completed_length = progress_info.get("completedLength", 0)
+	var download_speed = progress_info.get("downloadSpeed", 0)
+	var dl_status = progress_info.get("status", "")
+
+	# 更新 total_size（如果之前为 0）
+	if total_length > 0 and task.get("total_size", 0) == 0:
+		task["total_size"] = total_length
+		print("[_on_aria2_progress_timer] Updated total_size: ", total_length)
+
+	# 计算进度百分比
+	var progress = 0.0
+	if total_length > 0:
+		progress = float(completed_length) / float(total_length) * 100.0
+
+	# 更新下载进度
+	_update_download_task_progress(download_id, progress, str(download_speed) + " B/s", download_speed, completed_length, total_length, dl_status)
+
+	# 检查下载是否完成
+	if dl_status == "complete" or dl_status == "finished":
+		_on_aria2_download_complete(download_id)
+
+
+func _get_aria2_progress(gid: String) -> Dictionary:
+	"""从 BrowserHost 获取 Aria2 下载进度"""
+	var http_client = HTTPClient.new()
+	var browser_port = 18765
+
+	var err = http_client.connect_to_host("127.0.0.1", browser_port)
+	if err != OK:
+		print("[_get_aria2_progress] Failed to connect to BrowserHost: ", err)
+		return {}
+
+	# 等待连接
+	var poll_count = 0
+	while http_client.get_status() == HTTPClient.STATUS_CONNECTING:
+		http_client.poll()
+		OS.delay_msec(10)
+		poll_count += 1
+		if poll_count > 100:  # 1 秒超时
+			http_client.close()
+			return {}
+
+	if http_client.get_status() != HTTPClient.STATUS_CONNECTED:
+		http_client.close()
+		return {}
+
+	# 发送 GET 请求获取进度
+	err = http_client.request(HTTPClient.METHOD_GET, "/aria2-progress?gid=" + gid)
+	if err != OK:
+		http_client.close()
+		return {}
+
+	# 等待响应
+	poll_count = 0
+	while http_client.get_status() == HTTPClient.STATUS_REQUESTING:
+		http_client.poll()
+		OS.delay_msec(10)
+		poll_count += 1
+		if poll_count > 100:  # 1 秒超时
+			http_client.close()
+			return {}
+
+	var resp_body = ""
+	if http_client.get_status() == HTTPClient.STATUS_BODY:
+		resp_body = http_client.read_response_body_chunk().get_string_from_utf8()
+	http_client.close()
+
+	# 解析 JSON 响应
+	var json = JSON.new()
+	if json.parse(resp_body) == OK:
+		var data = json.get_data()
+		if data is Dictionary:
+			return data
+
+	return {}
+
+
+func _on_aria2_download_complete(download_id: String) -> void:
+	"""Aria2 下载完成回调"""
+	print("[_on_aria2_download_complete] Download completed: ", download_id)
+
+	if not download_tasks.has(download_id):
+		return
+
+	var task = download_tasks[download_id]
 	var abs_save_path = task.get("abs_save_path", "")
-	var file_size = 0
-	var current_size = 0
+	var save_path = task.get("save_path", "")
 
+	# 停止监控定时器
+	var timer = find_child("aria2_progress_" + download_id, true, false)
+	if timer:
+		timer.stop()
+		timer.queue_free()
+
+	# 检查文件是否存在
 	if FileAccess.file_exists(abs_save_path):
-		var file = FileAccess.open(abs_save_path, FileAccess.READ)
-		if file:
-			current_size = file.get_length()
-			file.close()
+		_update_download_task_status(download_id, "complete")
+		print("[_on_aria2_download_complete] File saved: ", abs_save_path)
 
-	var total_size = task.get("total_size", 0)
-	if total_size > 0:
-		var progress = float(current_size) / float(total_size) * 100.0
-		_update_download_task_progress(download_id, progress, "", 0, current_size, total_size, "")
+		# 显示通知
+		var mod_name = task.get("name", "Mod")
+		_show_download_complete_notification(mod_name, save_path)
+
+		# 自动安装 mod
+		print("[_on_aria2_download_complete] Auto-installing mod: ", abs_save_path)
+		_install_mod_from_downloaded_file(download_id, abs_save_path)
+	else:
+		_update_download_task_status(download_id, "failed")
+		print("[_on_aria2_download_complete] File not found: ", abs_save_path)
+
+
+func _install_mod_from_downloaded_file(download_id: String, zip_path: String) -> void:
+	"""从下载的文件自动安装 mod"""
+	print("[_install_mod_from_downloaded_file] Installing: ", zip_path)
+	var result = ModUtils.install_mod(zip_path, "", "nexus", mod_required_fields)
+	if result.success:
+		print("[_install_mod_from_downloaded_file] Mod installed successfully")
+		_show_notification(translate("mod_installed_successfully"), true)
+		# 刷新模组列表
+		load_mods()
+	else:
+		print("[_install_mod_from_downloaded_file] Install failed: ", result.message)
+		_show_notification(translate("install_failed") + ": " + result.message, false)
 
 
 func _get_browser_host_port() -> int:
