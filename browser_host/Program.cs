@@ -158,6 +158,13 @@ namespace BrowserHost
             return false;
         }
 
+        // 通知 WebUI 安装完成（供 Godot 调用）
+        public void NotifyInstallComplete(string modName, string downloadId)
+        {
+            Console.WriteLine($"[BrowserHostObject] NotifyInstallComplete: {modName}, id={downloadId}");
+            Program.NotifyWebUIOfInstallComplete(modName, downloadId);
+        }
+
         // 执行 JavaScript 并返回结果（异步）
         public async Task<string?> ExecuteScriptAsync(string script)
         {
@@ -994,6 +1001,39 @@ namespace BrowserHost
             catch (Exception ex)
             {
                 Console.WriteLine($"[Program] NotifyWebUIOfDownloadComplete error: {ex.Message}");
+            }
+        }
+
+        // 通知 WebUI 安装完成（静态方法，供 Godot 调用）
+        public static void NotifyWebUIOfInstallComplete(string modName, string downloadId)
+        {
+            try
+            {
+                if (WebView?.CoreWebView2 == null)
+                {
+                    Console.WriteLine("[Program] NotifyWebUIOfInstallComplete: WebView not available");
+                    return;
+                }
+
+                var escapedName = modName.Replace("'", "\\'").Replace("\"", "\\\"").Replace("\n", " ").Replace("\r", "");
+                var escapedId = downloadId.Replace("'", "\\'").Replace("\"", "\\\"");
+                var body = System.Text.Json.JsonSerializer.Serialize(new { id = escapedId, mod_name = escapedName, status = "install_complete" });
+
+                var script = $@"
+                    (function() {{
+                        var data = {body};
+                        window.dispatchEvent(new CustomEvent('sts2-install-complete', {{
+                            detail: {{ id: data.id, mod_name: data.mod_name, status: data.status }}
+                        }}));
+                        console.log('[BrowserHost] Install complete notified to WebUI:', data.mod_name);
+                    }})();
+                ";
+                var _ = WebView.CoreWebView2.ExecuteScriptAsync(script);
+                Console.WriteLine($"[Program] NotifyWebUIOfInstallComplete: {modName}, id={downloadId}");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[Program] NotifyWebUIOfInstallComplete error: {ex.Message}");
             }
         }
 

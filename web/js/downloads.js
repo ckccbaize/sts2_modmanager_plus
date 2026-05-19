@@ -1067,6 +1067,12 @@ const STS2Downloads = {
                             continue;  // 已处理完，跳过创建新任务
                         }
                     } else {
+                        // 检查是否已完成过（防止删除后又重新创建）
+                        if (this._completedNotificationIds.has(apiDl.id)) {
+                            console.log('[STS2Downloads] Download already completed, skipping:', apiDl.mod_name);
+                            continue;  // 跳过已完成的任务
+                        }
+
                         // 本地文件优先：检查该mod是否已存在本地（只检查正在下载的）
                         if (this._checkModExistsLocally(apiDl.mod_name, apiDl.url)) {
                             console.log('[STS2Downloads] Mod already downloading, skipping:', apiDl.mod_name);
