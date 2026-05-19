@@ -8762,6 +8762,10 @@ func _on_server_download_request(data: Dictionary) -> void:
 	var user_id = data.get("user_id", 0)  # NXM URL 中的 user_id 参数
 	var file_id = data.get("file_id", 0)  # NXM URL 中的 file_id 参数
 
+	# 检查是否来自 BrowserHost 的 Aria2 下载
+	var aria2_gid = data.get("aria2_gid", "")
+	var download_type = data.get("download_type", "")
+
 	if mod_id == 0:
 		if local_server:
 			local_server.notify_download_complete(false, mod_name, "Invalid mod_id")
@@ -8775,6 +8779,20 @@ func _on_server_download_request(data: Dictionary) -> void:
 	# 设置下载来源为 Nexus
 	if download_tasks.has(download_id):
 		download_tasks[download_id]["download_source"] = "nexus"
+
+	# 如果 BrowserHost 已经用 Aria2 开始下载，则跳过 Godot 的下载逻辑
+	if download_type == "aria2" and not aria2_gid.is_empty():
+		print("[_on_server_download_request] Aria2 download already started (GID=", aria2_gid, "), skipping Godot download")
+		# 更新任务状态为"通过Aria2下载"
+		if download_tasks.has(download_id):
+			download_tasks[download_id]["status"] = "aria2_downloading"
+			download_tasks[download_id]["aria2_gid"] = aria2_gid
+			_update_download_item_status(download_id, "aria2_downloading")
+		return
+
+	# 如果 BrowserHost 的 Aria2 下载失败或不可用，继续使用 Godot 下载
+	if download_type == "error" or download_type == "fallback" or download_type == "no-aria2":
+		print("[_on_server_download_request] BrowserHost Aria2 failed/unavailable (type=", download_type, "), falling back to Godot download")
 
 	# 关键逻辑：所有下载都使用直链，不依赖 Nexus API
 	# 优先使用直链 URL，如果没有则尝试 nxm_url

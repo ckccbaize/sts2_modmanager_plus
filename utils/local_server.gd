@@ -519,8 +519,11 @@ func _handle_download(method: String, headers: Dictionary, body: String) -> Dict
 	var user_id = request_data.get("user_id", request_data.get("userId", 0))
 	var file_id = request_data.get("file_id", request_data.get("fileId", 0))
 
-	# print("[LocalServer] Download request: mod_id=", mod_id, ", name=", mod_name, ", download_url=", download_url)
-	# print("[LocalServer] Extra params: key=", key.substr(0, 10) if key else "", ", expires=", expires, ", user_id=", user_id, ", file_id=", file_id)
+	# 解析 BrowserHost 发送的 Aria2 信息
+	var aria2_gid = request_data.get("aria2_gid", "")
+	var download_type = request_data.get("download_type", "")  # "aria2", "error", "fallback", "no-aria2"
+
+	print("[LocalServer] Download request: mod_id=", mod_id, ", name=", mod_name, ", download_type=", download_type, ", aria2_gid=", aria2_gid)
 
 	if mod_id == 0:
 		return {"code": 400, "data": {"error": "mod_id is required"}}
@@ -541,7 +544,9 @@ func _handle_download(method: String, headers: Dictionary, body: String) -> Dict
 		"key": key,
 		"expires": expires,
 		"user_id": user_id,
-		"file_id": file_id
+		"file_id": file_id,
+		"aria2_gid": aria2_gid,
+		"download_type": download_type
 	})
 
 	# 立即返回accepted状态

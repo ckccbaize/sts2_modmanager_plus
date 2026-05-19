@@ -543,10 +543,15 @@ func download_image_to_cache(image_url: String, mod_id: int) -> String:
 
 
 func _parse_url(url: String) -> Dictionary:
-	var result = {"host": "", "path": "/"}
+	var result = {"host": "", "path": "/", "query": ""}
 	var host_start = url.find("://")
 	if host_start >= 0:
 		var remaining = url.substr(host_start + 3)
+		# 先分离 query string
+		var query_idx = remaining.find("?")
+		if query_idx >= 0:
+			result.query = remaining.substr(query_idx + 1)
+			remaining = remaining.substr(0, query_idx)
 		var path_idx = remaining.find("/")
 		if path_idx >= 0:
 			result.host = remaining.substr(0, path_idx)

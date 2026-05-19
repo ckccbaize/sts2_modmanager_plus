@@ -361,8 +361,8 @@ namespace BrowserHost
                 var httpClient = new System.Net.Http.HttpClient();
                 httpClient.DefaultRequestHeaders.Add("Accept", "application/json");
 
-                // 调用 Nexus API 获取下载链接
-                var url = $"https://api.nexusmods.com/v1/games/slaythespire2/mods/{modId}/files/{fileId}/download_link.json?key={apiKey}";
+                // 构建 URL - 对于非 Premium 用户需要 key/expires/user_id 三个参数
+                var url = $"https://api.nexusmods.com/v1/games/slaythespire2/mods/{modId}/files/{fileId}/download_link.json?key={apiKey}&expires={expires}&user_id={userId}";
                 Console.WriteLine($"[BrowserHost] Calling Nexus API: {url}");
 
                 var response = await httpClient.GetAsync(url);
@@ -379,6 +379,9 @@ namespace BrowserHost
                 else
                 {
                     Console.WriteLine($"[BrowserHost] Nexus API error: {response.StatusCode}");
+                    // 打印响应内容以便调试
+                    var errorContent = await response.Content.ReadAsStringAsync();
+                    Console.WriteLine($"[BrowserHost] API response: {errorContent}");
                 }
             }
             catch (Exception ex)
