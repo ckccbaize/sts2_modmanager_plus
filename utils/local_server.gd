@@ -461,6 +461,12 @@ func _handle_request(method: String, path: String, headers: Dictionary, body: St
 	# 新增：下载管理 API
 	elif path.begins_with("/api/downloads"):
 		return _handle_downloads_routes(method, path, headers, body)
+	# 新增：Aria2 下载 API
+	elif path == "/api/aria2-download":
+		return _handle_aria2_download(method, headers, body)
+	# 新增：获取 Aria2 状态
+	elif path == "/api/aria2-status":
+		return _handle_aria2_status(method, headers, body)
 	# 新增：启动游戏 API
 	elif path == "/api/launch":
 		return _handle_launch(method, headers, body)
@@ -1004,6 +1010,36 @@ func _handle_launch(method: String, headers: Dictionary, body: String) -> Dictio
 	var data = _parse_body_json(body)
 	var mode = data.get("mode", "modded")
 	return _bridge_request("launch_game", {"mode": mode})
+
+
+# ════════════════════════════════════════════════════════════════
+#  Aria2 下载路由
+# ════════════════════════════════════════════════════════════════
+
+func _handle_aria2_download(method: String, headers: Dictionary, body: String) -> Dictionary:
+	if method != "POST":
+		return {"code": 405, "data": {"error": "Method not allowed"}}
+
+	var data = _parse_body_json(body)
+	var url = data.get("url", "")
+	var save_path = data.get("save_path", "")
+
+	if url.is_empty():
+		return {"code": 400, "data": {"error": "url is required"}}
+
+	if save_path.is_empty():
+		return {"code": 400, "data": {"error": "save_path is required"}}
+
+	# 通过 bridge 调用 Godot 的 Aria2 下载方法
+	return _bridge_request("aria2_download", {"url": url, "save_path": save_path})
+
+
+func _handle_aria2_status(method: String, headers: Dictionary, body: String) -> Dictionary:
+	if method != "GET":
+		return {"code": 405, "data": {"error": "Method not allowed"}}
+
+	# 通过 bridge 调用 Godot 获取 Aria2 状态
+	return _bridge_request("aria2_status")
 
 
 # ════════════════════════════════════════════════════════════════

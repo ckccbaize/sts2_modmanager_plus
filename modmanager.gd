@@ -4008,6 +4008,8 @@ func _api_handle_request(type: String, params: Dictionary, request_id: String = 
 		"resume_download": return _api_resume_download(params)
 		"cancel_download": return _api_cancel_download(params)
 		"launch_game": return _api_launch_game(params)
+		"aria2_download": return _api_aria2_download(params)
+		"aria2_status": return _api_aria2_status(params)
 		_: return {"code": 404, "data": {"error": "Unknown request type: " + type}}
 
 

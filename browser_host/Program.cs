@@ -47,6 +47,34 @@ namespace BrowserHost
             return new Dictionary<string, string>();
         }
 
+        // 添加 Aria2 下载（供 Godot 调用）
+        public string? AddAria2Download(string url, string savePath)
+        {
+            if (aria2Manager == null || !aria2Manager.IsRunning)
+            {
+                Console.WriteLine("[BrowserHost] AddAria2Download: Aria2 not running");
+                return null;
+            }
+
+            try
+            {
+                var options = new Dictionary<string, string>
+                {
+                    { "out", Path.GetFileName(savePath) },
+                    { "dir", Path.GetDirectoryName(savePath) ?? "." }
+                };
+
+                var gid = aria2Manager.AddDownloadAsync(url, savePath, options).GetAwaiter().GetResult();
+                Console.WriteLine($"[BrowserHost] AddAria2Download: started {gid}");
+                return gid;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[BrowserHost] AddAria2Download error: {ex.Message}");
+                return null;
+            }
+        }
+
         // 更新弹窗回调
         private Action<string, string, string, string>? _showUpdateDialogCallback;
         // 导航回调
@@ -267,9 +295,10 @@ namespace BrowserHost
                     return;
                 }
 
-                // 对于 NXM URL，BrowserHost 直接调用 Nexus API 获取真实下载链接，然后使用 Aria2
-                Console.WriteLine($"[BrowserHost] Processing NXM URL with Aria2");
-                _ProcessNxmWithAria2(jsonData);
+                // 对于 NXM URL，直接转发给 Godot 处理
+                // Godot 有完整的 Nexus API 认证，可以获取真实下载链接后再调用 Aria2
+                Console.WriteLine($"[BrowserHost] NXM URL detected, forwarding to Godot for processing");
+                ForwardToGodot(jsonData, null, "nxm-forward");
             }
             catch (Exception ex)
             {

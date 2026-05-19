@@ -347,6 +347,36 @@ class STS2API {
         return this._request('POST', '/api/saves/sync', body);
     }
 
+    // ── Aria2 Download ──────────────────────────────────────────
+
+    /**
+     * 使用 Aria2 下载文件（通过 BrowserHost）
+     * @param {string} url - 下载 URL
+     * @param {string} savePath - 保存路径
+     * @returns {Promise<{success: boolean, gid?: string, error?: string}>}
+     */
+    async aria2Download(url, savePath) {
+        console.log('[API] aria2Download called:', url, savePath);
+        // 首先尝试通过 BrowserHost Host Object 直接调用
+        try {
+            if (window.chrome?.webview?.hostObjects?.browserHost) {
+                const browserHost = window.chrome.webview.hostObjects.browserHost;
+                if (browserHost.AddAria2Download) {
+                    console.log('[API] Calling BrowserHost.AddAria2Download directly');
+                    const gid = await browserHost.AddAria2Download(url, savePath);
+                    if (gid) {
+                        console.log('[API] Aria2 download started, GID:', gid);
+                        return { success: true, gid: gid };
+                    }
+                }
+            }
+        } catch (e) {
+            console.log('[API] BrowserHost direct call failed, trying HTTP:', e.message);
+        }
+        // 降级到 HTTP 调用
+        return this._request('POST', '/api/aria2-download', { url, save_path: savePath });
+    }
+
     // ── Dependency Check ─────────────────────────────────────────
 
     async checkDependencies(modId) {
