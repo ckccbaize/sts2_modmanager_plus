@@ -19793,6 +19793,7 @@ func _on_aria2_progress_timer(download_id: String) -> void:
 
 func _get_aria2_progress(gid: String) -> Dictionary:
 	"""从 BrowserHost 获取 Aria2 下载进度"""
+	print("[_get_aria2_progress] Getting progress for GID: ", gid)
 	var http_client = HTTPClient.new()
 	var browser_port = 18765
 
@@ -19812,15 +19813,35 @@ func _get_aria2_progress(gid: String) -> Dictionary:
 			return {}
 
 	if http_client.get_status() != HTTPClient.STATUS_CONNECTED:
+		print("[_get_aria2_progress] Not connected, status: ", http_client.get_status())
 		http_client.close()
 		return {}
 
 	# 发送 GET 请求获取进度
 	var headers = PackedStringArray(["Accept: application/json"])
-	err = http_client.request(HTTPClient.METHOD_GET, "/aria2-progress?gid=" + gid, headers)
+	var url = "/aria2-progress?gid=" + gid
+	print("[_get_aria2_progress] Requesting: ", url)
+	err = http_client.request(HTTPClient.METHOD_GET, url, headers)
 	if err != OK:
 		http_client.close()
 		return {}
+
+	# 等待响应
+	poll_count = 0
+	while http_client.get_status() == HTTPClient.STATUS_REQUESTING:
+		http_client.poll()
+		OS.delay_msec(10)
+		poll_count += 1
+		if poll_count > 100:  # 1 秒超时
+			http_client.close()
+			return {}
+
+	var resp_body = ""
+	if http_client.get_status() == HTTPClient.STATUS_BODY:
+		resp_body = http_client.read_response_body_chunk().get_string_from_utf8()
+	http_client.close()
+
+	print("[_get_aria2_progress] Response: ", resp_body)
 
 	# 等待响应
 	poll_count = 0
