@@ -349,12 +349,13 @@ namespace BrowserHost
             if (response != null && response.Value.TryGetProperty("result", out var result))
             {
                 Console.WriteLine($"[Aria2Manager] tellStatus result type: {result.ValueKind}");
-                // result 可能是对象或数组（包含一个对象）
+
+                // Aria2 tellStatus 返回单个对象或数组
                 JsonElement statusResult;
                 if (result.ValueKind == JsonValueKind.Array)
                 {
-                    Console.WriteLine($"[Aria2Manager] result is array, count: {result.GetArrayLength()}");
                     // 如果是数组，取第一个元素
+                    Console.WriteLine($"[Aria2Manager] result is array, count: {result.GetArrayLength()}");
                     var enumerator = result.EnumerateArray();
                     if (enumerator.MoveNext())
                     {
@@ -367,19 +368,22 @@ namespace BrowserHost
                         statusResult = default;
                     }
                 }
+                else if (result.ValueKind == JsonValueKind.Object)
+                {
+                    // 直接使用对象（Aria2 tellStatus 通常返回单个对象）
+                    Console.WriteLine($"[Aria2Manager] result is object, parsing directly");
+                    statusResult = result;
+                }
                 else
                 {
-                    statusResult = result;
+                    Console.WriteLine($"[Aria2Manager] result is neither array nor object: {result.ValueKind}");
+                    statusResult = default;
                 }
 
                 if (statusResult.ValueKind == JsonValueKind.Object)
                 {
                     Console.WriteLine($"[Aria2Manager] tellStatus returned result for {gid}");
                     return ParseDownloadStatus(statusResult);
-                }
-                else
-                {
-                    Console.WriteLine($"[Aria2Manager] statusResult is not object: {statusResult.ValueKind}");
                 }
             }
 
