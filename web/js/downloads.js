@@ -1013,6 +1013,7 @@ const STS2Downloads = {
                         if (apiDl.mod_name !== undefined) existing.mod_name = apiDl.mod_name;
 
                         // Handle terminal states from API
+                        // 注意：Godot 后端返回 "completed"，而 WebUI 使用 "complete"
                         if (apiDl.status === 'complete' || apiDl.status === 'completed' || apiDl.status === 'failed') {
                             if (existing.timer_id) {
                                 clearInterval(existing.timer_id);
@@ -1043,13 +1044,14 @@ const STS2Downloads = {
                             }
                         }
                     } else {
-                        // 本地文件优先：检查该mod是否已存在本地
+                        // 本地文件优先：检查该mod是否已存在本地（只检查正在下载的）
                         if (this._checkModExistsLocally(apiDl.mod_name, apiDl.url)) {
-                            console.log('[STS2Downloads] Mod already exists locally, skipping download:', apiDl.mod_name);
+                            console.log('[STS2Downloads] Mod already downloading, skipping:', apiDl.mod_name);
                             continue;  // 跳过创建下载项
                         }
 
                         // New download from API that we don't track yet
+                        console.log('[STS2Downloads] New download from API:', apiDl.id, apiDl.mod_name, 'status:', apiDl.status);
                         this.active_downloads[apiDl.id] = {
                             id: apiDl.id,
                             mod_name: apiDl.mod_name || 'Unknown',
