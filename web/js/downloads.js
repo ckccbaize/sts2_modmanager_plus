@@ -82,18 +82,34 @@ const STS2Downloads = {
      */
     _onBrowserHostDownloadComplete(id, mod_name, status) {
         console.log('[STS2Downloads] BrowserHost download complete:', id, mod_name, status);
+
+        // 如果 id 不存在于活跃列表，尝试通过 mod_name 查找
+        // 解决 ID 格式不匹配问题（Godot: download_1, BrowserHost: aria2_{gid}）
+        var actualId = id;
+        if (!this.active_downloads[id] && mod_name) {
+            console.log('[STS2Downloads] ID not found, trying to match by mod_name:', mod_name);
+            const normalizedName = mod_name.toLowerCase().trim();
+            for (const [existingId, dl] of Object.entries(this.active_downloads)) {
+                if (dl.mod_name && dl.mod_name.toLowerCase().trim() === normalizedName) {
+                    actualId = existingId;
+                    console.log('[STS2Downloads] Found matching task by mod_name:', existingId);
+                    break;
+                }
+            }
+        }
+
         // 防止重复弹窗
-        if (this._completedNotificationIds.has(id)) {
-            console.log('[STS2Downloads] Already notified for:', id);
+        if (this._completedNotificationIds.has(actualId)) {
+            console.log('[STS2Downloads] Already notified for:', actualId);
             return;
         }
-        this._completedNotificationIds.add(id);
+        this._completedNotificationIds.add(actualId);
 
         // 添加到历史记录
-        const histExists = this.history.some(h => h.id === id);
+        const histExists = this.history.some(h => h.id === actualId);
         if (!histExists) {
             this.history.unshift({
-                id,
+                id: actualId,
                 mod_name: mod_name || 'Unknown',
                 status: 'success',
                 date: new Date().toISOString(),
@@ -104,12 +120,12 @@ const STS2Downloads = {
             this.renderHistory();
         }
 
-        // 从活跃列表移除（如果还在）
-        if (this.active_downloads[id]) {
-            if (this.active_downloads[id].timer_id) {
-                clearInterval(this.active_downloads[id].timer_id);
+        // 从活跃列表移除
+        if (this.active_downloads[actualId]) {
+            if (this.active_downloads[actualId].timer_id) {
+                clearInterval(this.active_downloads[actualId].timer_id);
             }
-            delete this.active_downloads[id];
+            delete this.active_downloads[actualId];
             this.renderActiveDownloads();
         }
 
@@ -119,7 +135,7 @@ const STS2Downloads = {
         // 通知模组页面刷新（后端已完成自动安装）
         if (this._app) {
             console.log('[STS2Downloads] Emitting download-complete event for mod refresh');
-            this._app.emit('download-complete', { id, mod_name });
+            this._app.emit('download-complete', { id: actualId, mod_name });
         }
     },
 
@@ -1042,6 +1058,13 @@ const STS2Downloads = {
                                     this._app.notifications.show(`下载完成: ${apiDl.mod_name}`, 'success');
                                 }
                             }
+
+                            // 完成任务后从活跃列表移除并触发刷新
+                            console.log('[STS2Downloads] Removing completed download from active list:', apiDl.id);
+                            delete this.active_downloads[apiDl.id];
+                            this.renderActiveDownloads();
+                            this.renderHistory();
+                            continue;  // 已处理完，跳过创建新任务
                         }
                     } else {
                         // 本地文件优先：检查该mod是否已存在本地（只检查正在下载的）
