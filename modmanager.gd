@@ -19862,8 +19862,15 @@ func _on_aria2_download_complete(download_id: String) -> void:
 		return
 
 	var task = download_tasks[download_id]
-	var abs_save_path = task.get("abs_save_path", "")
 	var save_path = task.get("save_path", "")
+
+	# 转换为绝对路径
+	var abs_save_path = save_path
+	if save_path.begins_with("res://"):
+		abs_save_path = ProjectSettings.globalize_path(save_path)
+	elif save_path.begins_with("user://"):
+		abs_save_path = ProjectSettings.globalize_path(save_path)
+	# 如果已经是绝对路径，保持不变
 
 	# 停止监控定时器
 	var timer = find_child("aria2_progress_" + download_id, true, false)
@@ -19872,6 +19879,8 @@ func _on_aria2_download_complete(download_id: String) -> void:
 		timer.queue_free()
 
 	# 检查文件是否存在
+	print("[_on_aria2_download_complete] Checking file: ", abs_save_path)
+	print("[_on_aria2_download_complete] File exists: ", FileAccess.file_exists(abs_save_path))
 	if FileAccess.file_exists(abs_save_path):
 		_update_download_task_status(download_id, "complete")
 		print("[_on_aria2_download_complete] File saved: ", abs_save_path)
