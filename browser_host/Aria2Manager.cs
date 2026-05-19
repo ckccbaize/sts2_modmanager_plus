@@ -383,7 +383,13 @@ namespace BrowserHost
                 if (statusResult.ValueKind == JsonValueKind.Object)
                 {
                     Console.WriteLine($"[Aria2Manager] tellStatus returned result for {gid}");
-                    return ParseDownloadStatus(statusResult);
+                    var dl = ParseDownloadStatus(statusResult);
+                    if (dl != null)
+                    {
+                        // 确保 GID 正确（Aria2 tellStatus 返回的对象可能没有 gid 字段）
+                        dl.Gid = gid;
+                        return dl;
+                    }
                 }
             }
 
@@ -629,8 +635,9 @@ namespace BrowserHost
             {
                 var dl = new Aria2Download
                 {
-                    Gid = result.GetProperty("gid").GetString() ?? "",
-                    Status = result.GetProperty("status").GetString() ?? "unknown",
+                    // Gid 可能不在 result 中（tellStatus 返回的对象没有 gid），由调用者设置
+                    Gid = result.TryGetProperty("gid", out var g) ? g.GetString() ?? "" : "",
+                    Status = result.TryGetProperty("status", out var s) ? s.GetString() ?? "unknown" : "unknown",
                     TotalLength = GetJsonValueAsLong(result, "totalLength"),
                     CompletedLength = GetJsonValueAsLong(result, "completedLength"),
                     Speed = GetJsonValueAsLong(result, "downloadSpeed"),
@@ -638,7 +645,7 @@ namespace BrowserHost
                     ErrorMessage = result.TryGetProperty("errorMessage", out var em) ? em.GetString() : null
                 };
 
-                if (result.TryGetProperty("files", out var files) && files.ValueKind == JsonValueKind.Array)
+                if (result.TryGetProperty("files", out var files) && files.ValueKind == JsonValueKind.Array && files.GetArrayLength() > 0)
                 {
                     var firstFile = files[0];
                     if (firstFile.TryGetProperty("path", out var path))
