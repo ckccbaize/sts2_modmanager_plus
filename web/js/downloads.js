@@ -987,20 +987,25 @@ const STS2Downloads = {
                             existing.speed = 0;
                             existing.status = apiDl.status === 'failed' ? 'failed' : 'complete';
 
-                            // Add to history if not already there
-                            const histExists = this.history.some(h => h.id === apiDl.id);
-                            if (!histExists) {
-                                this.history.unshift({
-                                    id: apiDl.id,
-                                    mod_name: apiDl.mod_name,
-                                    status: (apiDl.status === 'complete' || apiDl.status === 'completed') ? 'success' : 'failed',
-                                    date: new Date().toISOString(),
-                                    size: apiDl.total_size || 0,
-                                    duration: 0,
-                                });
-                                this._saveHistory();
-                                console.log('[STS2Downloads] Download completed:', apiDl.mod_name);
-                                this._app.notifications.show(`下载完成: ${apiDl.mod_name}`, 'success');
+                            // 防止重复弹窗（只在未处理过的情况下显示通知）
+                            if (!this._completedNotificationIds.has(apiDl.id)) {
+                                this._completedNotificationIds.add(apiDl.id);
+
+                                // Add to history if not already there
+                                const histExists = this.history.some(h => h.id === apiDl.id);
+                                if (!histExists) {
+                                    this.history.unshift({
+                                        id: apiDl.id,
+                                        mod_name: apiDl.mod_name,
+                                        status: (apiDl.status === 'complete' || apiDl.status === 'completed') ? 'success' : 'failed',
+                                        date: new Date().toISOString(),
+                                        size: apiDl.total_size || 0,
+                                        duration: 0,
+                                    });
+                                    this._saveHistory();
+                                    console.log('[STS2Downloads] Download completed:', apiDl.mod_name);
+                                    this._app.notifications.show(`下载完成: ${apiDl.mod_name}`, 'success');
+                                }
                             }
                         }
                     } else {

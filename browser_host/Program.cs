@@ -897,19 +897,12 @@ namespace BrowserHost
                     var script = $@"
                         (function() {{
                             var data = {body};
-                            // 触发自定义事件让 WebUI 处理
+                            // 只触发自定义事件，通知由 STS2Downloads._onBrowserHostDownloadComplete 统一处理
                             window.dispatchEvent(new CustomEvent('sts2-download-complete', {{
                                 detail: {{ id: data.id, mod_name: data.mod_name, status: data.status }}
                             }}));
-                            // 尝试调用 STS2Downloads 如果存在
-                            if (window.STS2Downloads && window.STS2Downloads._onDownloadComplete) {{
-                                window.STS2Downloads._onDownloadComplete(data);
-                            }}
-                            // 尝试显示通知
-                            if (window.app && window.app.notifications) {{
-                                window.app.notifications.show('下载完成: ' + (data.mod_name || '模组'), 'success', 3000);
-                            }}
-                            console.log('[BrowserHost] Download complete notified to WebUI:', data.mod_name);
+                            // 不再直接调用 notifications.show，避免重复弹窗
+                            console.log('[BrowserHost] Download complete event dispatched:', data.mod_name);
                         }})();
                     ";
                     var _ = _webView.CoreWebView2.ExecuteScriptAsync(script);

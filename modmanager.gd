@@ -19953,17 +19953,13 @@ func _on_aria2_download_complete(download_id: String) -> void:
 		_update_download_task_progress(download_id, 100.0, "0 B/s", 0, total_size, total_size, _format_file_size(total_size), "completed")
 		print("[_on_aria2_download_complete] File saved: ", abs_save_path)
 
-		# 主动通知 WebUI（不依赖轮询）
+		# 主动通知 WebUI（不依赖轮询），WebUI 会显示弹窗
 		_notify_webui_download_complete(download_id, mod_name)
 
 		# 更新任务状态为完成（但延迟移除，给 WebUI 时间收到通知）
 		_update_download_task_status(download_id, "completed")
 
-		# 显示通知
-		print("[_on_aria2_download_complete] Showing notification for mod: ", mod_name)
-		show_notification("Download complete: " + mod_name, true)
-
-		# 自动安装 mod
+		# 自动安装 mod（不再显示重复弹窗，WebUI 已经通过主动推送通知了）
 		print("[_on_aria2_download_complete] Auto-installing mod: ", abs_save_path)
 		_install_mod_from_downloaded_file(download_id, abs_save_path)
 	else:
@@ -19997,12 +19993,12 @@ func _install_mod_from_downloaded_file(download_id: String, zip_path: String) ->
 			if not mod_path.is_empty():
 				_update_mod_json_download_source(mod_path, download_source)
 				print("[_install_mod_from_downloaded_file] Updated mod JSON: ", mod_path)
-		show_notification("Mod installed successfully", true)
+		# 不再显示弹窗，WebUI 已经通过主动推送通知了
 		# 刷新模组列表
 		load_mods()
 	else:
 		print("[_install_mod_from_downloaded_file] Install failed: ", result.message)
-		show_notification("Install failed: " + result.message, false)
+		show_notification("安装失败: " + result.message, false)
 
 
 func _get_browser_host_port() -> int:
