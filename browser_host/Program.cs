@@ -146,6 +146,7 @@ namespace BrowserHost
     public class BrowserHostObject
     {
         public Aria2Manager? aria2Manager { get; set; }
+        public WebView2.WebView2? _webView { get; set; }  // 用于执行 JavaScript
 
         // Aria2 便捷方法
         public bool Start(string aria2Path)
@@ -155,6 +156,69 @@ namespace BrowserHost
                 return aria2Manager.Start(aria2Path);
             }
             return false;
+        }
+
+        // 执行 JavaScript 并返回结果（异步）
+        public async Task<string?> ExecuteScriptAsync(string script)
+        {
+            if (_webView?.CoreWebView2 == null)
+            {
+                Console.WriteLine("[BrowserHostObject] ExecuteScriptAsync: WebView not available");
+                return null;
+            }
+
+            try
+            {
+                var result = await _webView.CoreWebView2.ExecuteScriptAsync(script);
+                Console.WriteLine($"[BrowserHostObject] ExecuteScriptAsync result: {result}");
+                return result;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[BrowserHostObject] ExecuteScriptAsync error: {ex.Message}");
+                return null;
+            }
+        }
+
+        // 同步执行 JavaScript（用于 Host Object 方法）
+        public string ExecuteScript(string script)
+        {
+            if (_webView?.CoreWebView2 == null)
+            {
+                Console.WriteLine("[BrowserHostObject] ExecuteScript: WebView not available");
+                return "null";
+            }
+
+            try
+            {
+                var result = _webView.CoreWebView2.ExecuteScriptAsync(script).GetAwaiter().GetResult();
+                return result ?? "null";
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[BrowserHostObject] ExecuteScript error: {ex.Message}");
+                return "null";
+            }
+        }
+
+        // 显示下载完成通知到 WebUI
+        public void NotifyDownloadComplete(string modName, string downloadId)
+        {
+            Console.WriteLine($"[BrowserHostObject] NotifyDownloadComplete: {modName}, id={downloadId}");
+            var escapedName = modName.Replace("'", "\\'").Replace("\"", "\\\"").Replace("\n", " ").Replace("\r", "");
+            var escapedId = downloadId.Replace("'", "\\'").Replace("\"", "\\\"");
+            var script = $@"
+                (function() {{
+                    if (window.app && window.app.notifications) {{
+                        window.app.notifications.show('下载完成: {escapedName}', 'success', 3000);
+                    }}
+                    if (window.STS2Downloads) {{
+                        window.STS2Downloads.onBackendDownloadComplete('{escapedId}', '{escapedName}');
+                    }}
+                    console.log('[BrowserHost] Download complete notified: {escapedName}');
+                }})();
+            ";
+            ExecuteScript(script);
         }
 
         // 获取全局选项
@@ -661,6 +725,10 @@ namespace BrowserHost
                 {
                     HandleAria2Progress(context);
                 }
+                else if (path == "/download-complete" && context.Request.HttpMethod == "POST")
+                {
+                    HandleDownloadComplete(context);
+                }
                 else if (path == "/api/health")
                 {
                     context.Response.StatusCode = 200;
@@ -800,7 +868,10 @@ namespace BrowserHost
                     totalLength = status.TotalLength,
                     completedLength = status.CompletedLength,
                     downloadSpeed = status.Speed,
-                    status = status.Status
+                    status = status.Status,
+                    errorCode = status.ErrorCode,
+                    errorMessage = status.ErrorMessage,
+                    completed = status.Status == "complete"
                 });
                 var respBuffer = Encoding.UTF8.GetBytes(response);
                 context.Response.OutputStream.Write(respBuffer);
@@ -808,6 +879,50 @@ namespace BrowserHost
             catch (Exception ex)
             {
                 Console.WriteLine($"[Program] HandleAria2Progress error: {ex.Message}");
+                context.Response.StatusCode = 500;
+            }
+        }
+
+        private static void HandleDownloadComplete(HttpListenerContext context)
+        {
+            try
+            {
+                using var reader = new StreamReader(context.Request.InputStream);
+                var body = reader.ReadToEnd();
+                Console.WriteLine($"[Program] Download complete notification: {body}");
+
+                // 通知 WebView2 JavaScript
+                if (_webView?.CoreWebView2 != null)
+                {
+                    var script = $@"
+                        (function() {{
+                            var data = {body};
+                            // 触发自定义事件让 WebUI 处理
+                            window.dispatchEvent(new CustomEvent('sts2-download-complete', {{
+                                detail: {{ id: data.id, mod_name: data.mod_name, status: data.status }}
+                            }}));
+                            // 尝试调用 STS2Downloads 如果存在
+                            if (window.STS2Downloads && window.STS2Downloads._onDownloadComplete) {{
+                                window.STS2Downloads._onDownloadComplete(data);
+                            }}
+                            // 尝试显示通知
+                            if (window.app && window.app.notifications) {{
+                                window.app.notifications.show('下载完成: ' + (data.mod_name || '模组'), 'success', 3000);
+                            }}
+                            console.log('[BrowserHost] Download complete notified to WebUI:', data.mod_name);
+                        }})();
+                    ";
+                    var _ = _webView.CoreWebView2.ExecuteScriptAsync(script);
+                }
+
+                context.Response.StatusCode = 200;
+                context.Response.ContentType = "application/json";
+                var buffer = Encoding.UTF8.GetBytes("{\"success\":true}");
+                context.Response.OutputStream.Write(buffer);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[Program] HandleDownloadComplete error: {ex.Message}");
                 context.Response.StatusCode = 500;
             }
         }
@@ -1281,6 +1396,8 @@ namespace BrowserHost
                         // 导航成功后注册 Host Object（必须在页面加载后）
                         try
                         {
+                            // 设置 WebView 引用（用于 ExecuteScript）
+                            browserHostObj._webView = _webView;
                             _webView.CoreWebView2.AddHostObjectToScript("browserHost", browserHostObj);
                             Console.WriteLine("[BrowserHost] AddHostObjectToScript 已注册");
                         }

@@ -67,6 +67,26 @@ const STS2Mods = {
     // Box colors cycle
     _boxColors: ['blue', 'green', 'orange', 'red', 'purple', 'yellow', 'gray', 'cyan'],
 
+    // ── Helpers ─────────────────────────────────────────────────
+
+    /**
+     * Parse installed_time from various formats to Date.
+     * Handles: Unix timestamp (seconds), Unix timestamp (ms), Date string.
+     * @param {*} val
+     * @returns {Date|null}
+     */
+    _parseTimestamp(val) {
+        if (!val) return null;
+        if (val instanceof Date) return val;
+        const n = Number(val);
+        if (!isNaN(n)) {
+            // If it's a small number (< 1e12), treat as seconds; otherwise as ms
+            return new Date(n < 1e12 ? n * 1000 : n);
+        }
+        const d = new Date(val);
+        return isNaN(d.getTime()) ? null : d;
+    },
+
     // ── Initialization ─────────────────────────────────────────
 
     init(app) {
@@ -526,8 +546,11 @@ const STS2Mods = {
                 switch (this._currentSort) {
                     case 'name':
                         return a.name.localeCompare(b.name, 'zh-CN');
-                    case 'install_time':
-                        return (new Date(b.installed_time || 0)) - (new Date(a.installed_time || 0));
+                    case 'install_time': {
+                        const ta = this._parseTimestamp(a.installed_time);
+                        const tb = this._parseTimestamp(b.installed_time);
+                        return (tb ? tb.getTime() : 0) - (ta ? ta.getTime() : 0);
+                    }
                     case 'version':
                         return (b.version || '').localeCompare(a.version || '');
                     case 'author':
@@ -2004,10 +2027,22 @@ const STS2Mods = {
         const info = document.createElement('div');
         info.className = 'detail-info';
 
+        // 翻译 download_source 为中文显示
+        const sourceMap = {
+            'nexus': 'N网下载',
+            'steam_workshop': 'Steam工坊',
+            'local': '本地',
+            'manual': '手动',
+            'github': 'GitHub',
+            'url': '网址',
+        };
+        const sourceValue = mod.download_source || '--';
+        const sourceDisplay = sourceMap[sourceValue] || (sourceValue === 'nexus' ? 'N网下载' : sourceValue);
+
         const infoRows = [
             { label: this._t('author_label') || '作者', value: mod.author || '--' },
-            { label: this._t('installed_time') || '安装时间', value: mod.installed_time ? STS2Utils.formatDate(mod.installed_time) : '--' },
-            { label: this._t('source_label') || '来源', value: mod.download_source || '--' },
+            { label: this._t('installed_time') || '安装时间', value: mod.installed_time ? STS2Utils.formatDate(this._parseTimestamp(mod.installed_time)) : '--' },
+            { label: this._t('source_label') || '来源', value: sourceDisplay },
             { label: 'ID', value: mod.id || '--' },
         ];
 

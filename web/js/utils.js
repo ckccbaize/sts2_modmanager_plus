@@ -9,7 +9,7 @@ const STS2Utils = {
     // ── Date / Time ───────────────────────────────────────────
 
     /**
-     * Format a date string (or Date object) to "YYYY-MM-DD HH:mm".
+     * Format a date string (or Date object) to "YYYY年MM月DD日 HH:mm" (Chinese format).
      * @param {string|Date} dateStr
      * @returns {string}
      */
@@ -19,7 +19,7 @@ const STS2Utils = {
         if (isNaN(d.getTime())) return String(dateStr);
 
         const pad = (n) => String(n).padStart(2, '0');
-        return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+        return `${d.getFullYear()}年${pad(d.getMonth() + 1)}月${pad(d.getDate())}日 ${pad(d.getHours())}:${pad(d.getMinutes())}`;
     },
 
     /**

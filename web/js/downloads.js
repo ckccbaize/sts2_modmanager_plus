@@ -19,6 +19,7 @@ const STS2Downloads = {
     _lastPollData: null,      // 上次轮询的响应数据（用于比较）
     _pollEmptyCount: 0,       // 连续空数据计数器
     _POLL_EMPTY_THRESHOLD: 3, // 连续几次空数据后停止轮询
+    _completedNotificationIds: new Set(), // 已弹窗通知的下载ID（防止重复弹窗）
 
     // ── Lifecycle ─────────────────────────────────────────────────
 
@@ -49,7 +50,108 @@ const STS2Downloads = {
             this._startBackendPolling();
         });
 
+        // 监听 BrowserHost 的主动通知（通过 CustomEvent）
+        window.addEventListener('sts2-download-complete', (event) => {
+            console.log('[STS2Downloads] Received download complete event:', event.detail);
+            const { id, mod_name, status } = event.detail;
+            this._onBrowserHostDownloadComplete(id, mod_name, status);
+        });
+
+        // 暴露全局函数供 BrowserHost 调用
+        window.STS2Downloads = this;
+        window._onBrowserHostDownloadComplete = (id, mod_name, status) => {
+            this._onBrowserHostDownloadComplete(id, mod_name, status);
+        };
+
         console.log('[STS2Downloads] Initialized.');
+    },
+
+    /**
+     * Handle download complete notification from BrowserHost (active push, not polling).
+     * @param {string} id - download id
+     * @param {string} mod_name - mod name
+     * @param {string} status - download status
+     * @private
+     */
+    _onBrowserHostDownloadComplete(id, mod_name, status) {
+        console.log('[STS2Downloads] BrowserHost download complete:', id, mod_name, status);
+        // 防止重复弹窗
+        if (this._completedNotificationIds.has(id)) {
+            console.log('[STS2Downloads] Already notified for:', id);
+            return;
+        }
+        this._completedNotificationIds.add(id);
+
+        // 添加到历史记录
+        const histExists = this.history.some(h => h.id === id);
+        if (!histExists) {
+            this.history.unshift({
+                id,
+                mod_name: mod_name || 'Unknown',
+                status: 'success',
+                date: new Date().toISOString(),
+                size: 0,
+                duration: 0,
+            });
+            this._saveHistory();
+            this.renderHistory();
+        }
+
+        // 从活跃列表移除（如果还在）
+        if (this.active_downloads[id]) {
+            if (this.active_downloads[id].timer_id) {
+                clearInterval(this.active_downloads[id].timer_id);
+            }
+            delete this.active_downloads[id];
+            this.renderActiveDownloads();
+        }
+
+        // 显示通知
+        this._app.notifications.show(`下载完成: ${mod_name}`, 'success', 3000);
+    },
+
+    /**
+     * Backend download complete handler (called by BrowserHost via JavaScript).
+     * Updates download item to 100% and marks as completed.
+     * @param {string} id - download id
+     * @param {string} modName - mod name
+     * @public (called from BrowserHost)
+     */
+    onBackendDownloadComplete(id, modName) {
+        console.log('[STS2Downloads] onBackendDownloadComplete:', id, modName);
+        // 防止重复处理
+        if (this._completedNotificationIds.has(id)) {
+            console.log('[STS2Downloads] Already processed:', id);
+            return;
+        }
+        this._completedNotificationIds.add(id);
+
+        // 更新活跃下载项为完成状态
+        if (this.active_downloads[id]) {
+            this.active_downloads[id].progress = 1;
+            this.active_downloads[id].status = 'complete';
+            this.active_downloads[id].speed = 0;
+            if (this.active_downloads[id].timer_id) {
+                clearInterval(this.active_downloads[id].timer_id);
+                this.active_downloads[id].timer_id = null;
+            }
+            this.renderActiveDownloads();
+        }
+
+        // 添加到历史记录
+        const histExists = this.history.some(h => h.id === id);
+        if (!histExists) {
+            this.history.unshift({
+                id,
+                mod_name: modName || 'Unknown',
+                status: 'success',
+                date: new Date().toISOString(),
+                size: 0,
+                duration: 0,
+            });
+            this._saveHistory();
+            this.renderHistory();
+        }
     },
 
     /**

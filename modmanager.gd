@@ -1775,8 +1775,9 @@ func _update_mod_json_download_source(mod_path: String, download_source: String)
 		print("[_update_mod_json_download_source] Invalid JSON format")
 		return
 
-	# 添加或更新 download_source 字段
+	# 添加或更新 download_source 和 installed_time 字段
 	data["download_source"] = download_source
+	data["installed_time"] = Time.get_unix_time_from_system()
 
 	# 写回文件
 	var json_string = JSON.stringify(data, "\t")
@@ -1787,6 +1788,7 @@ func _update_mod_json_download_source(mod_path: String, download_source: String)
 	new_file.store_string(json_string)
 	new_file.close()
 	print("[_update_mod_json_download_source] Updated download_source to: ", download_source)
+	print("[_update_mod_json_download_source] Updated installed_time to: ", data["installed_time"])
 
 
 # 检测 DPI 并返回合适的缩放因子
@@ -8148,11 +8150,13 @@ func _update_download_task_ui(download_id: String) -> void:
 		if pause_btn:
 			var is_paused = task.get("is_paused", false)
 			pause_btn.text = translate("download_resume") if is_paused else translate("download_pause")
-		# 更新状态标签显示暂停状态
+		# 更新状态标签显示暂停状态或完成状态
 		if status_label:
 			var task_status = task.get("status", "")
 			if task_status == "paused":
 				status_label.text = translate("download_paused")
+			elif task_status == "completed" or task_status == "complete":
+				status_label.text = "100%"
 		return
 
 	# 创建新的任务项
@@ -8490,49 +8494,85 @@ func _format_file_size(bytes: int) -> String:
 		return "%.2f GB" % (bytes / (1024.0 * 1024.0 * 1024.0))
 
 
-func _update_download_task_progress(download_id: String, progress: float, speed: String = "", speed_bytes: int = 0, downloaded_size: int = 0, total_size: int = 0, file_size_str: String = "") -> void:
+func _update_download_task_progress(download_id: String, progress: float, speed: String = "", speed_bytes: int = 0, downloaded_size: int = 0, total_size: int = 0, file_size_str: String = "", status: String = "") -> void:
 	"""更新下载进度"""
+	print("[_update_download_task_progress] START - id=", download_id, ", progress=", progress)
 	if download_tasks.has(download_id):
+		print("[_update_download_task_progress] Task exists, updating...")
 		download_tasks[download_id]["progress"] = progress
 		download_tasks[download_id]["speed"] = speed
 		download_tasks[download_id]["speed_bytes"] = speed_bytes
 		download_tasks[download_id]["downloaded_size"] = downloaded_size
 		download_tasks[download_id]["total_size"] = total_size
 		download_tasks[download_id]["file_size"] = file_size_str
+		# 如果提供了 status 参数，也更新它
+		if not status.is_empty():
+			download_tasks[download_id]["status"] = status
+		print("[_update_download_task_progress] Calling _update_download_task_ui...")
 		_update_download_task_ui(download_id)
+		print("[_update_download_task_progress] DONE")
+	else:
+		print("[_update_download_task_progress] ERROR - Task NOT FOUND!")
 
 
 func _update_download_task_status(download_id: String, status: String, error: String = "") -> void:
 	"""更新下载任务状态"""
+	print("[_update_download_task_status] START - id=", download_id, ", status=", status, ", exists=", download_tasks.has(download_id))
 	if download_tasks.has(download_id):
 		download_tasks[download_id]["status"] = status
 		download_tasks[download_id]["error"] = error
 
 		if status == "completed" or status == "failed":
-			# 移动到历史记录
-			var task = download_tasks[download_id]
-			task["end_time"] = Time.get_unix_time_from_system()
-			download_history.append(task)
+			# 先更新 UI 显示最终状态（100% 或 failed）
+			print("[_update_download_task_status] Calling _update_download_task_ui...")
+			_update_download_task_ui(download_id)
+			print("[_update_download_task_status] UI updated")
 
-			# 保存到文件
-			_save_download_history()
+			# 延迟移除任务，给 WebUI 时间通过轮询获取完成状态（8秒）
+			var delay_timer = get_tree().create_timer(8.0)
+			delay_timer.timeout.connect(func():
+				_finish_download_task_removal(download_id)
+			)
+			print("[_update_download_task_status] DONE - completed/failed")
+		else:
+			_update_download_task_ui(download_id)
+			print("[_update_download_task_status] DONE - normal status")
 
-			# 从活跃任务中移除
-			download_tasks.erase(download_id)
 
-			# 移除UI项
-			if download_tasks_container:
-				var task_item = download_tasks_container.find_child(download_id, true, false)
-				if task_item:
-					task_item.queue_free()
+func _finish_download_task_removal(download_id: String) -> void:
+	"""延迟执行的任务移除（给 WebUI 轮询时间获取完成状态）"""
+	print("[_finish_download_task_removal] START - id=", download_id)
 
-			# 更新历史记录UI
-			_update_download_history_ui()
+	if not download_tasks.has(download_id):
+		print("[_finish_download_task_removal] Task already removed, skipping")
+		return
 
-			# 更新空状态
-			_update_download_empty_state()
+	# 移动到历史记录
+	var task = download_tasks[download_id]
+	task["end_time"] = Time.get_unix_time_from_system()
+	download_history.append(task)
+	print("[_finish_download_task_removal] Added to history")
 
-		_update_download_task_ui(download_id)
+	# 保存到文件
+	_save_download_history()
+	print("[_finish_download_task_removal] History saved")
+
+	# 从活跃任务中移除
+	download_tasks.erase(download_id)
+	print("[_finish_download_task_removal] Task erased")
+
+	# 移除UI项
+	if download_tasks_container:
+		var task_item = download_tasks_container.find_child(download_id, true, false)
+		if task_item:
+			task_item.queue_free()
+
+	# 更新历史记录UI
+	_update_download_history_ui()
+
+	# 更新空状态
+	_update_download_empty_state()
+	print("[_finish_download_task_removal] DONE")
 
 
 func _update_download_history_ui() -> void:
@@ -8781,6 +8821,7 @@ func _on_server_download_request(data: Dictionary) -> void:
 	# 设置下载来源为 Nexus
 	if download_tasks.has(download_id):
 		download_tasks[download_id]["download_source"] = "nexus"
+		download_tasks[download_id]["source_label"] = "Nexus"
 
 	# 如果 BrowserHost 已经用 Aria2 开始下载，则跳过 Godot 的下载逻辑
 	if download_type == "aria2" and not aria2_gid.is_empty():
@@ -9014,6 +9055,12 @@ func _download_mod_via_nexus_api_with_params(mod_id: int, mod_name: String, file
 	var save_path = nexus_api.downloads_dir + "/" + safe_name + ".zip"
 
 	show_notification(translate_fmt("downloading_mod", [mod_name]), true)
+
+	# 在使用 Aria2 之前设置下载来源（nexus），因为 Aria2 只是下载方式
+	if not existing_download_id.is_empty() and download_tasks.has(existing_download_id):
+		if download_tasks[existing_download_id].get("download_source", "").is_empty():
+			download_tasks[existing_download_id]["download_source"] = "nexus"
+			print("[_download_mod_via_nexus_api_with_params] Set download_source to nexus for: ", existing_download_id)
 
 	# 优先使用 Aria2 下载（通过 BrowserHost HTTP API）
 	print("[_download_mod_via_nexus_api_with_params] Trying Aria2 download...")
@@ -19465,6 +19512,7 @@ func _api_get_downloads(_params: Dictionary) -> Dictionary:
 			"status": task.get("status", ""),
 			"total_size": task.get("total_size", 0),
 			"downloaded": task.get("downloaded", 0),
+			"source_label": task.get("source_label", task.get("download_source", "nexus")),
 		})
 
 	return {"code": 200, "data": {
@@ -19647,7 +19695,12 @@ func _aria2_download_via_http(url: String, save_path: String, existing_download_
 	download_tasks[download_id]["download_url"] = url
 	download_tasks[download_id]["save_path"] = save_path
 	download_tasks[download_id]["abs_save_path"] = abs_save_path
-	download_tasks[download_id]["download_source"] = "aria2"
+	# 来源保持为 nexus（Aria2 只是下载工具，实际从 Nexus 下载）
+	# 不要覆盖原有的下载来源
+	if download_tasks[download_id].get("download_source", "").is_empty():
+		download_tasks[download_id]["download_source"] = "nexus"
+	# 添加 source_label 用于 UI 显示
+	download_tasks[download_id]["source_label"] = "Nexus"
 
 	# 调用 BrowserHost 的 Aria2 API (使用 18765 端口)
 	var http_client = HTTPClient.new()
@@ -19790,6 +19843,10 @@ func _on_aria2_progress_timer(download_id: String) -> void:
 	if dl_status == "complete" or dl_status == "finished" or progress_info.get("completed", false):
 		print("[_on_aria2_progress_timer] Download completed, calling _on_aria2_download_complete")
 		_on_aria2_download_complete(download_id)
+	elif dl_status == "error":
+		print("[_on_aria2_progress_timer] Download failed from Aria2!")
+		_update_download_task_status(download_id, "failed")
+		show_notification(translate("download_failed"), false)
 
 
 func _get_aria2_progress(gid: String) -> Dictionary:
@@ -19838,8 +19895,13 @@ func _get_aria2_progress(gid: String) -> Dictionary:
 			return {}
 
 	var resp_body = ""
-	if http_client.get_status() == HTTPClient.STATUS_BODY:
-		resp_body = http_client.read_response_body_chunk().get_string_from_utf8()
+	while http_client.get_status() == HTTPClient.STATUS_BODY:
+		http_client.poll()
+		var chunk = http_client.read_response_body_chunk()
+		if chunk.size() == 0:
+			OS.delay_msec(10)
+		else:
+			resp_body += chunk.get_string_from_utf8()
 	http_client.close()
 
 	print("[_get_aria2_progress] Response: ", resp_body)
@@ -19881,12 +19943,24 @@ func _on_aria2_download_complete(download_id: String) -> void:
 	# 检查文件是否存在
 	print("[_on_aria2_download_complete] Checking file: ", abs_save_path)
 	print("[_on_aria2_download_complete] File exists: ", FileAccess.file_exists(abs_save_path))
+	print("[_on_aria2_download_complete] Task keys: ", task.keys())
+	print("[_on_aria2_download_complete] Task mod_name: ", task.get("mod_name", "N/A"))
+	print("[_on_aria2_download_complete] Task name: ", task.get("name", "N/A"))
 	if FileAccess.file_exists(abs_save_path):
-		_update_download_task_status(download_id, "complete")
+		# 强制设置为 100% 进度，避免卡在 98-99%
+		var total_size = task.get("total_size", 0)
+		var mod_name = task.get("mod_name", task.get("name", "Mod"))
+		_update_download_task_progress(download_id, 100.0, "0 B/s", 0, total_size, total_size, _format_file_size(total_size), "completed")
 		print("[_on_aria2_download_complete] File saved: ", abs_save_path)
 
+		# 主动通知 WebUI（不依赖轮询）
+		_notify_webui_download_complete(download_id, mod_name)
+
+		# 更新任务状态为完成（但延迟移除，给 WebUI 时间收到通知）
+		_update_download_task_status(download_id, "completed")
+
 		# 显示通知
-		var mod_name = task.get("name", "Mod")
+		print("[_on_aria2_download_complete] Showing notification for mod: ", mod_name)
 		show_notification("Download complete: " + mod_name, true)
 
 		# 自动安装 mod
@@ -19900,9 +19974,29 @@ func _on_aria2_download_complete(download_id: String) -> void:
 func _install_mod_from_downloaded_file(download_id: String, zip_path: String) -> void:
 	"""从下载的文件自动安装 mod"""
 	print("[_install_mod_from_downloaded_file] Installing: ", zip_path)
-	var result = ModUtils.install_mod(zip_path, "", "nexus", mod_required_fields)
+
+	# 获取下载任务的原始来源（nexus, steam_workshop 等），而不是 aria2
+	var download_source = "nexus"  # 默认值
+	if download_id and download_tasks.has(download_id):
+		var source = download_tasks[download_id].get("download_source", "nexus")
+		# aria2 只是下载方式，不是真正的来源
+		if source == "aria2":
+			download_source = "nexus"  # 保持原有的 nexus 来源
+		else:
+			download_source = source
+		print("[_install_mod_from_downloaded_file] Download source: ", download_source)
+
+	var result = ModUtils.install_mod(zip_path, "", download_source, mod_required_fields)
 	if result.success:
 		print("[_install_mod_from_downloaded_file] Mod installed successfully")
+		# 更新已安装模组的 JSON 文件中的下载来源
+		var installed_mods = result.get("installed_mods", [])
+		if not installed_mods.is_empty():
+			var mod_info = installed_mods[0]
+			var mod_path = mod_info.get("path", "")
+			if not mod_path.is_empty():
+				_update_mod_json_download_source(mod_path, download_source)
+				print("[_install_mod_from_downloaded_file] Updated mod JSON: ", mod_path)
 		show_notification("Mod installed successfully", true)
 		# 刷新模组列表
 		load_mods()
@@ -19917,6 +20011,59 @@ func _get_browser_host_port() -> int:
 	if local_server:
 		return local_server.get_port()
 	return 28900
+
+
+func _notify_webui_download_complete(download_id: String, mod_name: String) -> void:
+	"""主动通知 WebUI 下载完成（不依赖轮询）"""
+	print("[_notify_webui_download_complete] Notifying WebUI - id=", download_id, ", mod_name=", mod_name)
+	var http_client = HTTPClient.new()
+	var browser_port = 18765  # BrowserHost HTTP API 端口
+
+	var err = http_client.connect_to_host("127.0.0.1", browser_port)
+	if err != OK:
+		print("[_notify_webui_download_complete] Failed to connect to BrowserHost: ", err)
+		return
+
+	# 等待连接
+	var poll_count = 0
+	while http_client.get_status() == HTTPClient.STATUS_CONNECTING:
+		http_client.poll()
+		OS.delay_msec(10)
+		poll_count += 1
+		if poll_count > 100:  # 1 秒超时
+			print("[_notify_webui_download_complete] Connection timeout")
+			http_client.close()
+			return
+
+	if http_client.get_status() != HTTPClient.STATUS_CONNECTED:
+		print("[_notify_webui_download_complete] Not connected, status: ", http_client.get_status())
+		http_client.close()
+		return
+
+	# 发送通知
+	var body = JSON.stringify({"id": download_id, "mod_name": mod_name, "status": "completed"})
+	var headers = PackedStringArray(["Content-Type: application/json"])
+	err = http_client.request(HTTPClient.METHOD_POST, "/download-complete", headers, body)
+	if err != OK:
+		print("[_notify_webui_download_complete] Failed to send request: ", err)
+		http_client.close()
+		return
+
+	# 等待响应
+	poll_count = 0
+	while http_client.get_status() == HTTPClient.STATUS_REQUESTING:
+		http_client.poll()
+		OS.delay_msec(10)
+		poll_count += 1
+		if poll_count > 100:  # 1 秒超时
+			print("[_notify_webui_download_complete] Request timeout")
+			http_client.close()
+			return
+
+	var response_code = http_client.get_response_code()
+	var resp_body = http_client.read_response_body_chunk().get_string_from_utf8()
+	http_client.close()
+	print("[_notify_webui_download_complete] Response: ", response_code, " ", resp_body)
 
 
 func _api_aria2_status(_params: Dictionary) -> Dictionary:
