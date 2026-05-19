@@ -9015,7 +9015,15 @@ func _download_mod_via_nexus_api_with_params(mod_id: int, mod_name: String, file
 
 	show_notification(translate_fmt("downloading_mod", [mod_name]), true)
 
-	# 下载文件，传递已有的下载ID以避免重复创建任务
+	# 优先使用 Aria2 下载（通过 BrowserHost HTTP API）
+	print("[_download_mod_via_nexus_api_with_params] Trying Aria2 download...")
+	var aria2_result = await _aria2_download_via_http(download_url, save_path, existing_download_id)
+	if aria2_result.success:
+		print("[_download_mod_via_nexus_api_with_params] Aria2 download started, GID: ", aria2_result.get("gid", ""))
+		return
+
+	# Aria2 失败，降级到 PowerShell
+	print("[_download_mod_via_nexus_api_with_params] Aria2 failed, falling back to PowerShell")
 	await _download_mod_file(download_url, save_path, mod_name, existing_download_id)
 
 
@@ -19604,6 +19612,166 @@ func _api_aria2_download(params: Dictionary) -> Dictionary:
 		return {"code": 200, "data": {"success": true, "gid": resp_body}}
 
 	return {"code": response_code, "data": {"error": resp_body}}
+
+
+func _aria2_download_via_http(url: String, save_path: String, existing_download_id: String = "") -> Dictionary:
+	"""通过 HTTP API 调用 BrowserHost 的 Aria2 下载
+
+	Args:
+		url: 下载 URL
+		save_path: 保存路径
+		existing_download_id: 已有的下载 ID
+
+	Returns:
+		包含 success 和可选 gid/error 的字典
+	"""
+	print("[_aria2_download_via_http] url=", url, ", save_path=", save_path)
+
+	# 转换路径为绝对路径（Aria2 需要）
+	var abs_save_path = save_path
+	if save_path.begins_with("res://"):
+		abs_save_path = ProjectSettings.globalize_path(save_path)
+	elif save_path.begins_with("user://"):
+		abs_save_path = ProjectSettings.globalize_path(save_path)
+
+	# 使用已有的下载ID，或者创建新任务
+	var download_id: String
+	if not existing_download_id.is_empty() and download_tasks.has(existing_download_id):
+		download_id = existing_download_id
+		print("[_aria2_download_via_http] Using existing download task: ", download_id)
+	else:
+		download_id = _create_download_task(save_path.get_file().get_basename(), url)
+		print("[_aria2_download_via_http] Created new download task: ", download_id)
+
+	# 更新任务信息
+	download_tasks[download_id]["download_url"] = url
+	download_tasks[download_id]["save_path"] = save_path
+	download_tasks[download_id]["abs_save_path"] = abs_save_path
+	download_tasks[download_id]["download_source"] = "aria2"
+
+	# 调用 BrowserHost 的 Aria2 API
+	var http_client = HTTPClient.new()
+	var browser_port = _get_browser_host_port()
+	print("[_aria2_download_via_http] Connecting to BrowserHost on port ", browser_port)
+
+	var err = http_client.connect_to_host("localhost", browser_port)
+	if err != OK:
+		print("[_aria2_download_via_http] Failed to connect to BrowserHost: ", err)
+		return {"success": false, "error": "Failed to connect to BrowserHost"}
+
+	# 等待连接
+	var poll_count = 0
+	while http_client.get_status() == HTTPClient.STATUS_CONNECTING:
+		http_client.poll()
+		OS.delay_msec(10)
+		poll_count += 1
+		if poll_count > 500:  # 5 秒超时
+			print("[_aria2_download_via_http] Connection timeout")
+			return {"success": false, "error": "Connection timeout"}
+
+	if http_client.get_status() != HTTPClient.STATUS_CONNECTED:
+		print("[_aria2_download_via_http] Not connected, status: ", http_client.get_status())
+		return {"success": false, "error": "Not connected"}
+
+	# 发送 JSON 请求
+	var body = JSON.stringify({"url": url, "save_path": abs_save_path})
+	var headers = PackedStringArray(["Content-Type: application/json"])
+	err = http_client.request(HTTPClient.METHOD_POST, "/aria2-download", headers, body)
+	if err != OK:
+		print("[_aria2_download_via_http] Failed to send request: ", err)
+		return {"success": false, "error": "Failed to send request"}
+
+	# 等待响应
+	poll_count = 0
+	while http_client.get_status() == HTTPClient.STATUS_REQUESTING:
+		http_client.poll()
+		OS.delay_msec(10)
+		poll_count += 1
+		if poll_count > 300:  # 3 秒超时
+			print("[_aria2_download_via_http] Request timeout")
+			return {"success": false, "error": "Request timeout"}
+
+	if http_client.get_status() != HTTPClient.STATUS_BODY:
+		print("[_aria2_download_via_http] No response body, status: ", http_client.get_status())
+		return {"success": false, "error": "Request failed"}
+
+	var response_code = http_client.get_response_code()
+	var resp_body = http_client.read_response_body_chunk().get_string_from_utf8()
+	http_client.close()
+
+	print("[_aria2_download_via_http] Response: ", response_code, " ", resp_body)
+
+	if response_code == 200:
+		# 解析响应
+		var json = JSON.new()
+		if json.parse(resp_body) == OK:
+			var data = json.get_data()
+			if data is Dictionary:
+				var gid = data.get("gid", "")
+				if not gid.is_empty():
+					download_tasks[download_id]["aria2_gid"] = gid
+					download_tasks[download_id]["status"] = "aria2_downloading"
+					_update_download_task_status(download_id, "aria2_downloading")
+					# 启动进度监控
+					_monitor_aria2_progress(download_id)
+					return {"success": true, "gid": gid, "download_id": download_id}
+			elif data is bool and data == true:
+				return {"success": true, "download_id": download_id}
+
+		return {"success": false, "error": "Invalid response format"}
+
+	return {"success": false, "error": resp_body}
+
+
+func _monitor_aria2_progress(download_id: String) -> void:
+	"""监控 Aria2 下载进度（定时器回调）"""
+	print("[_monitor_aria2_progress] Starting monitor for: ", download_id)
+
+	# 创建进度监控定时器
+	var timer = Timer.new()
+	timer.name = "aria2_progress_" + download_id
+	timer.wait_time = 1.0
+	timer.timeout.connect(_on_aria2_progress_timer.bind(download_id))
+	add_child(timer)
+	timer.start()
+
+
+func _on_aria2_progress_timer(download_id: String) -> void:
+	"""Aria2 进度定时器回调"""
+	if not download_tasks.has(download_id):
+		# 任务已不存在，停止监控
+		var timer = find_child("aria2_progress_" + download_id, true, false)
+		if timer:
+			timer.stop()
+			timer.queue_free()
+		return
+
+	var task = download_tasks[download_id]
+	var status = task.get("status", "")
+
+	# 下载完成或失败则停止监控
+	if status == "complete" or status == "failed" or status == "paused":
+		var timer = find_child("aria2_progress_" + download_id, true, false)
+		if timer:
+			timer.stop()
+			timer.queue_free()
+		return
+
+	# 检查文件是否存在并获取进度
+	var abs_save_path = task.get("abs_save_path", "")
+	var file_size = 0
+	var current_size = 0
+
+	if FileAccess.file_exists(abs_save_path):
+		var file = FileAccess.open(abs_save_path, FileAccess.READ)
+		if file:
+			current_size = file.get_length()
+			file.close()
+
+	var total_size = task.get("total_size", 0)
+	if total_size > 0:
+		var progress = float(current_size) / float(total_size) * 100.0
+		_update_download_task_progress(download_id, progress, "", 0, current_size, total_size, "")
 
 
 func _get_browser_host_port() -> int:
