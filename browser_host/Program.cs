@@ -8,10 +8,130 @@ using System.Threading;
 using System.Drawing;
 using System.Drawing.Drawing2D;
 using System.Collections.Generic;
+using System.Net;
 using System.Net.Http;
+using System.Text;
 
 namespace BrowserHost
 {
+    // Aria2 HTTP API Server (供 Godot 调用)
+    internal class Aria2ApiServer
+    {
+        private HttpListener? _listener;
+        private BrowserHostObject? _browserHost;
+        private CancellationTokenSource? _cts;
+        private readonly int _port;
+
+        public Aria2ApiServer(int port = 18765)
+        {
+            _port = port;
+        }
+
+        public void Start(BrowserHostObject browserHost)
+        {
+            _browserHost = browserHost;
+            _listener = new HttpListener();
+            _listener.Prefixes.Add($"http://localhost:{_port}/");
+            _cts = new CancellationTokenSource();
+
+            try
+            {
+                _listener.Start();
+                Console.WriteLine($"[Aria2ApiServer] Started on port {_port}");
+                Task.Run(() => ListenAsync(_cts.Token));
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[Aria2ApiServer] Failed to start: {ex.Message}");
+            }
+        }
+
+        public void Stop()
+        {
+            _cts?.Cancel();
+            _listener?.Stop();
+            Console.WriteLine("[Aria2ApiServer] Stopped");
+        }
+
+        private async Task ListenAsync(CancellationToken ct)
+        {
+            while (!ct.IsCancellationRequested && _listener?.IsListening == true)
+            {
+                try
+                {
+                    var context = await _listener.GetContextAsync();
+                    _ = Task.Run(() => HandleRequest(context), ct);
+                }
+                catch { }
+            }
+        }
+
+        private void HandleRequest(HttpListenerContext context)
+        {
+            try
+            {
+                var path = context.Request.Url?.AbsolutePath ?? "";
+                var method = context.Request.HttpMethod;
+
+                Console.WriteLine($"[Aria2ApiServer] {method} {path}");
+
+                if (path == "/aria2-download" && method == "POST")
+                {
+                    using var reader = new StreamReader(context.Request.InputStream);
+                    var body = reader.ReadToEnd();
+                    Console.WriteLine($"[Aria2ApiServer] Body: {body}");
+
+                    try
+                    {
+                        var doc = System.Text.Json.JsonDocument.Parse(body);
+                        var url = doc.RootElement.TryGetProperty("url", out var u) ? u.GetString() : "";
+                        var savePath = doc.RootElement.TryGetProperty("save_path", out var sp) ? sp.GetString() : "";
+
+                        if (!string.IsNullOrEmpty(url) && !string.IsNullOrEmpty(savePath) && _browserHost != null)
+                        {
+                            var gid = _browserHost.AddAria2Download(url, savePath);
+                            var response = new { success = gid != null, gid = gid ?? "" };
+                            SendJson(context, 200, response);
+                            Console.WriteLine($"[Aria2ApiServer] Download started: {gid}");
+                        }
+                        else
+                        {
+                            SendJson(context, 400, new { error = "url and save_path required" });
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        Console.WriteLine($"[Aria2ApiServer] Error: {ex.Message}");
+                        SendJson(context, 500, new { error = ex.Message });
+                    }
+                }
+                else if (path == "/aria2-status" && method == "GET")
+                {
+                    var running = _browserHost?.aria2Manager?.IsRunning ?? false;
+                    SendJson(context, 200, new { running = running });
+                }
+                else
+                {
+                    SendJson(context, 404, new { error = "Not found" });
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[Aria2ApiServer] Handle error: {ex.Message}");
+            }
+        }
+
+        private void SendJson(HttpListenerContext context, int statusCode, object data)
+        {
+            context.Response.StatusCode = statusCode;
+            context.Response.ContentType = "application/json";
+            var json = System.Text.Json.JsonSerializer.Serialize(data);
+            var buffer = Encoding.UTF8.GetBytes(json);
+            context.Response.OutputStream.Write(buffer, 0, buffer.Length);
+            context.Response.Close();
+        }
+    }
+
     internal static class NativeMethods
     {
         [DllImport("user32.dll", SetLastError = true)]
@@ -468,9 +588,140 @@ namespace BrowserHost
     {
         // Store current port for external access
         private static int _staticPort = 28900;
+        private static HttpListener? _httpListener;
+        private static CancellationTokenSource? _httpListenerCts;
+        private static Aria2Manager? _sharedAria2Manager;
 
         public static int GetCurrentPort() => _staticPort;
         public static void SetCurrentPort(int port) => _staticPort = port;
+
+        // 设置共享的 Aria2Manager 引用
+        public static void SetAria2Manager(Aria2Manager manager)
+        {
+            _sharedAria2Manager = manager;
+        }
+
+        // 启动 HTTP 监听器
+        public static void StartHttpListener(int port)
+        {
+            _httpListenerCts = new CancellationTokenSource();
+            Task.Run(() => HttpListenerLoop(port, _httpListenerCts.Token));
+        }
+
+        private static async Task HttpListenerLoop(int port, CancellationToken ct)
+        {
+            _httpListener = new HttpListener();
+            _httpListener.Prefixes.Add($"http://localhost:{port}/");
+            try
+            {
+                _httpListener.Start();
+                Console.WriteLine($"[Program] HTTP listener started on port {port}");
+
+                while (!ct.IsCancellationRequested)
+                {
+                    try
+                    {
+                        var context = await _httpListener.GetContextAsync();
+                        _ = Task.Run(() => HandleHttpRequest(context));
+                    }
+                    catch (HttpListenerException) { break; }
+                    catch (ObjectDisposedException) { break; }
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[Program] HTTP listener error: {ex.Message}");
+            }
+        }
+
+        private static void HandleHttpRequest(HttpListenerContext context)
+        {
+            try
+            {
+                var path = context.Request.Url?.AbsolutePath ?? "";
+                Console.WriteLine($"[Program] HTTP request: {context.Request.HttpMethod} {path}");
+
+                if (path == "/aria2-download" && context.Request.HttpMethod == "POST")
+                {
+                    HandleAria2Download(context);
+                }
+                else if (path == "/api/health")
+                {
+                    context.Response.StatusCode = 200;
+                    context.Response.ContentType = "application/json";
+                    var buffer = Encoding.UTF8.GetBytes("{\"status\":\"ok\"}");
+                    context.Response.OutputStream.Write(buffer);
+                }
+                else
+                {
+                    context.Response.StatusCode = 404;
+                }
+                context.Response.Close();
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[Program] HandleHttpRequest error: {ex.Message}");
+            }
+        }
+
+        private static void HandleAria2Download(HttpListenerContext context)
+        {
+            try
+            {
+                using var reader = new StreamReader(context.Request.InputStream);
+                var body = reader.ReadToEnd();
+                Console.WriteLine($"[Program] Aria2 download request: {body}");
+
+                var doc = System.Text.Json.JsonDocument.Parse(body);
+                var url = "";
+                var savePath = "";
+
+                if (doc.RootElement.TryGetProperty("url", out var urlProp))
+                    url = urlProp.GetString() ?? "";
+                if (doc.RootElement.TryGetProperty("save_path", out var pathProp))
+                    savePath = pathProp.GetString() ?? "";
+
+                if (string.IsNullOrEmpty(url) || string.IsNullOrEmpty(savePath))
+                {
+                    context.Response.StatusCode = 400;
+                    var buffer = Encoding.UTF8.GetBytes("{\"error\":\"url and save_path required\"}");
+                    context.Response.ContentType = "application/json";
+                    context.Response.OutputStream.Write(buffer);
+                    return;
+                }
+
+                // 调用 Aria2 下载
+                if (_sharedAria2Manager != null && _sharedAria2Manager.IsRunning)
+                {
+                    var options = new Dictionary<string, string>
+                    {
+                        { "out", Path.GetFileName(savePath) },
+                        { "dir", Path.GetDirectoryName(savePath) ?? "." }
+                    };
+
+                    var gid = _sharedAria2Manager.AddDownloadAsync(url, savePath, options).GetAwaiter().GetResult();
+                    Console.WriteLine($"[Program] Aria2 download started: {gid}");
+
+                    context.Response.StatusCode = 200;
+                    context.Response.ContentType = "application/json";
+                    var response = System.Text.Json.JsonSerializer.Serialize(new { success = true, gid = gid });
+                    var buffer = Encoding.UTF8.GetBytes(response);
+                    context.Response.OutputStream.Write(buffer);
+                }
+                else
+                {
+                    context.Response.StatusCode = 500;
+                    var buffer = Encoding.UTF8.GetBytes("{\"error\":\"Aria2 not running\"}");
+                    context.Response.ContentType = "application/json";
+                    context.Response.OutputStream.Write(buffer);
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[Program] HandleAria2Download error: {ex.Message}");
+                context.Response.StatusCode = 500;
+            }
+        }
 
         // Cancel pending requests to prevent thread pool starvation
         public static void CancelPendingRequests()
@@ -913,6 +1164,10 @@ namespace BrowserHost
                         Console.WriteLine($"[BrowserHost] Aria2 exists: {File.Exists(aria2Path)}");
                         var aria2Started = browserHostObj.aria2Manager.Start(aria2Path);
                         Console.WriteLine($"[BrowserHost] Aria2 started: {aria2Started}");
+
+                        // 设置共享 Aria2Manager 并启动 HTTP 监听器
+                        Program.SetAria2Manager(browserHostObj.aria2Manager);
+                        Program.StartHttpListener(Program.GetCurrentPort());
 
                         // aria2Manager.CleanupOrphanProcesses() will be called here if needed
                         browserHostObj.SetUpdateDialogCallback((currentVer, newVer, changelog, downloadUrl) =>

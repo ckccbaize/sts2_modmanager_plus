@@ -19549,6 +19549,109 @@ func _api_launch_game(params: Dictionary) -> Dictionary:
 	return {"code": 500, "data": {"success": false, "message": "Failed to launch game"}}
 
 
+# ── Aria2 下载 API ───────────────────────────────────────────────
+
+func _api_aria2_download(params: Dictionary) -> Dictionary:
+	var url: String = params.get("url", "")
+	var save_path: String = params.get("save_path", "")
+
+	if url.is_empty():
+		return {"code": 400, "data": {"error": "url is required"}}
+
+	if save_path.is_empty():
+		return {"code": 400, "data": {"error": "save_path is required"}}
+
+	print("[_api_aria2_download] url=", url, ", save_path=", save_path)
+
+	# 通过 HTTP 调用 BrowserHost 的 BrowserHost.AddAria2Download
+	# 使用同步 HTTP 请求获取结果
+	var http_client = HTTPClient.new()
+	var err = http_client.connect_to_host("localhost", _get_browser_host_port())
+	if err != OK:
+		return {"code": 500, "data": {"error": "Failed to connect to BrowserHost"}}
+
+	# 等待连接
+	while http_client.get_status() == HTTPClient.STATUS_CONNECTING:
+		http_client.poll()
+		OS.delay_msec(10)
+
+	if http_client.get_status() != HTTPClient.STATUS_CONNECTED:
+		return {"code": 500, "data": {"error": "Failed to connect to BrowserHost"}}
+
+	# 发送 JSON 请求到 BrowserHost 的 Aria2 端点
+	var body = JSON.stringify({"url": url, "save_path": save_path})
+	var headers = PackedStringArray(["Content-Type: application/json"])
+	err = http_client.request(HTTPClient.METHOD_POST, "/aria2-download", headers, body)
+	if err != OK:
+		return {"code": 500, "data": {"error": "Failed to send request"}}
+
+	# 等待响应
+	while http_client.get_status() == HTTPClient.STATUS_REQUESTING:
+		http_client.poll()
+		OS.delay_msec(10)
+
+	if http_client.get_status() != HTTPClient.STATUS_BODY:
+		return {"code": 500, "data": {"error": "Request failed"}}
+
+	var response_code = http_client.get_response_code()
+	var resp_body = http_client.read_response_body_chunk().get_string_from_utf8()
+	http_client.close()
+
+	if response_code == 200:
+		var json = JSON.new()
+		if json.parse(resp_body) == OK:
+			return {"code": 200, "data": json.get_data()}
+		return {"code": 200, "data": {"success": true, "gid": resp_body}}
+
+	return {"code": response_code, "data": {"error": resp_body}}
+
+
+func _get_browser_host_port() -> int:
+	"""获取 BrowserHost 端口"""
+	# BrowserHost 和 LocalServer 使用同一个端口
+	if local_server:
+		return local_server.get_port()
+	return 28900
+
+
+func _api_aria2_status(_params: Dictionary) -> Dictionary:
+	# 通过 HTTP 查询 BrowserHost 的 Aria2 状态
+	var http_client = HTTPClient.new()
+	var err = http_client.connect_to_host("localhost", _get_browser_host_port())
+	if err != OK:
+		return {"code": 500, "data": {"error": "Failed to connect to BrowserHost"}}
+
+	while http_client.get_status() == HTTPClient.STATUS_CONNECTING:
+		http_client.poll()
+		OS.delay_msec(10)
+
+	if http_client.get_status() != HTTPClient.STATUS_CONNECTED:
+		return {"code": 500, "data": {"error": "Failed to connect to BrowserHost"}}
+
+	var headers = PackedStringArray(["Accept: application/json"])
+	err = http_client.request(HTTPClient.METHOD_GET, "/aria2-status", headers)
+	if err != OK:
+		return {"code": 500, "data": {"error": "Failed to send request"}}
+
+	while http_client.get_status() == HTTPClient.STATUS_REQUESTING:
+		http_client.poll()
+		OS.delay_msec(10)
+
+	if http_client.get_status() != HTTPClient.STATUS_BODY:
+		return {"code": 500, "data": {"error": "Request failed"}}
+
+	var response_code = http_client.get_response_code()
+	var resp_body = http_client.read_response_body_chunk().get_string_from_utf8()
+	http_client.close()
+
+	if response_code == 200:
+		var json = JSON.new()
+		if json.parse(resp_body) == OK:
+			return {"code": 200, "data": json.get_data()}
+
+	return {"code": response_code, "data": {"error": resp_body}}
+
+
 # ── 更新检查 API ───────────────────────────────────────────────
 
 func _api_check_update(_params: Dictionary) -> Dictionary:
