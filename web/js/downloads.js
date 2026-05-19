@@ -148,10 +148,14 @@ const STS2Downloads = {
      */
     _onBrowserHostInstallComplete(id, mod_name, status) {
         console.log('[STS2Downloads] BrowserHost install complete:', id, mod_name, status);
-        // 安装完成时不需要再次检查 _completedNotificationIds，因为同一个 id 已经添加过了
 
         // 显示安装完成通知
-        this._app.notifications.show(`已自动安装: ${mod_name}`, 'success', 3000);
+        if (this._app?.notifications) {
+            console.log('[STS2Downloads] Showing install notification for:', mod_name);
+            this._app.notifications.show(`已自动安装: ${mod_name}`, 'success', 3000);
+        } else {
+            console.log('[STS2Downloads] _app.notifications not available, app:', this._app);
+        }
 
         // 通知模组页面刷新列表
         if (this._app) {
