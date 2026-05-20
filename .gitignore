@@ -8,10 +8,12 @@ windows/
 
 # Build outputs
 *.pck
-*.exe
 *.dll
 *.so
 *.dylib
+# 例外：允许 aria2c.exe（第三方下载工具）
+!browser_host/publish/aria2c.exe
+!browser_host/aria2c.exe
 
 # Project exports
 *.zip
