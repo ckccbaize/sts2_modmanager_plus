@@ -48,6 +48,20 @@ tst.zip
 2.zip
 dfsdff.zip
 
+# Export test directories
+export_test/
+export_test1/
+export_template/
+STS2_ModManager_Plus/
+
+# Solution file (auto-generated)
+STS2ModManager.sln
+
+# Standalone executables
+BrowserHost.exe
+browser_host/BrowserHost.exe
+browser_host/publish/BrowserHost.exe
+
 # AI/CI tools (exclude config, keep addons structure)
 .claude/
 .mcp.json

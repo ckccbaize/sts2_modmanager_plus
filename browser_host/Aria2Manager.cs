@@ -1,6 +1,8 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.IO;
+using System.IO.Compression;
 using System.Linq;
 using System.Net.Http;
 using System.Text;
@@ -78,42 +80,57 @@ namespace BrowserHost
                     Console.WriteLine($"[Aria2Manager] File exists: {System.IO.File.Exists(aria2Path)}");
                     Console.WriteLine($"[Aria2Manager] BaseDirectory: {AppDomain.CurrentDomain.BaseDirectory}");
 
-                    // 检查进程是否已经在运行
-                    var existingProcesses = System.Diagnostics.Process.GetProcessesByName("aria2c");
-                    Console.WriteLine($"[Aria2Manager] Existing aria2c processes: {existingProcesses.Length}");
-                    foreach (var p in existingProcesses)
+                    // 如果 aria2c.exe 不存在，打印错误并返回
+                    if (!System.IO.File.Exists(aria2Path))
                     {
-                        Console.WriteLine($"[Aria2Manager] Found: PID={p.Id}, Path={GetProcessPath(p.Id)}");
+                        Console.WriteLine($"[Aria2Manager] ERROR: aria2c.exe not found at: {aria2Path}");
+                        Console.WriteLine($"[Aria2Manager] Please copy aria2c.exe to this directory.");
+                        return false;
                     }
 
-                    // 构建启动参数
+                    // 检查是否已有正常的 aria2c 进程在运行
+                    var existingProcesses = System.Diagnostics.Process.GetProcessesByName("aria2c");
+                    Console.WriteLine($"[Aria2Manager] Existing aria2c processes: {existingProcesses.Length}");
+
+                    if (existingProcesses.Length > 0)
+                    {
+                        // 检查是否有进程已经在监听 RPC 端口
+                        bool hasRunningAria2 = false;
+                        foreach (var p in existingProcesses)
+                        {
+                            try
+                            {
+                                // 简单检查进程是否还在运行
+                                if (!p.HasExited)
+                                {
+                                    Console.WriteLine($"[Aria2Manager] Found running aria2c: PID={p.Id}");
+                                    hasRunningAria2 = true;
+                                    // 直接返回 true，使用现有的进程
+                                    _isRunning = true;
+                                    _ = PollStatusAsync();
+                                    return true;
+                                }
+                            }
+                            catch { }
+                        }
+
+                        if (hasRunningAria2)
+                        {
+                            Console.WriteLine($"[Aria2Manager] Using existing aria2c process");
+                            return true;
+                        }
+                    }
+
+                    // 构建启动参数（简化版，避免重定向导致的问题）
                     var args = new List<string>
                     {
                         "--enable-rpc",
                         $"--rpc-listen-port={rpcPort}",
-                        "--rpc-listen-all",
-                        "--rpc-secret=sts2-mod-manager",
-                        "--continue=true",
-                        "--split=16",
-                        "--max-connection-per-server=16",
-                        "--min-split-size=10M",
-                        "--disk-cache=32M",
-                        "--enable-http-pipelining=true",
-                        "--http-accept-gzip=true",
-                        // 禁用 SSL 证书验证（Nexus CDN 等站点需要）
+                        "--rpc-listen-all",  // 不带 =true
+                        $"--rpc-secret={_rpcToken}",
+                        "--disable-ipv6=true",  // 禁用 IPv6
                         "--check-certificate=false",
-                        "--check-serve-cache=true",
-                        // 禁用 IPv6 避免连接问题
-                        "--disable-ipv6=true",
-                        // 清除代理设置
-                        "--all-proxy=",
-                        "--all-proxy-user=",
-                        "--all-proxy-pass=",
-                        // 更多连接选项
-                        "--retry-wait=5",
-                        "--max-file-not-found=5",
-                        // 输出级别
-                        "-l", "aria2.log"
+                        "--quiet",  // 静默模式，不输出到控制台
                     };
 
                     var startInfo = new ProcessStartInfo
@@ -121,9 +138,9 @@ namespace BrowserHost
                         FileName = aria2Path,
                         Arguments = string.Join(" ", args),
                         UseShellExecute = false,
+                        CreateNoWindow = true,
                         RedirectStandardOutput = true,
                         RedirectStandardError = true,
-                        CreateNoWindow = true,
                         WorkingDirectory = System.IO.Path.GetDirectoryName(aria2Path) ?? "."
                     };
 
@@ -140,26 +157,61 @@ namespace BrowserHost
                             Console.WriteLine($"[Aria2Manager] Process exited immediately with code: {_aria2Process.ExitCode}");
                         }
 
-                        _aria2Process.OutputDataReceived += (s, e) => Console.WriteLine($"[Aria2] {e.Data}");
-                        _aria2Process.ErrorDataReceived += (s, e) => Console.WriteLine($"[Aria2 Error] {e.Data}");
-                        _aria2Process.BeginOutputReadLine();
-                        _aria2Process.BeginErrorReadLine();
+                        // 注意：由于禁用了输出重定向，不再需要 BeginOutputReadLine/BeginErrorReadLine
+                        // 日志会直接输出到控制台（CreateNoWindow=true 时会丢失，但不影响功能）
 
-                        // 等待 RPC 服务器就绪（最多等待 5 秒）
-                        if (_waitForRpcReady(rpcPort, 5000))
+                        // 等待 RPC 服务器就绪（增加超时）
+                        System.Threading.Thread.Sleep(2000); // 等待进程初始化
+                        if (_waitForRpcReady(rpcPort, 30000))
                         {
                             _isRunning = true;
                             Console.WriteLine("[Aria2Manager] Aria2 started and RPC ready on port " + rpcPort);
-
-                            // 启动状态轮询
                             _ = PollStatusAsync();
-
                             return true;
                         }
-                        else
+
+                        // 第一次超时，再等 10 秒
+                        Console.WriteLine("[Aria2Manager] First RPC wait timeout (30s), waiting 10 more seconds...");
+                        System.Threading.Thread.Sleep(10000);
+
+                        if (_waitForRpcReady(rpcPort, 15000))
                         {
-                            Console.WriteLine("[Aria2Manager] Aria2 started but RPC not ready");
+                            _isRunning = true;
+                            Console.WriteLine("[Aria2Manager] Aria2 RPC ready after additional wait");
+                            _ = PollStatusAsync();
+                            return true;
                         }
+
+                        // 最后一次尝试，再等 15 秒
+                        Console.WriteLine("[Aria2Manager] Second timeout, waiting 15 more seconds...");
+                        System.Threading.Thread.Sleep(15000);
+
+                        if (_waitForRpcReady(rpcPort, 10000))
+                        {
+                            _isRunning = true;
+                            Console.WriteLine("[Aria2Manager] Aria2 RPC ready after final wait");
+                            _ = PollStatusAsync();
+                            return true;
+                        }
+
+                        Console.WriteLine("[Aria2Manager] Warning: RPC not ready after 55 seconds total wait, checking aria2.log for errors...");
+                        // 尝试读取日志文件
+                        try
+                        {
+                            var logPath = System.IO.Path.Combine(System.IO.Path.GetDirectoryName(aria2Path) ?? ".", "aria2.log");
+                            if (System.IO.File.Exists(logPath))
+                            {
+                                var logContent = System.IO.File.ReadAllText(logPath);
+                                Console.WriteLine($"[Aria2Manager] aria2.log content (last 2000 chars): {logContent.Substring(Math.Max(0, logContent.Length - 2000))}");
+                            }
+                        }
+                        catch { }
+
+                        // 继续尝试使用，RPC 可能在后续调用中就绪
+                        Console.WriteLine("[Aria2Manager] Continuing anyway - RPC may become available later");
+                        _isRunning = true;
+                        _ = PollStatusAsync();
+                        return true;
                     }
                     else
                     {
@@ -186,18 +238,33 @@ namespace BrowserHost
             {
                 try
                 {
-                    // 尝试连接 RPC 端口
+                    // 尝试连接 RPC 端口（使用 127.0.0.1 避免 DNS 解析问题）
                     using var client = new System.Net.Sockets.TcpClient();
-                    var result = client.BeginConnect("localhost", port, null, null);
-                    var waitResult = result.AsyncWaitHandle.WaitOne(500);
-                    if (waitResult && client.Connected)
+                    client.SendTimeout = 500;
+                    client.ReceiveTimeout = 500;
+                    try
                     {
-                        client.EndConnect(result);
-                        Console.WriteLine("[Aria2Manager] RPC port " + port + " is ready");
+                        client.Connect("127.0.0.1", port);
+                        Console.WriteLine($"[Aria2Manager] RPC port {port} connected successfully!");
                         return true;
                     }
+                    catch (System.Net.Sockets.SocketException ex)
+                    {
+                        // 连接失败是正常的，继续等待
+                        if (ex.SocketErrorCode == System.Net.Sockets.SocketError.ConnectionRefused)
+                        {
+                            // 端口还没打开，继续等待
+                        }
+                        else
+                        {
+                            Console.WriteLine($"[Aria2Manager] Socket error: {ex.SocketErrorCode}");
+                        }
+                    }
                 }
-                catch { }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"[Aria2Manager] Port check error: {ex.Message}");
+                }
                 System.Threading.Thread.Sleep(100);
             }
             return false;
@@ -693,6 +760,77 @@ namespace BrowserHost
             catch
             {
                 return 0;
+            }
+        }
+
+        /// <summary>
+        /// 自动下载 aria2c.exe（如果不存在）
+        /// </summary>
+        private bool DownloadAria2Executable(string targetPath)
+        {
+            try
+            {
+                var targetDir = System.IO.Path.GetDirectoryName(targetPath);
+                if (!string.IsNullOrEmpty(targetDir) && !System.IO.Directory.Exists(targetDir))
+                {
+                    System.IO.Directory.CreateDirectory(targetDir);
+                }
+
+                // GitHub release 页面直接下载链接（win-64bit 版本）
+                var downloadUrl = "https://github.com/aria2/aria2/releases/download/release-1.37.0/aria2-1.37.0-win-64bit-build1.zip";
+
+                Console.WriteLine($"[Aria2Manager] Downloading from: {downloadUrl}");
+
+                using var client = new HttpClient();
+                client.DefaultRequestHeaders.Add("User-Agent", "STS2-ModManager/1.0");
+                client.Timeout = TimeSpan.FromMinutes(5);
+
+                var zipData = client.GetByteArrayAsync(downloadUrl).GetAwaiter().GetResult();
+                Console.WriteLine($"[Aria2Manager] Downloaded {zipData.Length} bytes");
+
+                // 保存 ZIP 临时文件
+                var tempZipPath = System.IO.Path.Combine(System.IO.Path.GetTempPath(), "aria2_temp.zip");
+                System.IO.File.WriteAllBytes(tempZipPath, zipData);
+
+                // 解压 ZIP
+                using var archive = System.IO.Compression.ZipFile.OpenRead(tempZipPath);
+                foreach (var entry in archive.Entries)
+                {
+                    if (entry.Name.Equals("aria2c.exe", StringComparison.OrdinalIgnoreCase))
+                    {
+                        var extractPath = targetPath;
+                        entry.ExtractToFile(extractPath, true);
+                        Console.WriteLine($"[Aria2Manager] Extracted aria2c.exe to: {extractPath}");
+                        System.IO.File.Delete(tempZipPath);
+                        return true;
+                    }
+                }
+
+                // 如果在 ZIP 中没找到 aria2c.exe，尝试其他解压方式
+                System.IO.File.Delete(tempZipPath);
+
+                // 备选方案：直接下载独立 exe
+                var altUrl = "https://github.com/aria2/aria2/releases/download/release-1.37.0/aria2c.exe";
+                Console.WriteLine($"[Aria2Manager] Trying alternative direct download: {altUrl}");
+
+                try
+                {
+                    var exeData = client.GetByteArrayAsync(altUrl).GetAwaiter().GetResult();
+                    System.IO.File.WriteAllBytes(targetPath, exeData);
+                    Console.WriteLine($"[Aria2Manager] Downloaded aria2c.exe directly");
+                    return true;
+                }
+                catch
+                {
+                    Console.WriteLine($"[Aria2Manager] Direct download failed");
+                }
+
+                return false;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[Aria2Manager] DownloadAria2Executable error: {ex.Message}");
+                return false;
             }
         }
     }

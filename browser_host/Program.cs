@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.IO;
 using System.Threading.Tasks;
 using System.Windows.Forms;
@@ -223,6 +223,20 @@ namespace BrowserHost
                         window.STS2Downloads.onBackendDownloadComplete('{escapedId}', '{escapedName}');
                     }}
                     console.log('[BrowserHost] Download complete notified: {escapedName}');
+                }})();
+            ";
+            ExecuteScript(script);
+        }
+
+        // 设置 WebUI 的 DPI 缩放（供 Godot 调用）
+        public void SetDpiScale(double scale)
+        {
+            Console.WriteLine($"[BrowserHostObject] SetDpiScale: {scale}");
+            var script = $@"
+                (function() {{
+                    if (window.app && window.app.applyDpiScale) {{
+                        window.app.applyDpiScale({scale});
+                    }}
                 }})();
             ";
             ExecuteScript(script);
@@ -664,9 +678,12 @@ namespace BrowserHost
         private static Aria2Manager? _sharedAria2Manager;
         private static bool _httpListenerStarted = false;
         private static Microsoft.Web.WebView2.WinForms.WebView2? _webView;
+        // 保存 UI 线程的 SynchronizationContext，用于跨线程调用
+        private static System.Threading.SynchronizationContext? _uiContext;
 
         public static Microsoft.Web.WebView2.WinForms.WebView2? WebView => _webView;
         public static void SetWebView(Microsoft.Web.WebView2.WinForms.WebView2? webView) => _webView = webView;
+        public static void SetUiContext(System.Threading.SynchronizationContext? context) => _uiContext = context;
 
         public static int GetCurrentPort() => _staticPort;
         public static void SetCurrentPort(int port) => _staticPort = port;
@@ -721,6 +738,48 @@ namespace BrowserHost
             }
         }
 
+        public static void ExecuteOnUIThread(Action action)
+        {
+            if (_webView != null)
+            {
+                if (_webView.InvokeRequired)
+                {
+                    _webView.Invoke(action);
+                }
+                else
+                {
+                    action();
+                }
+            }
+        }
+
+        public static async Task ExecuteOnUIThreadAsync(Func<Task> action)
+        {
+            if (_webView != null)
+            {
+                if (_webView.InvokeRequired)
+                {
+                    var tcs = new TaskCompletionSource<bool>();
+                    _webView.Invoke(new Action(async () =>
+                    {
+                        try
+                        {
+                            await action();
+                            tcs.SetResult(true);
+                        }
+                        catch (Exception ex)
+                        {
+                            tcs.SetException(ex);
+                        }
+                    }));
+                    await tcs.Task;
+                }
+                else
+                {
+                    await action();
+                }
+            }
+        }
         private static void HandleHttpRequest(HttpListenerContext context)
         {
             try
@@ -744,12 +803,53 @@ namespace BrowserHost
                 {
                     HandleInstallComplete(context);
                 }
+                else if (path == "/dpi-scale" && context.Request.HttpMethod == "POST")
+                {
+                    // 接收 Godot 的 dpi_scale 并应用到 WebUI
+                    try
+                    {
+                        using var reader = new StreamReader(context.Request.InputStream);
+                        var body = await reader.ReadToEndAsync();
+                        var json = System.Text.Json.JsonDocument.Parse(body);
+                        if (json.RootElement.TryGetProperty("scale", out var scaleElement))
+                        {
+                            var scale = scaleElement.GetDouble();
+                            Program.SetDpiScale(scale);
+                            Console.WriteLine($"[BrowserHost] /dpi-scale: set scale to {scale}");
+                        }
+                        context.Response.StatusCode = 200;
+                    }
+                    catch (Exception ex)
+                    {
+                        Console.WriteLine($"[BrowserHost] /dpi-scale error: {ex.Message}");
+                        context.Response.StatusCode = 500;
+                    }
+                }
+                else if (path == "/api/downloads/clear_history" && context.Request.HttpMethod == "POST")
+                {
+                    HandleClearDownloadHistory(context);
+                }
+                else if (path.StartsWith("/api/settings/") || path == "/api/settings")
+                {
+                    // API 请求 - 转发给 Godot LocalServer（支持 GET 和 POST）
+                    ForwardToGodot(context);
+                }
+                else if (path.StartsWith("/css/") || path.StartsWith("/js/") || path.StartsWith("/assets/") || path.StartsWith("/locales") || path.StartsWith("/mock-") || path == "/icon.svg" || path == "/variables.css" || path == "/index.html")
+                {
+                    // 静态文件请求 - 转发给 Godot LocalServer
+                    ForwardToGodotStaticFile(context);
+                }
                 else if (path == "/api/health")
                 {
                     context.Response.StatusCode = 200;
                     context.Response.ContentType = "application/json";
                     var buffer = Encoding.UTF8.GetBytes("{\"status\":\"ok\"}");
                     context.Response.OutputStream.Write(buffer);
+                }
+                else if (path.StartsWith("/api/"))
+                {
+                    // API 请求 - 转发给 Godot LocalServer（支持所有 HTTP 方法）
+                    ForwardToGodot(context);
                 }
                 else
                 {
@@ -866,11 +966,11 @@ namespace BrowserHost
 
                 if (status == null)
                 {
-                    // status == null 可能是因为 GID 无效或下载已被移除
-                    // 不应该假设下载完成，返回未完成状态让监控继续
+                    // status == null 表示 GID 在 Aria2 中不存在（可能 Aria2 重启后任务丢失）
+                    // 返回 not_found 状态，让 Godot 端知道需要重新开始下载
                     context.Response.StatusCode = 200;
                     context.Response.ContentType = "application/json";
-                    var buffer = Encoding.UTF8.GetBytes("{\"gid\":\"" + gid + "\",\"completed\":false,\"status\":\"unknown\"}");
+                    var buffer = Encoding.UTF8.GetBytes("{\"gid\":\"" + gid + "\",\"completed\":false,\"status\":\"not_found\",\"error\":\"GID not found in Aria2, may need to restart download\"}");
                     context.Response.OutputStream.Write(buffer);
                     return;
                 }
@@ -906,21 +1006,51 @@ namespace BrowserHost
                 var body = reader.ReadToEnd();
                 Console.WriteLine($"[Program] Download complete notification: {body}");
 
-                // 通知 WebView2 JavaScript
-                if (WebView?.CoreWebView2 != null)
+                // 获取 WebView 引用（在 HTTP 线程上）
+                var webViewRef = _webView;
+                if (webViewRef != null)
                 {
+                    Console.WriteLine("[Program] Download WebView available, dispatching via BeginInvoke...");
+
+                    // 准备脚本内容（在 HTTP 线程上执行转义）
+                    var bodyJson = Uri.EscapeDataString(body);
                     var script = $@"
                         (function() {{
-                            var data = {body};
-                            // 只触发自定义事件，通知由 STS2Downloads._onBrowserHostDownloadComplete 统一处理
-                            window.dispatchEvent(new CustomEvent('sts2-download-complete', {{
-                                detail: {{ id: data.id, mod_name: data.mod_name, status: data.status }}
-                            }}));
-                            // 不再直接调用 notifications.show，避免重复弹窗
-                            console.log('[BrowserHost] Download complete event dispatched:', data.mod_name);
+                            try {{
+                                var bodyStr = decodeURIComponent('{bodyJson}');
+                                var data = JSON.parse(bodyStr);
+                                window.dispatchEvent(new CustomEvent('sts2-download-complete', {{
+                                    detail: {{ id: data.id || '', mod_name: data.mod_name || '', status: data.status || '' }}
+                                }}));
+                                console.log('[BrowserHost] Download complete event dispatched:', data.mod_name);
+                            }} catch(e) {{
+                                console.error('[BrowserHost] Download complete parse error:', e.message);
+                            }}
                         }})();
                     ";
-                    var _ = WebView.CoreWebView2.ExecuteScriptAsync(script);
+
+                    // 使用 BeginInvoke 在 UI 线程上执行脚本
+                    // BeginInvoke 会将回调排队到 UI 线程，不会立即执行
+                    webViewRef.BeginInvoke(new Action(() =>
+                    {
+                        try
+                        {
+                            // 在 UI 线程上访问 CoreWebView2
+                            var coreWebView2 = webViewRef.CoreWebView2;
+                            if (coreWebView2 == null)
+                            {
+                                Console.WriteLine("[Program] Download: CoreWebView2 is null!");
+                                return;
+                            }
+                            Console.WriteLine("[Program] Download: CoreWebView2 accessed successfully on UI thread");
+                            coreWebView2.ExecuteScriptAsync(script);
+                            Console.WriteLine("[Program] Download script executed via BeginInvoke");
+                        }
+                        catch (Exception innerEx)
+                        {
+                            Console.WriteLine($"[Program] Download UI thread error: {innerEx.Message}");
+                        }
+                    }));
                 }
 
                 context.Response.StatusCode = 200;
@@ -943,33 +1073,52 @@ namespace BrowserHost
                 var body = reader.ReadToEnd();
                 Console.WriteLine($"[Program] Install complete notification: {body}");
 
-                // 通知 WebView2 JavaScript
-                if (WebView?.CoreWebView2 != null)
+                // 通知 WebView2 JavaScript（必须从 UI 线程调用）
+                // 先获取 WebView 的本地引用
+                var webViewRef = _webView;
+                var uiContext = _uiContext;
+                if (webViewRef != null)
                 {
                     Console.WriteLine("[Program] WebView available, dispatching event...");
-                    // 解析 JSON 并安全地构建 JavaScript 代码
-                    var jsonDoc = System.Text.Json.JsonDocument.Parse(body);
-                    var id = jsonDoc.RootElement.GetProperty("id").GetString() ?? "";
-                    var modName = jsonDoc.RootElement.GetProperty("mod_name").GetString() ?? "";
-                    var status = jsonDoc.RootElement.GetProperty("status").GetString() ?? "";
 
-                    // 安全转义模组名称（处理特殊字符）
-                    var safeModName = modName
-                        .Replace("\\", "\\\\")
-                        .Replace("'", "\\'")
-                        .Replace("\n", " ")
-                        .Replace("\r", "");
-
+                    // 准备脚本内容（在主线程上执行转义）
+                    var bodyJson = Uri.EscapeDataString(body);
                     var script = $@"
                         (function() {{
-                            window.dispatchEvent(new CustomEvent('sts2-install-complete', {{
-                                detail: {{ id: '{id}', mod_name: '{safeModName}', status: '{status}' }}
-                            }}));
-                            console.log('[BrowserHost] Install complete event dispatched: {safeModName}');
+                            try {{
+                                var bodyStr = decodeURIComponent('{bodyJson}');
+                                var data = JSON.parse(bodyStr);
+                                window.dispatchEvent(new CustomEvent('sts2-install-complete', {{
+                                    detail: {{ id: data.id || '', mod_name: data.mod_name || '', status: data.status || '' }}
+                                }}));
+                                console.log('[BrowserHost] Install complete event dispatched:', data.mod_name);
+                            }} catch(e) {{
+                                console.error('[BrowserHost] Install complete parse error:', e.message);
+                            }}
                         }})();
                     ";
-                    var _ = WebView.CoreWebView2.ExecuteScriptAsync(script);
-                    Console.WriteLine("[Program] Script executed");
+
+                    // 使用 BeginInvoke 在 UI 线程上执行脚本
+                    webViewRef.BeginInvoke(new Action(() =>
+                    {
+                        try
+                        {
+                            // 在 UI 线程上直接访问 CoreWebView2
+                            // BeginInvoke 回调在 UI 线程上运行，此时 CoreWebView2 应该可用
+                            if (webViewRef.CoreWebView2 == null)
+                            {
+                                Console.WriteLine("[Program] Install: CoreWebView2 is null!");
+                                return;
+                            }
+                            Console.WriteLine("[Program] Install: CoreWebView2 accessed successfully on UI thread");
+                            webViewRef.CoreWebView2.ExecuteScriptAsync(script);
+                            Console.WriteLine("[Program] Script executed via BeginInvoke");
+                        }
+                        catch (Exception ex)
+                        {
+                            Console.WriteLine($"[Program] Install UI thread error: {ex.Message}");
+                        }
+                    }));
                 }
                 else
                 {
@@ -988,70 +1137,300 @@ namespace BrowserHost
             }
         }
 
-        // 通知 WebUI 下载完成（静态方法，供 Aria2 事件回调调用）
-        public static void NotifyWebUIOfDownloadComplete(string modName, string downloadId)
+        // 清空下载历史（WebUI -> Godot）
+        private static void HandleClearDownloadHistory(HttpListenerContext context)
         {
             try
             {
-                if (WebView?.CoreWebView2 == null)
+                // 读取 WebUI 发送的请求体（可能包含 include_files 参数）
+                string requestBody = "";
+                using (var reader = new StreamReader(context.Request.InputStream))
                 {
-                    Console.WriteLine("[Program] NotifyWebUIOfDownloadComplete: WebView not available");
-                    return;
+                    requestBody = reader.ReadToEnd();
                 }
 
-                var escapedName = modName.Replace("'", "\\'").Replace("\"", "\\\"").Replace("\n", " ").Replace("\r", "");
-                var escapedId = downloadId.Replace("'", "\\'").Replace("\"", "\\\"");
-                var body = System.Text.Json.JsonSerializer.Serialize(new { id = escapedId, mod_name = escapedName, status = "completed" });
+                Console.WriteLine($"[Program] HandleClearDownloadHistory: requestBody={requestBody}");
 
-                var script = $@"
-                    (function() {{
-                        var data = {body};
-                        window.dispatchEvent(new CustomEvent('sts2-download-complete', {{
-                            detail: {{ id: data.id, mod_name: data.mod_name, status: data.status }}
-                        }}));
-                        console.log('[BrowserHost] Aria2 download complete notified to WebUI:', data.mod_name);
-                    }})();
-                ";
-                var _ = WebView.CoreWebView2.ExecuteScriptAsync(script);
-                Console.WriteLine($"[Program] NotifyWebUIOfDownloadComplete: {modName}, id={downloadId}");
+                // 转发给 Godot 处理
+                var httpClient = new System.Net.Http.HttpClient();
+                httpClient.Timeout = TimeSpan.FromSeconds(10);
+
+                var content = new StringContent(requestBody, System.Text.Encoding.UTF8, "application/json");
+                var response = httpClient.PostAsync($"http://localhost:{Program.GetCurrentPort()}/api/downloads/clear_history", content).GetAwaiter().GetResult();
+
+                if (response.IsSuccessStatusCode)
+                {
+                    context.Response.StatusCode = 200;
+                    context.Response.ContentType = "application/json";
+                    var buffer = Encoding.UTF8.GetBytes("{\"success\":true}");
+                    context.Response.OutputStream.Write(buffer);
+
+                    // 清空成功后，通知 WebUI 本地历史也被清空
+                    // 这样可以防止 WebUI 在收到响应前就收到下一轮的轮询数据
+                    NotifyWebUIClearHistoryComplete();
+                }
+                else
+                {
+                    Console.WriteLine($"[Program] HandleClearDownloadHistory: Godot returned {response.StatusCode}");
+                    context.Response.StatusCode = (int)response.StatusCode;
+                    var buffer = Encoding.UTF8.GetBytes("{\"error\":\"Failed to clear history\"}");
+                    context.Response.ContentType = "application/json";
+                    context.Response.OutputStream.Write(buffer);
+                }
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"[Program] NotifyWebUIOfDownloadComplete error: {ex.Message}");
+                Console.WriteLine($"[Program] HandleClearDownloadHistory error: {ex.Message}");
+                context.Response.StatusCode = 500;
             }
         }
 
-        // 通知 WebUI 安装完成（静态方法，供 Godot 调用）
-        public static void NotifyWebUIOfInstallComplete(string modName, string downloadId)
+        // 转发请求给 Godot LocalServer（支持所有 HTTP 方法）
+        private static void ForwardToGodot(HttpListenerContext context)
         {
             try
             {
-                if (WebView?.CoreWebView2 == null)
+                var path = context.Request.Url?.AbsolutePath ?? "";
+                var godotPort = Program.GetCurrentPort();
+                var url = $"http://localhost:{godotPort}{path}";
+
+                Console.WriteLine($"[Program] Forwarding to Godot: {context.Request.HttpMethod} {url}");
+
+                var httpClient = new System.Net.Http.HttpClient();
+                httpClient.Timeout = TimeSpan.FromSeconds(30);
+
+                // 创建请求，保留原始 HTTP 方法
+                var request = new HttpRequestMessage(new HttpMethod(context.Request.HttpMethod), url);
+
+                // 转发请求头（排除 host）
+                foreach (var key in context.Request.Headers.AllKeys)
                 {
-                    Console.WriteLine("[Program] NotifyWebUIOfInstallComplete: WebView not available");
-                    return;
+                    if (key != null)
+                    {
+                        var value = context.Request.Headers[key];
+                        if (!string.IsNullOrEmpty(value) && key.ToLower() != "host")
+                        {
+                            try { request.Headers.TryAddWithoutValidation(key, value); } catch { }
+                        }
+                    }
                 }
 
-                var escapedName = modName.Replace("'", "\\'").Replace("\"", "\\\"").Replace("\n", " ").Replace("\r", "");
-                var escapedId = downloadId.Replace("'", "\\'").Replace("\"", "\\\"");
-                var body = System.Text.Json.JsonSerializer.Serialize(new { id = escapedId, mod_name = escapedName, status = "install_complete" });
+                // 转发请求体（如果是 POST/PUT）
+                if (context.Request.HttpMethod == "POST" || context.Request.HttpMethod == "PUT")
+                {
+                    using var reader = new StreamReader(context.Request.InputStream);
+                    var body = reader.ReadToEnd();
+                    if (!string.IsNullOrEmpty(body))
+                    {
+                        request.Content = new StringContent(body, System.Text.Encoding.UTF8, "application/json");
+                    }
+                }
 
-                var script = $@"
-                    (function() {{
-                        var data = {body};
-                        window.dispatchEvent(new CustomEvent('sts2-install-complete', {{
-                            detail: {{ id: data.id, mod_name: data.mod_name, status: data.status }}
-                        }}));
-                        console.log('[BrowserHost] Install complete notified to WebUI:', data.mod_name);
-                    }})();
-                ";
-                var _ = WebView.CoreWebView2.ExecuteScriptAsync(script);
-                Console.WriteLine($"[Program] NotifyWebUIOfInstallComplete: {modName}, id={downloadId}");
+                var response = httpClient.SendAsync(request).GetAwaiter().GetResult();
+
+                context.Response.StatusCode = (int)response.StatusCode;
+                context.Response.ContentType = response.Content.Headers.ContentType?.MediaType ?? "application/json";
+
+                var buffer = response.Content.ReadAsByteArrayAsync().GetAwaiter().GetResult();
+                context.Response.OutputStream.Write(buffer, 0, buffer.Length);
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"[Program] NotifyWebUIOfInstallComplete error: {ex.Message}");
+                Console.WriteLine($"[Program] ForwardToGodot error: {ex.Message}");
+                context.Response.StatusCode = 500;
             }
+        }
+
+        // 转发静态文件请求给 Godot LocalServer（仅 GET）
+        private static void ForwardToGodotStaticFile(HttpListenerContext context)
+        {
+            try
+            {
+                var path = context.Request.Url?.AbsolutePath ?? "";
+                var godotPort = Program.GetCurrentPort();
+                var url = $"http://localhost:{godotPort}{path}";
+
+                Console.WriteLine($"[Program] Forwarding static file request to Godot: {url}");
+
+                var httpClient = new System.Net.Http.HttpClient();
+                httpClient.Timeout = TimeSpan.FromSeconds(10);
+
+                // 转发请求到 Godot
+                var request = new HttpRequestMessage(HttpMethod.Get, url);
+                foreach (var key in context.Request.Headers.AllKeys)
+                {
+                    if (key != null)
+                    {
+                        var value = context.Request.Headers[key];
+                        if (!string.IsNullOrEmpty(value) && key.ToLower() != "host")
+                        {
+                            try { request.Headers.TryAddWithoutValidation(key, value); } catch { }
+                        }
+                    }
+                }
+
+                var response = httpClient.SendAsync(request).GetAwaiter().GetResult();
+
+                context.Response.StatusCode = (int)response.StatusCode;
+                context.Response.ContentType = response.Content.Headers.ContentType?.MediaType ?? "text/plain";
+
+                var buffer = response.Content.ReadAsByteArrayAsync().GetAwaiter().GetResult();
+                context.Response.OutputStream.Write(buffer, 0, buffer.Length);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[Program] ForwardToGodotStaticFile error: {ex.Message}");
+                context.Response.StatusCode = 500;
+            }
+        }
+
+        // 通知 WebUI 历史清空完成（用于阻止轮询重新填充历史）
+        private static void NotifyWebUIClearHistoryComplete()
+        {
+            var webView = _webView;
+            if (webView == null) return;
+
+            webView.BeginInvoke(new Action(() =>
+            {
+                try
+                {
+                    var webViewRef = webView;
+                    if (webViewRef?.CoreWebView2 == null)
+                    {
+                        Console.WriteLine("[Program] NotifyWebUIClearHistoryComplete: CoreWebView2 not available");
+                        return;
+                    }
+
+                    // 发送一个事件，通知 downloads.js 设置 _localHistoryCleared = true
+                    var script = @"
+                        (function() {
+                            if (window.STS2Downloads) {
+                                window.STS2Downloads._localHistoryCleared = true;
+                                console.log('[Program] STS2Downloads._localHistoryCleared set to true');
+                            }
+                        })()";
+                    webViewRef.CoreWebView2.ExecuteScriptAsync(script);
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"[Program] NotifyWebUIClearHistoryComplete error: {ex.Message}");
+                }
+            }));
+        }
+
+        // 通知 WebUI 下载完成（静态方法，供 Aria2 事件回调调用）
+        public static void NotifyWebUIOfDownloadComplete(string modName, string downloadId)
+        {
+            var webView = _webView;
+            if (webView == null) return;
+
+            webView.BeginInvoke(new Action(() =>
+            {
+                try
+                {
+                    var webViewRef = webView;
+                    if (webViewRef?.CoreWebView2 == null)
+                    {
+                        Console.WriteLine("[Program] NotifyWebUIOfDownloadComplete: CoreWebView2 not available");
+                        return;
+                    }
+
+                    var escapedName = modName.Replace("'", "\\'").Replace("\"", "\\\"").Replace("\n", " ").Replace("\r", "");
+                    var escapedId = downloadId.Replace("'", "\\'").Replace("\"", "\\\"");
+                    var body = System.Text.Json.JsonSerializer.Serialize(new { id = escapedId, mod_name = escapedName, status = "completed" });
+
+                    var script = $@"
+                        (function() {{
+                            var data = {body};
+                            window.dispatchEvent(new CustomEvent('sts2-download-complete', {{
+                                detail: {{ id: data.id, mod_name: data.mod_name, status: data.status }}
+                            }}));
+                            console.log('[BrowserHost] Aria2 download complete notified to WebUI:', data.mod_name);
+                        }})();
+                    ";
+                    _ = webViewRef.CoreWebView2.ExecuteScriptAsync(script);
+                    Console.WriteLine($"[Program] NotifyWebUIOfDownloadComplete (UI Thread): {modName}, id={downloadId}");
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"[Program] NotifyWebUIOfDownloadComplete error: {ex.Message}");
+                }
+            }));
+        }
+
+        // 閫氱煡 WebUI 瀹夎瀹屾垚锛堥潤鎬佹柟娉曪紝渚?Godot 璋冪敤锛?
+        public static void NotifyWebUIOfInstallComplete(string modName, string downloadId)
+        {
+            var webView = _webView;
+            if (webView == null) return;
+
+            webView.BeginInvoke(new Action(() =>
+            {
+                try
+                {
+                    var webViewRef = webView;
+                    if (webViewRef?.CoreWebView2 == null)
+                    {
+                        Console.WriteLine("[Program] NotifyWebUIOfInstallComplete: CoreWebView2 not available");
+                        return;
+                    }
+
+                    var escapedName = modName.Replace("'", "\\'").Replace("\"", "\\\"").Replace("\n", " ").Replace("\r", "");
+                    var escapedId = downloadId.Replace("'", "\\'").Replace("\"", "\\\"");
+                    var body = System.Text.Json.JsonSerializer.Serialize(new { id = escapedId, mod_name = escapedName, status = "install_complete" });
+
+                    var script = $@"
+                        (function() {{
+                            var data = {body};
+                            window.dispatchEvent(new CustomEvent('sts2-install-complete', {{
+                                detail: {{ id: data.id, mod_name: data.mod_name, status: data.status }}
+                            }}));
+                            console.log('[BrowserHost] Mod install complete notified to WebUI:', data.mod_name);
+                        }})();
+                    ";
+                    _ = webViewRef.CoreWebView2.ExecuteScriptAsync(script);
+                    Console.WriteLine($"[Program] NotifyWebUIOfInstallComplete (UI Thread): {modName}, id={downloadId}");
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"[Program] NotifyWebUIOfInstallComplete error: {ex.Message}");
+                }
+            }));
+        }
+
+        // 通知 WebUI DPI 缩放变化（静态方法，供 HTTP 端点调用）
+        public static void SetDpiScale(double scale)
+        {
+            var webView = _webView;
+            if (webView == null) return;
+
+            webView.BeginInvoke(new Action(() =>
+            {
+                try
+                {
+                    var webViewRef = webView;
+                    if (webViewRef?.CoreWebView2 == null)
+                    {
+                        Console.WriteLine("[Program] SetDpiScale: CoreWebView2 not available");
+                        return;
+                    }
+
+                    var script = $@"
+                        (function() {{
+                            if (window.app && window.app.applyDpiScale) {{
+                                window.app.applyDpiScale({scale});
+                                console.log('[BrowserHost] DPI scale applied to WebUI: {scale}');
+                            }}
+                        }})();
+                    ";
+                    _ = webViewRef.CoreWebView2.ExecuteScriptAsync(script);
+                    Console.WriteLine($"[Program] SetDpiScale (UI Thread): scale={scale}");
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"[Program] SetDpiScale error: {ex.Message}");
+                }
+            }));
         }
 
         // Cancel pending requests to prevent thread pool starvation
@@ -1103,8 +1482,6 @@ namespace BrowserHost
         [STAThread]
         static void Main(string[] args)
         {
-            Console.WriteLine("[BrowserHost] 启动");
-
             // 创建 Job Object - 这是关键！确保进程终止时自动清理所有句柄
             IntPtr jobHandle = CreateJobObjectW(IntPtr.Zero, null);
             if (jobHandle != IntPtr.Zero)
@@ -1280,6 +1657,7 @@ namespace BrowserHost
             _container.Opacity = 1.0;
             _container.Padding = new Padding(0);
             _container.Margin = new Padding(0);
+            _container.AutoScaleMode = AutoScaleMode.Dpi;
             _container.Closing += (s, e) =>
             {
                 Console.WriteLine("[BrowserHost] 容器正在关闭");
@@ -1410,6 +1788,8 @@ namespace BrowserHost
 
                 // Register WebView with Program class for static handlers
                 Program.SetWebView(_webView);
+                // 保存 UI 线程的 SynchronizationContext
+                Program.SetUiContext(System.Threading.SynchronizationContext.Current);
 
                 _container!.Controls.Add(_webView);
                 _container!.FormBorderStyle = FormBorderStyle.None;
