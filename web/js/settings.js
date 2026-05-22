@@ -22,11 +22,39 @@ window.STS2Settings = {
      */
     init(app) {
         this._app = app;
-        this.loadSettings();  // async — no need to await in init
+        // Pre-render settings after load completes so content is ready when user switches to settings tab
+        this.loadSettings().then(() => this.renderSettings());
     },
 
     /** Called when the Settings page becomes active. */
     async onEnter() {
+        // Ensure container exists before rendering
+        let container = document.getElementById('settings-content');
+        if (!container) {
+            console.warn('[STS2Settings] Container not ready, deferring render');
+            // Retry after a short delay (max 3 attempts)
+            let retries = 0;
+            const retry = () => {
+                retries++;
+                container = document.getElementById('settings-content');
+                if (!container && retries < 3) {
+                    console.log('[STS2Settings] Retry', retries);
+                    setTimeout(retry, 100);
+                } else if (container) {
+                    console.log('[STS2Settings] Container found, rendering');
+                    this._doRender();
+                } else {
+                    console.error('[STS2Settings] Container never found after', retries, 'retries');
+                }
+            };
+            setTimeout(retry, 100);
+            return;
+        }
+        this._doRender();
+    },
+
+    /** Internal render method */
+    async _doRender() {
         await this.loadSettings();
         this.renderSettings();
         this.dirty = false;
@@ -69,9 +97,11 @@ window.STS2Settings = {
                 version: true, has_pck: true, has_dll: true,
                 affects_gameplay: false, dependencies: false,
             }),
-            enable_mod_drag: store.get('enable_mod_drag', false),
-            enable_override_order: store.get('enable_override_order', false),
+            // Organization features are now enabled by default (no UI toggle)
+            enable_mod_drag: true,
+            enable_override_order: true,
             nexus_api_key: store.get('nexus_api_key', ''),
+            update_url: store.get('update_url', ''),
             nexus_api_validated: store.get('nexus_api_validated', false),
             server_port: store.get('server_port', 8765),
         };
@@ -80,9 +110,14 @@ window.STS2Settings = {
         if (this._app && this._app.api && this._app.isBackendConnected()) {
             try {
                 const resp = await this._app.api.getSettings();
-                if (resp && resp.settings) {
+                if (resp && resp.data && resp.data.settings) {
+                    this.settings = { ...this.settings, ...resp.data.settings };
+                    this.renderSettings();
+                    return;
+                } else if (resp && resp.settings) {
+                    // Fallback: some APIs return settings directly
                     this.settings = { ...this.settings, ...resp.settings };
-                    this._renderAll();
+                    this.renderSettings();
                     return;
                 }
             } catch (e) {
@@ -157,19 +192,13 @@ window.STS2Settings = {
         // Section 7: Mod JSON fields
         container.appendChild(this._renderJsonFieldSettings());
 
-        // Section 8: Organization settings
-        container.appendChild(this._renderOrganizationSettings());
-
-        // Section 9: Nexus API
+        // Section 8: Nexus API
         container.appendChild(this._renderNexusApiSettings());
 
-        // Section 10: Server
-        container.appendChild(this._renderServerSettings());
-
-        // Section 11: Updates
+        // Section 10: Updates
         container.appendChild(this._renderUpdateSettings());
 
-        // Section 12: Danger zone
+        // Section 11: Danger zone
         container.appendChild(this._renderDangerZone());
 
         // Save actions
@@ -185,8 +214,8 @@ window.STS2Settings = {
         return this._renderSection(this._t('game_path'), [
             this._renderPathRow(this._t('game_path'), this._t('select_game_exe'), 'game_path'),
             this._renderPathRow(this._t('save_path'), this._t('select_save_path'), 'save_path'),
-            this._renderReadonlyRow('GSE ' + this._t('cloud_sync_gse'), this.settings.gse_cloud_path || '--'),
-            this._renderReadonlyRow('Steam ' + this._t('cloud_sync_steam'), this.settings.steam_cloud_path || '--'),
+            this._renderCloudPathRow('GSE ' + this._t('cloud_sync_gse'), 'gse_cloud_path'),
+            this._renderCloudPathRow('Steam ' + this._t('cloud_sync_steam'), 'steam_cloud_path'),
         ]);
     },
 
@@ -329,17 +358,10 @@ window.STS2Settings = {
 
     /** @private */
     _renderOrganizationSettings() {
-        const dragToggle = this._createToggle('settings-mod-drag', this.settings.enable_mod_drag, (val) => {
-            this.onSettingChange('enable_mod_drag', val);
-        });
-        const overrideToggle = this._createToggle('settings-override-order', this.settings.enable_override_order, (val) => {
-            this.onSettingChange('enable_override_order', val);
-        });
-
+        // 收纳盒子功能默认启用，无需用户手动开启
+        // enable_mod_drag 和 enable_override_order 已移除设置项，始终启用
         return this._renderSection(this._t('mod_organization_title'), [
             this._createDesc(this._t('mod_organization_desc')),
-            this._renderToggleRow(this._t('enable_mod_drag'), this._t('enable_mod_drag_tip'), dragToggle),
-            this._renderToggleRow(this._t('enable_override_order'), this._t('enable_override_order_tip'), overrideToggle),
         ]);
     },
 
@@ -522,65 +544,92 @@ window.STS2Settings = {
 
     /**
      * Auto-detect the game installation path.
-     * Uses backend API when connected, falls back to simulated detection.
+     * Uses backend API when connected, falls back to prompt user if not found.
      */
     async autoDetectGamePath() {
-        let detected = 'C:\\Program Files (x86)\\Steam\\steamapps\\common\\Slay the Spire 2';
+        let detected = '';
 
         // Try backend API first
         if (this._app && this._app.api && this._app.isBackendConnected()) {
             try {
                 const resp = await this._app.api.detectGamePath();
-                if (resp && resp.path) {
-                    detected = resp.path;
+                console.log('[STS2Settings] detectGamePath resp:', resp);
+                // LocalServer sends response.data as HTTP body, so resp.path should work directly
+                const path = resp?.path || resp?.data?.path;
+                if (path && path.trim() !== '') {
+                    detected = path.trim();
                 }
             } catch (e) {
                 console.warn('[STS2Settings] API detectGamePath failed:', e);
             }
         }
 
-        this.settings.game_path = detected;
-        this.dirty = true;
-        this._updateDirtyState();
-        this._app.notifications.show(
-            this._t('path_detected') + ': ' + detected,
-            'success',
-            3000
-        );
-        // Update the input if visible
-        const input = document.querySelector('[data-setting="game_path"]');
-        if (input) input.value = detected;
+        if (detected && detected.trim() !== '') {
+            // Normalize path separators (convert / to \ for Windows consistency)
+            detected = detected.replace(/\//g, '\\');
+            this.settings.game_path = detected;
+            this.dirty = true;
+            this._updateDirtyState();
+            this._app.notifications.show(
+                this._t('path_detected') + ': ' + detected,
+                'success',
+                3000
+            );
+            // Update the input if visible
+            const input = document.querySelector('[data-setting="game_path"]');
+            if (input) input.value = detected;
+        } else {
+            // 检测失败，提示手动选择
+            this._app.notifications.show(
+                this._t('path_not_found') || '未找到游戏路径，请手动选择',
+                'warning',
+                3000
+            );
+        }
     },
 
     /**
      * Auto-detect the save path.
-     * Uses backend API when connected, falls back to simulated detection.
+     * Uses backend API when connected, falls back to prompt user if not found.
      */
     async autoDetectSavePath() {
-        let detected = '%APPDATA%\\SlayTheSpire2';
+        let detected = '';
 
-        // Try backend API first
         if (this._app && this._app.api && this._app.isBackendConnected()) {
             try {
                 const resp = await this._app.api.detectSavePath();
-                if (resp && resp.path) {
-                    detected = resp.path;
+                console.log('[STS2Settings] detectSavePath resp:', resp);
+                // LocalServer sends response.data as HTTP body, so resp.path should work directly
+                const path = resp?.path || resp?.data?.path;
+                if (path && path.trim() !== '') {
+                    detected = path.trim();
                 }
             } catch (e) {
                 console.warn('[STS2Settings] API detectSavePath failed:', e);
             }
         }
 
-        this.settings.save_path = detected;
-        this.dirty = true;
-        this._updateDirtyState();
-        this._app.notifications.show(
-            this._t('path_detected') + ': ' + detected,
-            'success',
-            3000
-        );
-        const input = document.querySelector('[data-setting="save_path"]');
-        if (input) input.value = detected;
+        if (detected && detected.trim() !== '') {
+            // Normalize path separators (convert / to \ for Windows consistency)
+            detected = detected.replace(/\//g, '\\');
+            this.settings.save_path = detected;
+            this.dirty = true;
+            this._updateDirtyState();
+            this._app.notifications.show(
+                this._t('path_detected') + ': ' + detected,
+                'success',
+                3000
+            );
+            const input = document.querySelector('[data-setting="save_path"]');
+            if (input) input.value = detected;
+        } else {
+            // 检测失败，提示手动选择
+            this._app.notifications.show(
+                this._t('path_not_found') || '未找到存档路径，请手动选择',
+                'warning',
+                3000
+            );
+        }
     },
 
     /**
@@ -631,6 +680,9 @@ window.STS2Settings = {
         const valid = key.trim().length >= 8;
         this.settings.nexus_api_validated = valid;
         this.dirty = true;
+
+        // Save settings immediately to persist validation state
+        await this.saveSettings();
 
         if (statusEl) {
             if (valid) {
@@ -908,10 +960,21 @@ window.STS2Settings = {
             });
         }
 
-        // Browse button (simulated)
+        // Browse button - call backend directory picker
         if (buttons[0]) {
-            buttons[0].addEventListener('click', () => {
-                this._app.notifications.show(this._t('browse'), 'info', 1500);
+            buttons[0].addEventListener('click', async () => {
+                if (this._app && this._app.api) {
+                    try {
+                        const result = await this._app.api.selectDirectory();
+                        if (result && result.success && result.path) {
+                            input.value = result.path;
+                            this.onSettingChange(settingKey, result.path);
+                        }
+                    } catch (e) {
+                        console.warn('[STS2Settings] selectDirectory failed:', e);
+                        this._app.notifications.show(this._t('browse_failed') || '选择目录失败', 'error', 2000);
+                    }
+                }
             });
         }
 
@@ -942,6 +1005,97 @@ window.STS2Settings = {
                 <span class="text-muted" style="font-size:var(--font-xs)">${STS2Utils.escapeHtml(value)}</span>
             </div>
         `;
+        return row;
+    },
+
+    /**
+     * Render a cloud sync path row with browse and auto-detect buttons.
+     * @private
+     */
+    _renderCloudPathRow(label, settingKey) {
+        const row = document.createElement('div');
+        row.className = 'settings-path-row';
+        row.innerHTML = `
+            <span class="settings-path-label">${STS2Utils.escapeHtml(label)}</span>
+            <div class="settings-path-controls">
+                <input type="text" class="input" data-setting="${settingKey}"
+                       value="${STS2Utils.escapeHtml(this.settings[settingKey] || '')}"
+                       placeholder="${this._t('select_cloud_path') || '选择云存档目录'}">
+                <button class="btn btn-ghost btn-sm">${this._t('browse')}</button>
+                <button class="btn btn-ghost btn-sm">${this._t('auto_detect')}</button>
+            </div>
+        `;
+
+        const input = row.querySelector('input');
+        const buttons = row.querySelectorAll('button');
+
+        if (input) {
+            input.addEventListener('change', (e) => {
+                this.onSettingChange(settingKey, e.target.value);
+            });
+        }
+
+        // Browse button - use BrowserHost SelectFolder
+        if (buttons[0]) {
+            buttons[0].addEventListener('click', async () => {
+                console.log('[STS2Settings] Browse cloud path for:', settingKey);
+                try {
+                    const result = await this._app.api.selectFolder();
+                    if (result.success && result.path) {
+                        // Normalize path separators
+                        const normalizedPath = result.path.replace(/\//g, '\\');
+                        this.settings[settingKey] = normalizedPath;
+                        input.value = normalizedPath;
+                        this.onSettingChange(settingKey, normalizedPath);
+                        this._app.notifications.show(this._t('path_selected') || '路径已选择', 'success', 2000);
+                    }
+                } catch (e) {
+                    console.error('[STS2Settings] Browse failed:', e);
+                    this._app.notifications.show(this._t('browse_failed') || '浏览失败', 'error', 2000);
+                }
+            });
+        }
+
+        // Auto-detect button
+        if (buttons[1]) {
+            buttons[1].addEventListener('click', async () => {
+                console.log('[STS2Settings] Auto-detect cloud path for:', settingKey);
+                try {
+                    let resp;
+                    if (settingKey === 'gse_cloud_path') {
+                        resp = await this._app.api.detectGseCloudPath();
+                    } else if (settingKey === 'steam_cloud_path') {
+                        resp = await this._app.api.detectSteamCloudPath();
+                    } else {
+                        resp = await this._app.api.getSettings();
+                    }
+
+                    const detectedPath = resp?.path || resp?.data?.path;
+                    if (detectedPath) {
+                        // Normalize path separators
+                        detectedPath = detectedPath.replace(/\//g, '\\');
+                        this.settings[settingKey] = detectedPath;
+                        input.value = detectedPath;
+                        this.onSettingChange(settingKey, detectedPath);
+                        this._app.notifications.show(
+                            (this._t('path_detected') || '已检测') + ': ' + detectedPath,
+                            'success', 3000
+                        );
+                    } else {
+                        this._app.notifications.show(
+                            (settingKey === 'gse_cloud_path'
+                                ? '未检测到 GSE 学习版存档路径，请手动选择或先运行学习版'
+                                : '未检测到 Steam 正版存档路径，请手动选择或先运行正版'),
+                            'warning', 3000
+                        );
+                    }
+                } catch (e) {
+                    console.error('[STS2Settings] Auto-detect failed:', e);
+                    this._app.notifications.show(this._t('detect_failed') || '检测失败', 'error', 2000);
+                }
+            });
+        }
+
         return row;
     },
 

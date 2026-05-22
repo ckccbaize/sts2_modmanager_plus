@@ -11,7 +11,7 @@ class STS2I18n {
      * @param {string} options.fallback - fallback language code (default 'en_US')
      */
     constructor(options = {}) {
-        this._locales = options.locales || (typeof STS2_LOCALES !== 'undefined' ? STS2_LOCALES : {});
+        this._locales = options.locales || (typeof STS2LOCALES !== 'undefined' ? STS2LOCALES : {});
         this._fallback = options.fallback || 'en_US';
         this._current = options.defaultLang || 'zh_CN';
     }

@@ -260,8 +260,8 @@ static func disable_mod(mod_data: Dictionary, game_path: String) -> bool:
 
 	# 检查模组是否存在
 	if not DirAccess.dir_exists_absolute(mod_path):
-		print("=== disable_mod: mod not in mods folder ===")
-		return false
+		print("=== disable_mod: mod not in mods folder, treating as already disabled ===")
+		return true  # 模组不在文件夹中，已处于禁用状态
 
 	# 使用delete_directory递归删除整个模组文件夹（包括所有嵌套内容）
 	var result = delete_directory(mod_path)

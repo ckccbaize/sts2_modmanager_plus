@@ -337,7 +337,13 @@ func _handle_client(client: StreamPeerTCP) -> void:
 	if response.get("is_file", false):
 		_send_file_response(client, response.get("code", 200), response.get("content_type", ""), response.get("file_content", PackedByteArray()))
 	else:
-		_send_response(client, response.get("code", 200), response.get("data", {}), response.get("is_options", false))
+		# 发送完整的响应（包括 code 和 data）
+		var http_code = response.get("code", 200)
+		var http_data = {
+			"code": http_code,
+			"data": response.get("data", {})
+		}
+		_send_response(client, http_code, http_data, response.get("is_options", false))
 
 	client.disconnect_from_host()
 
@@ -380,7 +386,12 @@ func _parse_http_request(data: String) -> Dictionary:
 	var request_line = lines[0].split(" ")
 	if request_line.size() >= 2:
 		result["method"] = request_line[0].strip_edges()
-		result["path"] = request_line[1].strip_edges()
+		var full_path = request_line[1].strip_edges()
+		var query_idx = full_path.find("?")
+		if query_idx > -1:
+			result["path"] = full_path.substr(0, query_idx)
+		else:
+			result["path"] = full_path
 
 	# 解析headers
 	var body_start = -1
@@ -418,6 +429,7 @@ func _parse_http_request(data: String) -> Dictionary:
 
 
 func _handle_request(method: String, path: String, headers: Dictionary, body: String) -> Dictionary:
+	print("[_handle_request] method='", method, "' path='", path, "'")
 	# 处理 CORS 预检请求
 	if method == "OPTIONS":
 		return {"code": 200, "data": {}, "is_options": true}
@@ -946,6 +958,7 @@ func _handle_bundles_routes(method: String, path: String, headers: Dictionary, b
 # ════════════════════════════════════════════════════════════════
 
 func _handle_settings_routes(method: String, path: String, headers: Dictionary, body: String) -> Dictionary:
+	print("[_handle_settings_routes] path='", path, "' method='", method, "'")
 	# GET /api/settings
 	if path == "/api/settings" and method == "GET":
 		return _bridge_request("get_settings")
@@ -963,6 +976,14 @@ func _handle_settings_routes(method: String, path: String, headers: Dictionary, 
 	if path == "/api/settings/detect-save-path" and method == "POST":
 		return _bridge_request("detect_save_path")
 
+	# POST /api/settings/detect-gse-cloud-path
+	if path == "/api/settings/detect-gse-cloud-path" and method == "POST":
+		return _bridge_request("detect_gse_cloud_path")
+
+	# POST /api/settings/detect-steam-cloud-path
+	if path == "/api/settings/detect-steam-cloud-path" and method == "POST":
+		return _bridge_request("detect_steam_cloud_path")
+
 	return {"code": 404, "data": {"error": "Unknown settings route"}}
 
 
@@ -974,6 +995,15 @@ func _handle_downloads_routes(method: String, path: String, headers: Dictionary,
 	# GET /api/downloads - 获取下载列表
 	if path == "/api/downloads" and method == "GET":
 		return _bridge_request("get_downloads")
+
+	# POST /api/downloads/clear_history - 清空历史记录
+	if path == "/api/downloads/clear_history" and method == "POST":
+		var params = _parse_body_json(body)
+		return _bridge_request("clear_download_history", params)
+
+	# POST /api/downloads/open_folder - 打开下载文件夹
+	if path == "/api/downloads/open_folder" and method == "POST":
+		return _bridge_request("open_downloads_folder")
 
 	# POST /api/downloads/{id}/pause - 暂停下载
 	if method == "POST" and path.find("/pause") > 0:

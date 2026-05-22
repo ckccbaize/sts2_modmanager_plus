@@ -38,7 +38,7 @@ class STS2API {
             signal: controller.signal,
         };
         if (body !== null) {
-            opts.body = JSON.stringify(body);
+            opts.body = typeof body === 'string' ? body : JSON.stringify(body);
         }
 
         try {
@@ -271,6 +271,14 @@ class STS2API {
         return this._request('POST', '/api/settings/detect-save-path');
     }
 
+    async detectGseCloudPath() {
+        return this._request('POST', '/api/settings/detect-gse-cloud-path');
+    }
+
+    async detectSteamCloudPath() {
+        return this._request('POST', '/api/settings/detect-steam-cloud-path');
+    }
+
     // ── Downloads ───────────────────────────────────────────────
 
     async getDownloads() {
@@ -287,6 +295,15 @@ class STS2API {
 
     async cancelDownload(id) {
         return this._request('DELETE', `/api/downloads/${encodeURIComponent(id)}`);
+    }
+
+    async clearDownloadHistory(includeFiles = false) {
+        const body = includeFiles ? JSON.stringify({ include_files: true }) : '{}';
+        return this._request('POST', '/api/downloads/clear_history', body);
+    }
+
+    async openDownloadFolder() {
+        return this._request('POST', '/api/downloads/open_folder');
     }
 
     async notifyDownloadComplete(id, filePath) {
@@ -469,7 +486,13 @@ class STS2API {
             input.click();
         });
     }
-/**
+
+    // Alias for selectDirectory (used by settings)
+    async selectFolder() {
+        return this.selectDirectory();
+    }
+
+    /**
      * Open Windows native file picker for bundle ZIP files via BrowserHost.
      * Shows proper Windows OpenFileDialog for selecting .zip files.
      * @returns {Promise<{success: boolean, path?: string, message?: string}>}

@@ -2096,11 +2096,13 @@ const STS2Mods = {
             const depList = document.createElement('div');
             depList.className = 'dep-list';
 
-            mod.dependencies.forEach(depName => {
+            mod.dependencies.forEach(dep => {
                 const depItem = document.createElement('div');
                 depItem.className = 'dep-item';
-
-                const depMod = this.mods.find(m => m.name === depName || m.id === depName);
+                // 支持字符串和对象格式的依赖
+                const depId = typeof dep === 'string' ? dep : (dep.id || dep.mid || dep.mod_id || null);
+                const depName = typeof dep === 'string' ? dep : (dep.id || dep.mid || dep.mod_id || (typeof dep === 'object' ? JSON.stringify(dep) : String(dep)));
+                const depMod = depId ? this.mods.find(m => m.id === depId || m.name === depId) : null;
                 if (!depMod) {
                     depItem.classList.add('missing');
                     depItem.textContent = '⚠ ' + depName + ' (' + (this._t('not_installed') || '未安装') + ')';
@@ -2289,7 +2291,10 @@ const STS2Mods = {
      * @private
      */
     _resolveDep(dep) {
-        return this.mods.find(m => m.id === dep || m.name === dep) || null;
+        // 支持字符串格式和对象格式的依赖
+        const depId = typeof dep === 'string' ? dep : (dep.id || dep.mid || dep.mod_id || null);
+        if (!depId) return null;
+        return this.mods.find(m => m.id === depId || m.name === depId) || null;
     },
 
     /**
@@ -2309,8 +2314,11 @@ const STS2Mods = {
 
         for (const dep of mod.dependencies) {
             const depMod = this._resolveDep(dep);
+            // 从 dep 中提取 ID（支持字符串或对象格式）
+            const depId = typeof dep === 'string' ? dep : (dep.id || dep.mid || dep.mod_id || String(dep));
             if (!depMod) {
-                missing.push({ name: dep, id: dep });
+                // 依赖未安装，但仍然允许强制启用
+                missing.push({ name: depId, id: depId });
             } else if (!this.enabled_mods[depMod.id]) {
                 disabled.push(depMod);
             }
@@ -2377,10 +2385,13 @@ const STS2Mods = {
 
         // Action buttons
         let footerHTML = '';
+        // 无论是否有未安装的依赖，都可以强制启用（但会显示警告）
         if (depResult.hasDisabled) {
             footerHTML += `<button class="btn btn-primary dep-enable-all">${this._t('enable_deps_and_continue')}</button>`;
         }
-        footerHTML += `<button class="btn btn-ghost dep-skip">${this._t('continue_anyway')}</button>`;
+        if (depResult.hasMissing) {
+            footerHTML += `<button class="btn btn-ghost dep-force-enable" style="color:var(--warning)">${this._t('force_enable_anyway') || '强制启用'}</button>`;
+        }
         footerHTML += `<button class="btn btn-ghost dep-cancel">${this._t('cancel')}</button>`;
 
         overlay.innerHTML = `
@@ -2426,6 +2437,15 @@ const STS2Mods = {
         const skipBtn = overlay.querySelector('.dep-skip');
         if (skipBtn) {
             skipBtn.addEventListener('click', async () => {
+                close();
+                await this._doToggleMod(mod_id);
+            });
+        }
+
+        // "Force enable anyway" button (for missing deps)
+        const forceBtn = overlay.querySelector('.dep-force-enable');
+        if (forceBtn) {
+            forceBtn.addEventListener('click', async () => {
                 close();
                 await this._doToggleMod(mod_id);
             });
@@ -3045,8 +3065,10 @@ const STS2Mods = {
 
     _hasMissingDeps(mod) {
         if (!mod.dependencies || mod.dependencies.length === 0) return false;
-        return mod.dependencies.some(depName => {
-            return !this.mods.some(m => m.name === depName || m.id === depName);
+        return mod.dependencies.some(dep => {
+            const depId = typeof dep === 'string' ? dep : (dep.id || dep.mid || dep.mod_id || null);
+            if (!depId) return false;
+            return !this.mods.some(m => m.id === depId || m.name === depId);
         });
     },
 };

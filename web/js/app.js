@@ -33,6 +33,7 @@ class STS2App {
      */
     async init() {
         console.log('[STS2App] Initializing...');
+        window.app = this;
 
         // 1. Initialize store
         this.store = new STS2Store();
@@ -44,6 +45,7 @@ class STS2App {
 
         // 1.6 Get version from backend and update UI
         await this._initVersion();
+        await this._initSettings();
 
         // 2. Initialize i18n with saved language
         const savedLang = this.store.get('language', 'zh_CN');
@@ -213,16 +215,54 @@ class STS2App {
     // ── DPI scaling ────────────────────────────────────────────
 
     /**
-     * Apply a DPI scale factor to the document root.
+     * Apply DPI scaling using CSS transform for a truly adaptive experience.
+     * This method scales the container visually while adjusting its logical size
+     * to keep it perfectly fit within the window boundaries.
      * @param {number} scale - e.g. 1.0, 1.25, 1.5
      */
+    /**
+     * Apply adaptive DPI scaling to the entire WebUI.
+     * Uses CSS transform: scale() + viewport compensation to keep the UI 
+     * perfectly fitted to the window boundaries without scrollbars.
+     */
     applyDpiScale(scale) {
-        document.documentElement.style.setProperty('--dpi-scale', scale);
-        document.documentElement.style.fontSize = `${scale * 16}px`;
-        this.store.set('dpi_scale', scale);
-        this.emit('dpi-changed', scale);
-    }
+        const s = parseFloat(scale) || 1.0;
+        const container = document.querySelector('.app-container');
+        document.documentElement.style.setProperty('--dpi-scale', s);
 
+        if (container) {
+            const invScale = 1.0 / s;
+            
+            // 1. Reset any legacy zoom/positioning
+            container.style.zoom = '';
+            
+            // 2. Set logical dimensions to be the INVERSE of the scale.
+            // This ensures that after the transform is applied, the visual 
+            // result is exactly 100% of the window width/height.
+            container.style.width = (invScale * 100) + 'vw';
+            container.style.height = (invScale * 100) + 'vh';
+            
+            // 3. Apply the scale transform from the top-left origin.
+            container.style.transform = `scale(${s})`;
+            container.style.transformOrigin = 'top left';
+            
+            // 4. Ensure container stays locked to the window
+            container.style.position = 'fixed';
+            container.style.left = '0';
+            container.style.top = '0';
+            
+            // 5. Clean up body to prevent double-scrollbars or layout shifting
+            document.body.style.overflow = 'hidden';
+            document.body.style.margin = '0';
+            document.body.style.padding = '0';
+            document.body.style.width = '100vw';
+            document.body.style.height = '100vh';
+        }
+
+        this.store.set('dpi_scale', s);
+        this.emit('dpi-changed', s);
+        console.log(`[STS2App] Adaptive UI Scale Applied: ${Math.round(s * 100)}% (Fitted)`);
+    }
     // ── API connectivity ─────────────────────────────────────
 
     /**
@@ -250,6 +290,22 @@ class STS2App {
      * Get version from backend and update UI.
      * @private
      */
+    async _initSettings() {
+        if (!this.api || !this._backendConnected) return;
+        try {
+            const resp = await this.api.getSettings();
+            if (resp && resp.data) {
+                const s = resp.data;
+                if (s.dpi_scale) this.store.set('dpi_scale', s.dpi_scale);
+                if (s.language) this.store.set('language', s.language);
+                if (s.game_path) this.store.set('game_path', s.game_path);
+                if (s.save_path) this.store.set('save_path', s.save_path);
+                if (s.dpi_scale) this.applyDpiScale(s.dpi_scale);
+                console.log('[STS2App] Settings synchronized.');
+            }
+        } catch (e) {}
+    }
+
     async _initVersion() {
         if (this.api && this._backendConnected) {
             try {

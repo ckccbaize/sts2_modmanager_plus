@@ -1,3 +1,7 @@
-{
-  "version": "v2.9.5"
+﻿{
+  "version": "v3.1.5",
+  "update_urls": {
+	"gitee": "https://gitee.com/ckccbaize/STS2_modmanager/raw/class/version.json",
+	"github": "https://raw.githubusercontent.com/ckccbaize/STS2_modmanager/class/version.json"
+  }
 }

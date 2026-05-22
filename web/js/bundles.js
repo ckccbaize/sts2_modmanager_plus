@@ -359,7 +359,9 @@ const STS2Bundles = {
                         </button>
                     </div>
                     <div class="bundle-presets-content" id="bundle-presets-content">
-                        <div class="bundle-presets-tabs" id="bundle-presets-tabs"></div>
+                        <div class="bundle-presets-tabs-wrapper">
+                            <div class="bundle-presets-tabs" id="bundle-presets-tabs"></div>
+                        </div>
                         <div class="bundle-preset-mods-wrapper">
                         </div>
                     </div>

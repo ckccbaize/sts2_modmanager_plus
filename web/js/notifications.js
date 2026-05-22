@@ -14,6 +14,9 @@ class STS2Notifications {
         this._queue = [];
         this._activeToasts = [];
 
+        // 暴露全局实例供其他模块使用
+        window.STS2Notifications_instance = this;
+
         // Create the toast container (fixed, right-aligned)
         this._container = document.createElement('div');
         this._container.id = 'toast-container';

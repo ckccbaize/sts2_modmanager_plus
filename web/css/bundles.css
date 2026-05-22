@@ -117,6 +117,7 @@
     overflow-y: auto;
     flex: 1 1 0;
     min-height: 0;
+    min-width: 0; /* Prevent horizontal overflow */
 }
 
 .bundle-info-header {
@@ -369,6 +370,50 @@
     padding: 0 var(--sp-md);
 }
 
+/* Ensure tabs container doesn't overflow horizontally */
+.bundle-presets-tabs-wrapper {
+    display: flex;
+    overflow-x: auto;
+    overflow-y: hidden;
+    max-width: 100%;
+    margin-bottom: var(--sp-md);
+    min-width: 0;
+}
+
+.bundle-presets-tabs {
+    display: flex;
+    flex-wrap: nowrap;
+    gap: var(--sp-xs);
+    padding: var(--sp-xs);
+    background-color: rgba(18, 23, 30, 0.5);
+    border-radius: var(--radius-md);
+    border: 1px solid var(--border);
+    overflow-x: auto;
+    max-width: 100%;
+    min-width: 0;
+    scrollbar-width: thin;
+    scrollbar-color: var(--border) transparent;
+    flex-shrink: 1; /* Allow container to shrink */
+    width: 100%;
+}
+
+.bundle-presets-tabs::-webkit-scrollbar {
+    height: 6px;
+}
+
+.bundle-presets-tabs::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.bundle-presets-tabs::-webkit-scrollbar-thumb {
+    background-color: var(--border);
+    border-radius: var(--radius-pill);
+}
+
+.bundle-presets-tabs::-webkit-scrollbar-thumb:hover {
+    background-color: var(--border-hover);
+}
+
 /* Preset mods area with scroll for many mods */
 .bundle-preset-mods {
     display: flex;
@@ -401,39 +446,6 @@
 .bundle-preset-mods.loading {
     opacity: 0.5;
     transform: scale(0.98);
-}
-
-/* Steam-style preset tabs - optimized for many presets */
-.bundle-presets-tabs {
-    display: flex;
-    flex-wrap: nowrap;
-    gap: var(--sp-xs);
-    margin-bottom: var(--sp-md);
-    padding: var(--sp-xs);
-    background-color: rgba(18, 23, 30, 0.5);
-    border-radius: var(--radius-md);
-    border: 1px solid var(--border);
-    overflow-x: auto;
-    max-width: 100%;
-    scrollbar-width: thin;
-    scrollbar-color: var(--border) transparent;
-}
-
-.bundle-presets-tabs::-webkit-scrollbar {
-    height: 6px;
-}
-
-.bundle-presets-tabs::-webkit-scrollbar-track {
-    background: transparent;
-}
-
-.bundle-presets-tabs::-webkit-scrollbar-thumb {
-    background-color: var(--border);
-    border-radius: var(--radius-pill);
-}
-
-.bundle-presets-tabs::-webkit-scrollbar-thumb:hover {
-    background-color: var(--border-hover);
 }
 
 .bundle-preset-tab {
@@ -480,8 +492,9 @@
 /* Preset content area with smooth transition */
 .bundle-preset-mods-wrapper {
     position: relative;
-    overflow: visible;
+    overflow: hidden;
     margin-top: var(--sp-sm);
+    min-width: 0;
 }
 
 /* Preset mods area - styles continued below with scroll support */
@@ -583,9 +596,6 @@
 
 /* Deprecated: .bundle-preset-mods moved above with scroll support */
 /* Deprecated: .badge-preset styles consolidated above */
-    color: var(--accent);
-    border-color: rgba(102, 192, 249, 0.25);
-}
 
 /* =========================================================================
    EDIT PRESETS MODAL

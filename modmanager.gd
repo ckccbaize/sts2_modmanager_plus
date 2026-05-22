@@ -953,10 +953,10 @@ func _ready() -> void:
 		if not config.get_value("settings", "first_run", true):
 			print("[_ready] No .bak files to repair")
 
-	# 检查是否需要显示教程（首次启动：game_path 未配置）
-	if game_path.is_empty():
-		print("[_ready] 首次启动，显示教程")
-		call_deferred("_show_tutorial_if_needed")
+	# 检查是否需要显示教程（首次启动：game_path 未配置）- 已禁用
+	# if game_path.is_empty():
+	# 	print("[_ready] 首次启动，显示教程")
+	# 	call_deferred("_show_tutorial_if_needed")
 
 	# 加载语言
 	load_locale()
@@ -1031,7 +1031,11 @@ func _delayed_load_saves() -> void:
 func _update_checker_init() -> void:
 	print("[_update_checker_init] === START ===")
 	update_checker = UpdateChecker.new()
-	update_checker.set_urls(update_check_url_gitee, update_check_url_github)
+	# 从 version.json 读取的 URL 已自动加载，自定义 URL 覆盖
+	update_checker.custom_url = config.get_value("settings", "update_url", "")
+	if update_checker.custom_url:
+		print("[_update_checker_init] Using custom update URL: ", update_checker.custom_url)
+	# 注意：URL 不再通过 set_urls 传递，现在从 version.json 读取
 
 	# 注意：版本同步已在 load_config 中完成，这里直接读取
 	config.load(config_path)
@@ -1048,6 +1052,8 @@ func _update_checker_init() -> void:
 	)
 
 	print("[_update_checker_init] Update checker initialized, current version: ", current_ver)
+	print("[_update_checker_init] gitee_url: ", update_checker.gitee_url)
+	print("[_update_checker_init] github_url: ", update_checker.github_url)
 
 
 # 从 version.json 读取版本
@@ -3763,7 +3769,7 @@ func init_ui() -> void:
 # 初始化启动游戏按钮（显示在每个标签页右下角）
 func _init_launch_buttons() -> void:
 	var LAUNCH_BUTTON_SCENE = preload("res://ui/launch_button.tscn")
-	var LAUNCH_BAR_SCENE = preload("res://ui/launch_bar.tscn")
+	# var LAUNCH_BAR_SCENE = preload("res://ui/launch_bar.tscn")  # TODO: 暂时禁用，调查导出问题后恢复
 
 	# 为每个标签页添加启动按钮
 	var tabs = ["ModTab", "BundleTab", "SaveTab", "NexusTab", "DownloadTab", "SettingsTab"]
@@ -3771,19 +3777,18 @@ func _init_launch_buttons() -> void:
 		var tab = find_child_node(self, tab_name)
 		if not tab:
 			continue
-		# ModTab使用Tesla风格的底部启动条
-		if tab_name == "ModTab":
-			var footer = find_child_node(tab, "Footer")
-			if footer:
-				var placeholder = find_child_node(footer, "LaunchBarPlaceholder")
-				if placeholder:
-					var launch_bar = LAUNCH_BAR_SCENE.instantiate()
-					launch_bar.name = "LaunchBar"
-					# 档位字母 -> 启动模式字符串映射
-					launch_bar.launch_mode_pressed.connect(_map_gear_to_mode)
-					placeholder.add_child(launch_bar)
-					print("[init_ui] Added LaunchBar to ", tab_name)
-		else:
+		# ModTab使用Tesla风格的底部启动条（暂时禁用）
+		# if tab_name == "ModTab":
+		# 	var footer = find_child_node(tab, "Footer")
+		# 	if footer:
+		# 		var placeholder = find_child_node(footer, "LaunchBarPlaceholder")
+		# 		if placeholder:
+		# 			var launch_bar = LAUNCH_BAR_SCENE.instantiate()
+		# 			launch_bar.name = "LaunchBar"
+		# 			launch_bar.launch_mode_pressed.connect(_map_gear_to_mode)
+		# 			placeholder.add_child(launch_bar)
+		# 			print("[init_ui] Added LaunchBar to ", tab_name)
+		#else:
 			var btn = LAUNCH_BUTTON_SCENE.instantiate()
 			btn.name = "LaunchButton"
 			btn.anchor_left = 1.0
@@ -4018,9 +4023,8 @@ func _api_handle_request(type: String, params: Dictionary, request_id: String = 
 # ── 模组 API ───────────────────────────────────────────────────
 
 func _api_scan_mods(_params: Dictionary) -> Dictionary:
-	# 确保模组列表已加载
-	if mods.is_empty():
-		load_mods()
+	# 强制重新扫描文件系统，确保与物理状态同步
+	load_mods()
 
 	var mods_array: Array = []
 	for mod_data in mods:
@@ -10143,6 +10147,10 @@ func _on_launch_mode_pressed(mode: String) -> void:
 			_launch_multiplayer_mode()
 
 
+# 原版模式待恢复标记扩展
+var _steam_vanilla_game_seen_running: bool = false
+var _steam_vanilla_checks_count: int = 0
+
 # 原版启动 - 临时移除mods文件夹，启动游戏后恢复
 func _launch_vanilla_mode() -> bool:
 	var launch_via_steam = config.get_value("settings", "launch_via_steam", true)
@@ -10157,6 +10165,8 @@ func _launch_vanilla_mode() -> bool:
 		# Steam启动无法追踪进程，设置待恢复标记，下次启动时检查
 		_set_vanilla_mode_pending(true)
 
+		_steam_vanilla_game_seen_running = false
+		_steam_vanilla_checks_count = 0
 		# 使用定时器检查游戏是否退出
 		_schedule_steam_vanilla_restore_check()
 
@@ -10242,17 +10252,25 @@ func _check_steam_vanilla_game_running() -> void:
 
 		if "SlayTheSpire2" in output_str:
 			found_process = true
+			_steam_vanilla_game_seen_running = true
 
 	if found_process:
 		# 游戏还在运行，继续检查
 		print("[_check_steam_vanilla_game_running] Game is still running, checking again...")
 		_schedule_steam_vanilla_restore_check()
 	else:
-		# 游戏已退出，恢复mods
-		print("[_check_steam_vanilla_game_running] Game exited, restoring mods...")
-		_restore_mods_after_vanilla()
-		if _steam_vanilla_check_timer:
-			_steam_vanilla_check_timer.timeout.disconnect(_check_steam_vanilla_game_running)
+		if not _steam_vanilla_game_seen_running and _steam_vanilla_checks_count < 12:
+			# 游戏还没启动（Steam可能还在准备/同步云存档），继续等待最多1分钟
+			print("[_check_steam_vanilla_game_running] Game hasn't started yet, waiting for Steam...")
+			_schedule_steam_vanilla_restore_check()
+		else:
+			# 游戏已退出，或者等了1分钟都没启动，恢复mods
+			print("[_check_steam_vanilla_game_running] Game exited or timeout, restoring mods...")
+			_restore_mods_after_vanilla()
+			_steam_vanilla_game_seen_running = false
+			_steam_vanilla_checks_count = 0
+			if _steam_vanilla_check_timer:
+				_steam_vanilla_check_timer.timeout.disconnect(_check_steam_vanilla_game_running)
 
 
 func _check_vanilla_game_running() -> void:
@@ -10385,6 +10403,8 @@ func _remove_mods_for_vanilla() -> bool:
 
 					# 先尝试直接重命名（最快方法）
 					var renamed_path = source_path + "_DISABLED"
+					if DirAccess.dir_exists_absolute(renamed_path):
+						_delete_directory_force(renamed_path)
 					var rename_result = DirAccess.rename_absolute(source_path, renamed_path)
 
 					if rename_result == OK:
@@ -10437,6 +10457,12 @@ func _launch_modded_mode() -> bool:
 		show_notification(translate("game_path_not_set"), false)
 		return false
 
+	# 先复制启用状态的模组到游戏目录
+	_apply_enabled_mods_to_game()
+	# 应用模组覆盖顺序
+	if not apply_override_order_before_launch():
+		pass
+
 	# 找到游戏可执行文件
 	var exe_path = _find_game_executable()
 	if exe_path.is_empty():
@@ -10484,6 +10510,7 @@ func _launch_multiplayer_mode() -> bool:
 			if game_path.is_empty():
 				show_notification(translate("game_path_not_set"), false)
 				return false
+			_on_tag_selected("联机模组")
 			_apply_enabled_mods_to_game()
 			if not apply_override_order_before_launch():
 				pass
@@ -10495,8 +10522,25 @@ func _launch_multiplayer_mode() -> bool:
 			_launch_multiplayer_with_fix()
 			return true
 		else:
-			# 直接运行游戏
-			return _launch_via_steam("")
+			# 直接运行游戏（非Steam，无联机补丁）
+			if game_path.is_empty():
+				show_notification(translate("game_path_not_set"), false)
+				return false
+			_on_tag_selected("联机模组")
+			_apply_enabled_mods_to_game()
+			if not apply_override_order_before_launch():
+				pass
+			var exe_path = _find_game_executable()
+			if exe_path.is_empty():
+				show_notification(translate("game_exe_not_found"), false)
+				return false
+			var process = OS.create_process(exe_path, [])
+			if process == -1:
+				show_notification(translate("launch_failed"), false)
+				return false
+			_watch_game_process(process)
+			show_notification(translate("launching_game"), true)
+			return true
 
 # 联机模式启动（带补丁）- 之后通过Steam
 func _launch_multiplayer_with_fix_steam() -> void:
@@ -11370,25 +11414,8 @@ func _init_settings_ui_if_needed() -> void:
 				enable_fix_steam_check.tooltip_text = translate("enable_fix_steam_desc")
 				enable_fix_steam_check.button_pressed = config.get_value("settings", "enable_fix_steam", false)
 				launch_section.add_child(enable_fix_steam_check)
-				# 更新复选框状态（根据路径是否设置）
 				_update_fix_steam_checkbox_state()
-			else:
-				# 如果已存在，获取复选框引用
-				launch_via_steam_check = get_node_or_null("/root/Control/TabContainer/SettingsTab/SettingsScroll/SettingsVBox/LaunchSection/LaunchViaSteamCheck")
-				enable_fix_steam_check = get_node_or_null("/root/Control/TabContainer/SettingsTab/SettingsScroll/SettingsVBox/LaunchSection/EnableFixSteamCheck")
-				fix_steam_path_edit = get_node_or_null("/root/Control/TabContainer/SettingsTab/SettingsScroll/SettingsVBox/LaunchSection/FixSteamPathRow/FixSteamPathEdit")
-				fix_steam_path_browse_btn = get_node_or_null("/root/Control/TabContainer/SettingsTab/SettingsScroll/SettingsVBox/LaunchSection/FixSteamPathRow/FixSteamPathBrowseBtn")
-				fix_steam_path_detect_btn = get_node_or_null("/root/Control/TabContainer/SettingsTab/SettingsScroll/SettingsVBox/LaunchSection/FixSteamPathRow/FixSteamPathDetectBtn")
-				if launch_via_steam_check:
-					launch_via_steam_check.button_pressed = config.get_value("settings", "launch_via_steam", true)
-				if enable_fix_steam_check:
-					enable_fix_steam_check.button_pressed = config.get_value("settings", "enable_fix_steam", false)
-				if fix_steam_path_edit:
-					fix_steam_path_edit.text_changed.connect(_on_fix_steam_path_changed)
-					fix_steam_path = config.get_value("paths", "fix_steam_path", "")
-					_update_fix_steam_checkbox_state()
-
-				# 创建云端存档路径Section（如果不存在）
+			# 创建云端存档路径Section（如果不存在）
 			var existing_cloud_section = get_node_or_null("/root/Control/TabContainer/SettingsTab/SettingsScroll/SettingsVBox/CloudSaveSection")
 			if not existing_cloud_section:
 				var cloud_section = VBoxContainer.new()
@@ -12269,104 +12296,91 @@ func read_json_file(file_path: String) -> Dictionary:
 
 # 加载模组列表
 func load_mods() -> void:
-	print("=== load_mods 开始 ===")
+	print("=== load_mods 开始 (强制物理同步) ===")
 	mods.clear()
 	mod_items.clear()
 
-	# 【关键修复】不再 clear() enabled_mods
-	# enabled_mods 已在 load_config() 中从 config.cfg 加载
-	# 这里只扫描文件系统来补充/更新 enabled_mods 的实际状态
-	# 避免覆盖从 config 加载的标签预设数据
-
-	# 首先，同步外部模组到 temp_mods
+	# 1. 同步外部模组到 temp_mods
 	_sync_external_mods_to_temp()
 
-	# 扫描 temp_mods 目录获取所有已安装的模组
-	var temp_mods_dir = temp_mods_path
-	var added_ids = {}  # 用于去重 - 按 JSON 中的 id 字段去重
-	if DirAccess.dir_exists_absolute(temp_mods_dir):
-		var dir = DirAccess.open(temp_mods_dir)
+	# 2. 扫描 temp_mods 获取所有可用模组
+	var added_ids = {}
+	if DirAccess.dir_exists_absolute(temp_mods_path):
+		var dir = DirAccess.open(temp_mods_path)
 		if dir:
 			dir.list_dir_begin()
-			var item_dir = dir.get_next()
-			while item_dir != "":
-				if item_dir != "." and item_dir != ".." and not item_dir.begins_with("_"):
-					var mod_path = temp_mods_dir.path_join(item_dir)
+			var item = dir.get_next()
+			while item != "":
+				if item != "." and item != ".." and not item.begins_with("_"):
+					var mod_path = temp_mods_path.path_join(item)
 					if DirAccess.dir_exists_absolute(mod_path):
 						var mod_info = ModUtils.get_mod_info(mod_path)
-						if not mod_info.is_empty():
-							# 使用 JSON 中的 id 字段作为去重依据
-							var json_id = mod_info.get("id", item_dir)
-							if added_ids.has(json_id):
-								print("跳过重复模组 (id冲突): ", json_id, " (目录: ", item_dir, ")")
-								item_dir = dir.get_next()
-								continue
-
-							mod_info["id"] = json_id
+						var mid = mod_info.get("id", item)
+						if not added_ids.has(mid):
+							mod_info["id"] = mid
 							mod_info["path"] = mod_path
 							mods.append(mod_info)
-							added_ids[json_id] = true
-							print("添加模组: ", mod_info.get("name", ""))
-						else:
-							# 没有 JSON 的目录也添加到列表，但用目录名作为 ID
-							if not added_ids.has(item_dir):
-								mods.append({
-									"id": item_dir,
-									"name": item_dir,
-									"path": mod_path
-								})
-								added_ids[item_dir] = true
-								print("添加模组 (无JSON): ", item_dir)
-				item_dir = dir.get_next()
-			dir.list_dir_end()
-
-	# 检查 test_mods 目录来判断哪些模组已启用
-	var test_mods_dir = get_base_path() + "test_mods"
-	if DirAccess.dir_exists_absolute(test_mods_dir):
-		var dir = DirAccess.open(test_mods_dir)
+							added_ids[mid] = true
+				item = dir.get_next()
+	
+	# 3. 检测物理启用状态
+	var physical_enabled = {}
+	
+	# 扫描 test_mods
+	var test_dir = get_base_path() + "test_mods"
+	if DirAccess.dir_exists_absolute(test_dir):
+		var dir = DirAccess.open(test_dir)
 		if dir:
 			dir.list_dir_begin()
-			var item_dir = dir.get_next()
-			while item_dir != "":
-				if item_dir != "." and item_dir != ".." and not item_dir.begins_with("_"):
-					enabled_mods[item_dir] = true
-				item_dir = dir.get_next()
-			dir.list_dir_end()
-
-	# 检查游戏目录中的 mods
-	if not game_path.is_empty():
-		var game_mods_dir = game_path.path_join("mods")
-		if DirAccess.dir_exists_absolute(game_mods_dir):
-			var dir = DirAccess.open(game_mods_dir)
-			if dir:
-				dir.list_dir_begin()
-				var item_dir = dir.get_next()
-				while item_dir != "":
-					if item_dir != "." and item_dir != ".." and not item_dir.begins_with("_"):
-						enabled_mods[item_dir] = true
-					item_dir = dir.get_next()
-				dir.list_dir_end()
-
-	# 为所有模组标记启用状态（如果还没有记录的，默认为 false）
-	for mod in mods:
-		var mod_id = mod.get("id", "")
-		if not enabled_mods.has(mod_id):
-			enabled_mods[mod_id] = false
-
-	print("总模组数: ", mods.size())
-	print("enabled_mods: ", enabled_mods)
-
-	# 检测模组依赖（必须在列表更新之前）
+			var item = dir.get_next()
+			while item != "":
+				if item != "." and item != ".." and not item.begins_with("_"):
+					physical_enabled[item] = true
+				item = dir.get_next()
+	
+	# 扫描游戏 mods 目录
+	var active_mods_dir = game_path.path_join("mods")
+	if _vanilla_mode_pending:
+		active_mods_dir = game_path.path_join("mods_DISABLED")
+		print("[load_mods] 当前处于 Vanilla 模式，扫描 mods_DISABLED")
+	
+	if not game_path.is_empty() and DirAccess.dir_exists_absolute(active_mods_dir):
+		var dir = DirAccess.open(active_mods_dir)
+		if dir:
+			dir.list_dir_begin()
+			var item = dir.get_next()
+			while item != "":
+				if item != "." and item != ".." and not item.begins_with("_"):
+					physical_enabled[item] = true
+				item = dir.get_next()
+	
+	# 4. 强制同步 enabled_mods 与物理状态
+	var updated = false
+	for mid in enabled_mods.keys():
+		var is_physically_on = physical_enabled.has(mid)
+		if enabled_mods[mid] != is_physically_on:
+			enabled_mods[mid] = is_physically_on
+			print("[load_mods] 校准模组 ", mid, " 状态 -> ", is_physically_on)
+			updated = true
+	
+	# 将新发现的物理开启模组汇总到 enabled_mods
+	for mid in physical_enabled:
+		if not enabled_mods.has(mid) or not enabled_mods[mid]:
+			enabled_mods[mid] = true
+			updated = true
+	
+	# 5. 强制同步到当前模组钱邮（预设）
+	if updated:
+		_save_enabled_mods()
+		_save_current_tag_mods()
+		_save_tag_data()
+		print("[load_mods] 已将物理校准结果持久化到 config")
+	
 	_check_mod_dependencies()
-
-	# 应用搜索和排序
 	apply_filters_and_sort()
 	update_mod_list_display()
-
-	# 注意：不再在这里调用 _apply_tag_mods()
-	# 模组状态已通过扫描游戏 mods 目录确定
-	# _apply_tag_mods() 仅在标签切换时调用
-
+	
+	print("[load_mods] 同步完成，当前开启模组数: ", physical_enabled.size())
 	print("=== load_mods 完成 ===")
 
 
@@ -12387,7 +12401,8 @@ func _check_mod_dependencies() -> void:
 		var deps = mod.get("dependencies", [])
 		var missing: Array = []
 
-		for dep_id in deps:
+		for dep_item in deps:
+			var dep_id = dep_item if typeof(dep_item) == TYPE_STRING else dep_item.get("id", str(dep_item))
 			if dep_id not in installed_ids:
 				missing.append(dep_id)
 
@@ -12409,8 +12424,9 @@ func _check_deps_enabled(mod_data: Dictionary) -> Dictionary:
 	var deps = mod_data.get("dependencies", [])
 
 	var disabled_deps: Array = []
-	for dep_id in deps:
-		# 检查依赖是否已安装且已启用
+	for dep_item in deps:
+		var dep_id = dep_item if typeof(dep_item) == TYPE_STRING else dep_item.get("id", str(dep_item))
+		# 检测侑赖是否已安装且已启用
 		var is_installed = false
 		var is_enabled = false
 		for mod in mods:
@@ -12521,17 +12537,11 @@ func _show_missing_dep_warning_dialog(mod_data: Dictionary, on_confirm: Callable
 		dialog.queue_free()
 		on_cancel.call()
 	)
-	dialog.confirmed.connect(func():
-		dialog.queue_free()
-		on_confirm.call()
-	)
-
-	dialog.popup_centered(Vector2(450, 250))
 
 
 # 同步外部模组到 temp_mods
 func _sync_external_mods_to_temp() -> void:
-	print("=== sync external mods to temp ===")
+	print("=== _sync_external_mods_to_temp ===")
 
 	# 确保 temp_mods 目录存在
 	var temp_mods_dir = temp_mods_path
@@ -12552,14 +12562,11 @@ func _sync_external_mods_to_temp() -> void:
 	if DirAccess.dir_exists_absolute(base + "test_mods"):
 		external_dirs.append({"path": base + "test_mods", "name": "Test Mods"})
 
-	# 收集所有版本冲突
-	var conflicts = []
-
-	# 遍历外部目录
+	# 遍历外部目录，复制新模组到 temp_mods
 	for ext_dir_info in external_dirs:
 		var ext_dir = ext_dir_info["path"]
 		var ext_dir_name = ext_dir_info["name"]
-		print("检查外部目录: ", ext_dir)
+		print("[_sync_external_mods_to_temp] 检查外部目录: ", ext_dir)
 		var dir = DirAccess.open(ext_dir)
 		if dir:
 			dir.list_dir_begin()
@@ -12572,39 +12579,14 @@ func _sync_external_mods_to_temp() -> void:
 
 						# 如果 temp_mods 中不存在，直接复制
 						if not DirAccess.dir_exists_absolute(temp_mod_path):
-							print("复制模组到 temp: ", item_dir)
+							print("[_sync_external_mods_to_temp] 复制模组到 temp: ", item_dir)
 							FileUtils.copy_directory(ext_mod_path, temp_mod_path)
 						else:
-							# 如果存在，比较版本号
-							var ext_info = ModUtils.get_mod_info(ext_mod_path)
-							var temp_info = ModUtils.get_mod_info(temp_mod_path)
-
-							if not ext_info.is_empty() and not temp_info.is_empty():
-								var ext_version = ext_info.get("version", "v0.0.0")
-								var temp_version = temp_info.get("version", "v0.0.0")
-								var ext_name = ext_info.get("name", item_dir)
-								var temp_name = temp_info.get("name", item_dir)
-
-								if ext_version != temp_version:
-									# 版本不同，记录冲突
-									conflicts.append({
-										"id": item_dir,
-										"ext_path": ext_mod_path,
-										"temp_path": temp_mod_path,
-										"ext_version": ext_version,
-										"temp_version": temp_version,
-										"ext_name": ext_name,
-										"temp_name": temp_name,
-										"ext_dir": ext_dir_name
-									})
+							print("[_sync_external_mods_to_temp] 模组已存在: ", item_dir)
 				item_dir = dir.get_next()
 			dir.list_dir_end()
 
-	# 如果有版本冲突，显示对话框让用户选择
-	if conflicts.size() > 0:
-		_show_version_conflict_dialog(conflicts)
-
-	print("=== sync complete ===")
+	print("=== _sync_external_mods_to_temp 完成 ===")
 
 
 # 显示版本冲突对话框
@@ -12644,6 +12626,70 @@ func _show_version_conflict_dialog(conflicts: Array) -> void:
 	)
 
 	dialog.popup_centered(Vector2(500, 300))
+
+
+# 切换游戏路径时的模组同步
+func _sync_mods_on_game_path_change() -> void:
+	print("[_sync_mods_on_game_path_change] Starting...")
+	print("  game_path: ", game_path)
+	print("  temp_mods_path: ", temp_mods_path)
+
+	if game_path.is_empty():
+		print("[_sync_mods_on_game_path_change] game_path is empty, skipping")
+		return
+
+	var game_mods_dir = game_path.path_join("mods")
+
+	# 1. 清空当前预设启用的所有模组（从游戏mods目录）
+	if DirAccess.dir_exists_absolute(game_mods_dir):
+		var dir = DirAccess.open(game_mods_dir)
+		if dir:
+			dir.list_dir_begin()
+			var item_dir = dir.get_next()
+			while item_dir != "":
+				if item_dir != "." and item_dir != ".." and not item_dir.begins_with("_"):
+					var mod_path = game_mods_dir.path_join(item_dir)
+					if DirAccess.dir_exists_absolute(mod_path):
+						print("[_sync_mods_on_game_path_change] Removing mod from game mods: ", item_dir)
+						_delete_directory_recursive(mod_path)
+				item_dir = dir.get_next()
+			dir.list_dir_end()
+
+	# 2. 清空 enabled_mods 中的所有条目（当前预设）
+	enabled_mods.clear()
+	_save_enabled_mods()
+	print("[_sync_mods_on_game_path_change] Cleared enabled_mods")
+
+	# 3. 扫描游戏 mods 目录，导入新模组到 temp_mods
+	if DirAccess.dir_exists_absolute(game_mods_dir):
+		var dir = DirAccess.open(game_mods_dir)
+		if dir:
+			dir.list_dir_begin()
+			var item_dir = dir.get_next()
+			while item_dir != "":
+				if item_dir != "." and item_dir != ".." and not item_dir.begins_with("_"):
+					var ext_mod_path = game_mods_dir.path_join(item_dir)
+					var temp_mod_path = temp_mods_path.path_join(item_dir)
+
+					if DirAccess.dir_exists_absolute(ext_mod_path):
+						# 检查 temp_mods 中是否已存在
+						if not DirAccess.dir_exists_absolute(temp_mod_path):
+							print("[_sync_mods_on_game_path_change] Importing new mod to temp_mods: ", item_dir)
+							FileUtils.copy_directory(ext_mod_path, temp_mod_path)
+						else:
+							print("[_sync_mods_on_game_path_change] Mod already in temp_mods: ", item_dir)
+
+						# 标记为启用（在当前预设中）
+						enabled_mods[item_dir] = true
+						print("[_sync_mods_on_game_path_change] Enabled mod: ", item_dir)
+				item_dir = dir.get_next()
+			dir.list_dir_end()
+
+	_save_enabled_mods()
+	print("[_sync_mods_on_game_path_change] Done. enabled_mods: ", enabled_mods)
+
+	# 重新加载模组列表
+	load_mods()
 
 
 # 备份并替换模组
@@ -12855,34 +12901,31 @@ func _prune_old_backups(backup_dir: String, save_id: String, is_steam: bool) -> 
 
 func _auto_backup_all_saves() -> void:
 	print("[_auto_backup_all_saves] Called, _skip_auto_backup = ", _skip_auto_backup)
-	# 检查是否需要跳过自动备份
 	if _skip_auto_backup:
 		print("[_auto_backup_all_saves] Skipping auto backup (flag set)")
 		_skip_auto_backup = false
 		return
 
-	# 检查是否启用防误删备份
 	var do_backup = config.get_value("settings", "auto_backup", true)
+	print("[_auto_backup_all_saves] auto_backup = ", do_backup)
 	if not do_backup:
+		print("[_auto_backup_all_saves] Skipping: auto_backup is false")
 		return
 
-	# 检查是否启用启动时自动备份
 	var do_backup_on_startup = config.get_value("settings", "auto_backup_on_startup", true)
+	print("[_auto_backup_all_saves] auto_backup_on_startup = ", do_backup_on_startup)
 	if not do_backup_on_startup:
+		print("[_auto_backup_all_saves] Skipping: auto_backup_on_startup is false")
 		return
 
+	print("[_auto_backup_all_saves] save_path = ", save_path)
 	if save_path.is_empty() or not DirAccess.dir_exists_absolute(save_path):
+		print("[_auto_backup_all_saves] Skipping: save_path empty or not exists")
 		return
 
-	# 延迟执行，避免阻塞启动 - 等待3秒后再执行备份
-	call_deferred("_do_auto_backup_delayed")
-
-
-func _do_auto_backup_delayed() -> void:
-	# 等待更长时间，确保界面完全加载后再备份
-	await get_tree().create_timer(5.0).timeout
-	print("[_do_auto_backup_delayed] Starting delayed auto backup...")
-	_do_auto_backup()
+	var tween = create_tween()
+	tween.tween_callback(_do_auto_backup).set_delay(5.0)
+	print("[_auto_backup_all_saves] Scheduled auto backup in 5 seconds")
 
 
 func _do_auto_backup() -> void:
@@ -17367,6 +17410,7 @@ func _on_fix_steam_dir_selected(dir_path: String) -> void:
 	if fix_steam_path_edit:
 		fix_steam_path_edit.text = dir_path
 	_update_fix_steam_checkbox_state()
+	
 
 # 联机补丁路径自动检测
 func _on_fix_steam_path_detect() -> void:
@@ -17378,8 +17422,8 @@ func _on_fix_steam_path_detect() -> void:
 			fix_steam_path_edit.text = detected_path
 		show_notification(translate("path_detected") + ": " + detected_path, true)
 		_update_fix_steam_checkbox_state()
-	else:
-		show_notification(translate("fix_steam_path_not_found"), false)
+	
+	
 
 # 更新联机补丁复选框状态
 func _update_fix_steam_checkbox_state() -> void:
@@ -17396,6 +17440,8 @@ func _update_fix_steam_checkbox_state() -> void:
 func _on_fix_steam_path_changed(new_text: String) -> void:
 	fix_steam_path = new_text
 	_update_fix_steam_checkbox_state()
+	
+	
 
 # 检测游戏路径
 func _detect_game_path() -> String:
@@ -17718,6 +17764,8 @@ func _on_dpi_scale_changed(value: float) -> void:
 		print("[_on_dpi_scale_changed] Updated label to: ", dpi_scale_value_label.text)
 	else:
 		print("[_on_dpi_scale_changed] dpi_scale_value_label is null!")
+	# 通知 BrowserHost 同步 WebUI 缩放
+	_notify_browser_host_dpi_scale()
 
 
 # 刷新所有UI文本
@@ -18032,6 +18080,9 @@ func _refresh_settings_ui_text() -> void:
 
 
 func _on_save_settings_pressed() -> void:
+	# 保存旧的 game_path 用于检测路径变化
+	var old_game_path = game_path
+
 	# 获取输入的路径
 	if game_path_edit:
 		game_path = game_path_edit.text
@@ -18039,6 +18090,9 @@ func _on_save_settings_pressed() -> void:
 		save_path = save_path_edit.text
 	if fix_steam_path_edit:
 		fix_steam_path = fix_steam_path_edit.text
+
+	# 检测游戏路径是否变化
+	var game_path_changed = (old_game_path != game_path)
 
 	# 获取存储路径
 	var old_temp_mods_path = temp_mods_path
@@ -18107,16 +18161,16 @@ func _on_save_settings_pressed() -> void:
 			dialog.queue_free()
 			# 转移文件
 			_transfer_directory(old_temp_mods_path, temp_mods_path)
-			_finish_save_settings(auto_backup, auto_backup_on_startup, auto_backup_max_count, launch_via_steam, enable_fix_steam)
+			_finish_save_settings(auto_backup, auto_backup_on_startup, auto_backup_max_count, launch_via_steam, enable_fix_steam, game_path_changed)
 		)
 		dialog.popup_centered(Vector2(400, 200))
 		return
 
-	_finish_save_settings(auto_backup, auto_backup_on_startup, auto_backup_max_count, launch_via_steam, enable_fix_steam)
+	_finish_save_settings(auto_backup, auto_backup_on_startup, auto_backup_max_count, launch_via_steam, enable_fix_steam, game_path_changed)
 
 
-func _finish_save_settings(auto_backup: bool, auto_backup_on_startup: bool, auto_backup_max_count: int, launch_via_steam: bool = true, enable_fix_steam: bool = false) -> void:
-	print("[_finish_save_settings] enable_fix_steam received: ", enable_fix_steam)
+func _finish_save_settings(auto_backup: bool, auto_backup_on_startup: bool, auto_backup_max_count: int, launch_via_steam: bool = true, enable_fix_steam: bool = false, game_path_changed: bool = false) -> void:
+	print("[_finish_save_settings] enable_fix_steam received: ", enable_fix_steam, ", game_path_changed: ", game_path_changed)
 	# 保存到配置文件
 	config.set_value("paths", "game_path", game_path)
 	config.set_value("paths", "save_path", save_path)
@@ -18141,17 +18195,22 @@ func _finish_save_settings(auto_backup: bool, auto_backup_on_startup: bool, auto
 	_save_mod_organization_data()
 
 	var err = config.save(config_path)
-	if err == OK:
-		show_notification(translate("settings_saved"), true)
-		settings_dirty = false  # 重置未保存状态
-		# 更新联机补丁复选框状态
-		_update_fix_steam_checkbox_state()
-		# 重新加载存档
-		load_saves()
-		# 重新加载模组
-		load_mods()
-	else:
+	if err != OK:
 		show_notification(translate("settings_save_failed"), false)
+		return
+
+	show_notification(translate("settings_saved"), true)
+	settings_dirty = false  # 重置未保存状态
+	# 更新联机补丁复选框状态
+	_update_fix_steam_checkbox_state()
+	
+
+	# 如果游戏路径改变，触发模组同步（_sync_mods_on_game_path_change 会处理所有清理和重载逻辑）
+	if game_path_changed:
+		print("[_finish_save_settings] Game path changed, syncing mods...")
+		call_deferred("_sync_mods_on_game_path_change")
+		# 重新加载存档
+		call_deferred("load_saves")
 
 
 # 转移目录文件
@@ -19450,14 +19509,30 @@ func _api_get_settings(_params: Dictionary) -> Dictionary:
 		"minimize_to_tray": config.get_value("settings", "minimize_to_tray", true),
 		"server_port": config.get_value("server", "port", 8765),
 		"nexus_api_key": config.get_value("nexus", "api_key", ""),
+			"update_url": config.get_value("settings", "update_url", ""),
 	}
 	return {"code": 200, "data": {"settings": settings}}
 
 
 func _api_set_settings(params: Dictionary) -> Dictionary:
+	# 记录旧的 game_path 用于检测变化
+	var old_game_path = game_path
+	var game_path_changed = false
+
 	# 更新路径
 	if params.has("game_path"):
-		game_path = params["game_path"]
+		var new_game_path = params["game_path"]
+		if new_game_path != old_game_path:
+			game_path_changed = true
+			# 游戏路径改变时，清空当前预设的启用模组
+			# 因为新游戏文件夹可能有完全不同的模组
+			enabled_mods.clear()
+			tag_data[current_tag] = []
+			_save_enabled_mods()
+			_save_tag_data()
+			print("[_api_set_settings] Game path changed, cleared preset '%s'" % current_tag)
+
+		game_path = new_game_path
 		config.set_value("paths", "game_path", game_path)
 	if params.has("save_path"):
 		save_path = params["save_path"]
@@ -19479,12 +19554,22 @@ func _api_set_settings(params: Dictionary) -> Dictionary:
 		config.set_value("settings", "launch_via_steam", params["launch_via_steam"])
 	if params.has("minimize_to_tray"):
 		config.set_value("settings", "minimize_to_tray", params["minimize_to_tray"])
+	if params.has("update_url"):
+		config.set_value("settings", "update_url", params["update_url"])
+		if update_checker:
+			update_checker.custom_url = params["update_url"]
 	if params.has("nexus_api_key"):
 		config.set_value("nexus", "api_key", params["nexus_api_key"])
 		if nexus_api:
 			nexus_api.set_api_key(params["nexus_api_key"])
 
 	config.save(config_path)
+
+	# 如果游戏路径改变，重新扫描模组并同步
+	if game_path_changed:
+		print("[_api_set_settings] Game path changed, syncing mods...")
+		call_deferred("_sync_mods_on_game_path_change")
+
 	return {"code": 200, "data": {"success": true, "message": "Settings saved"}}
 
 
@@ -19499,6 +19584,13 @@ func _api_detect_save_path(_params: Dictionary) -> Dictionary:
 
 
 # ── 下载 API ───────────────────────────────────────────────────
+
+func _api_clear_download_history(_params: Dictionary) -> Dictionary:
+	print("[_api_clear_download_history] Clearing download history...")
+	download_history.clear()
+	_save_download_history()
+	_update_download_history_ui()
+	return {"code": 200, "data": {"success": true, "message": "History cleared"}}
 
 func _api_get_downloads(_params: Dictionary) -> Dictionary:
 	var active: Array = []
@@ -19596,13 +19688,19 @@ func _api_cancel_download(params: Dictionary) -> Dictionary:
 
 func _api_launch_game(params: Dictionary) -> Dictionary:
 	var mode: String = params.get("mode", "modded")
+	print("[_api_launch_game] Request mode: ", mode)
+	
+	# 使用 call_deferred 在主线程扷行启动逻辑，确保清理和文件操作安全
+	match mode:
+		"vanilla":
+			call_deferred("_launch_vanilla_mode")
+		"multiplayer":
+			call_deferred("_launch_multiplayer_mode")
+		_:
+			call_deferred("_launch_modded_mode")
+	
+	return {"code": 200, "data": {"success": true, "message": "Game launch initiated (%s)" % mode}}
 
-	# 通过 Steam 协议启动
-	var steam_url = "steam://launch/%s/dialog" % STEAM_APP_ID
-	var err = OS.shell_open(steam_url)
-	if err == OK:
-		return {"code": 200, "data": {"success": true, "message": "Game launch initiated (%s)" % mode}}
-	return {"code": 500, "data": {"success": false, "message": "Failed to launch game"}}
 
 
 # ── Aria2 下载 API ───────────────────────────────────────────────
@@ -20065,6 +20163,56 @@ func _notify_webui_download_complete(download_id: String, mod_name: String) -> v
 	var resp_body = http_client.read_response_body_chunk().get_string_from_utf8()
 	http_client.close()
 	print("[_notify_webui_download_complete] Response: ", response_code, " ", resp_body)
+
+
+func _notify_browser_host_dpi_scale() -> void:
+	"""通知 BrowserHost WebUI 的 DPI 缩放变化"""
+	var http_client = HTTPClient.new()
+	var browser_port = 18765  # BrowserHost HTTP API 端口
+
+	var err = http_client.connect_to_host("127.0.0.1", browser_port)
+	if err != OK:
+		print("[_notify_browser_host_dpi_scale] Failed to connect to BrowserHost: ", err)
+		return
+
+	# 等待连接
+	var poll_count = 0
+	while http_client.get_status() == HTTPClient.STATUS_CONNECTING:
+		http_client.poll()
+		OS.delay_msec(10)
+		poll_count += 1
+		if poll_count > 100:  # 1 秒超时
+			print("[_notify_browser_host_dpi_scale] Connection timeout")
+			http_client.close()
+			return
+
+	if http_client.get_status() != HTTPClient.STATUS_CONNECTED:
+		print("[_notify_browser_host_dpi_scale] Not connected, status: ", http_client.get_status())
+		http_client.close()
+		return
+
+	# 发送 dpi_scale
+	var body = JSON.stringify({"scale": dpi_scale})
+	var headers = PackedStringArray(["Content-Type: application/json"])
+	err = http_client.request(HTTPClient.METHOD_POST, "/dpi-scale", headers, body)
+	if err != OK:
+		print("[_notify_browser_host_dpi_scale] Failed to send request: ", err)
+		http_client.close()
+		return
+
+	# 等待响应
+	poll_count = 0
+	while http_client.get_status() == HTTPClient.STATUS_REQUESTING:
+		http_client.poll()
+		OS.delay_msec(10)
+		poll_count += 1
+		if poll_count > 100:  # 1 秒超时
+			print("[_notify_browser_host_dpi_scale] Request timeout")
+			http_client.close()
+			return
+
+	http_client.close()
+	print("[_notify_browser_host_dpi_scale] DPI scale sent: ", dpi_scale)
 
 
 func _notify_webui_install_complete(download_id: String, mod_name: String) -> void:

@@ -1,5 +1,5 @@
 {
-	"app_name": "杀戮尖塔2模组管理器",
+	"app_name": "杀戮尖塔2模组管理器Plus",
 	"mods": "模组",
 	"saves": "存档",
 	"settings": "设置",
@@ -15,6 +15,7 @@
 	"backup_path_label_desc": "不建议修改，修改可能导致备份功能异常",
 	"language": "语言",
 	"dpi_scale": "界面缩放",
+	"drag_to_launch": "拖动启动",
 	"enable": "启用",
 	"disable": "禁用",
 	"install": "安装",

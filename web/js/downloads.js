@@ -148,13 +148,20 @@ const STS2Downloads = {
      */
     _onBrowserHostInstallComplete(id, mod_name, status) {
         console.log('[STS2Downloads] BrowserHost install complete:', id, mod_name, status);
+        console.log('[STS2Downloads] _app:', this._app);
+        console.log('[STS2Downloads] _app.notifications:', this._app?.notifications);
 
         // 显示安装完成通知
         if (this._app?.notifications) {
             console.log('[STS2Downloads] Showing install notification for:', mod_name);
             this._app.notifications.show(`已自动安装: ${mod_name}`, 'success', 3000);
         } else {
-            console.log('[STS2Downloads] _app.notifications not available, app:', this._app);
+            console.log('[STS2Downloads] _app.notifications not available, trying alternative...');
+            // 尝试直接使用全局通知
+            if (window.STS2Notifications_instance) {
+                console.log('[STS2Downloads] Using global STS2Notifications_instance');
+                window.STS2Notifications_instance.show(`已自动安装: ${mod_name}`, 'success', 3000);
+            }
         }
 
         // 通知模组页面刷新列表
@@ -400,7 +407,7 @@ const STS2Downloads = {
             try {
                 new Notification(title, {
                     body,
-                    icon: '../icon.svg',
+                    icon: 'assets/logo.png',
                     tag: 'sts2-download-complete',
                 });
             } catch (_) {
@@ -423,18 +430,23 @@ const STS2Downloads = {
     /** @private */
     _bindEvents() {
         const clearBtn = document.getElementById('btn-clear-history');
+        console.log('[STS2Downloads] _bindEvents: clearBtn found:', !!clearBtn);
         if (clearBtn) {
-            clearBtn.addEventListener('click', () => this.clearHistory());
+            clearBtn.addEventListener('click', () => {
+                console.log('[STS2Downloads] clear button clicked');
+                this._showClearHistoryDialog();
+            });
         }
 
         const openFolderBtn = document.getElementById('btn-open-download-folder');
         if (openFolderBtn) {
-            openFolderBtn.addEventListener('click', () => {
-                const t = (key) => this._app.i18n.translate(key);
-                this._app.notifications.show(
-                    t('download_folder_opened') !== 'download_folder_opened' ? t('download_folder_opened') : 'Download folder opened',
-                    'info'
-                );
+            openFolderBtn.addEventListener('click', async () => {
+                try {
+                    await this._app.api.openDownloadFolder();
+                    console.log('[STS2Downloads] Download folder opened');
+                } catch (e) {
+                    console.error('[STS2Downloads] Failed to open download folder:', e);
+                }
             });
         }
 
@@ -691,10 +703,115 @@ const STS2Downloads = {
     },
 
     /**
+     * Add test download entries to history for debugging.
+     * @param {number} count - Number of test entries to add
+     * @private
+     */
+    _addTestHistory(count = 5) {
+        console.log('[STS2Downloads] Adding', count, 'test history entries');
+        const testMods = ['TestMod_A', 'TestMod_B', 'TestMod_C', 'TestMod_D', 'TestMod_E'];
+
+        for (let i = 0; i < count; i++) {
+            const id = 'dl-test-' + Date.now() + '-' + i;
+            const modName = testMods[i % testMods.length] + '_v' + (i + 1);
+            const status = ['success', 'failed', 'cancelled'][i % 3];
+            const size = Math.floor(Math.random() * 100000000) + 1000000; // 1-100 MB
+
+            this.history.unshift({
+                id: id,
+                mod_name: modName,
+                source: 'local',
+                status: status,
+                date: new Date(Date.now() - i * 60000).toISOString(), // 每分钟一个
+                size: size,
+                duration: Math.floor(Math.random() * 300000) + 10000, // 10s-5min
+            });
+        }
+
+        this._saveHistory();
+        this.renderHistory();
+
+        const t = (key) => this._app.i18n.translate(key);
+        this._app.notifications.show(
+            `已添加 ${count} 条测试下载记录`,
+            'info'
+        );
+
+        console.log('[STS2Downloads] Test history added. Total:', this.history.length);
+    },
+
+    /**
+     * Show custom modal dialog for clearing download history.
+     * @private
+     */
+    _showClearHistoryDialog() {
+        const t = (key) => this._app.i18n.translate(key);
+
+        const overlay = document.createElement('div');
+        overlay.className = 'modal-overlay';
+        overlay.innerHTML = `
+            <div class="modal modal-sm">
+                <div class="modal__header">
+                    <span class="modal__title">${t('download_clear_all_title') || '清空下载历史'}</span>
+                    <button class="modal__close">&times;</button>
+                </div>
+                <div class="modal__body">
+                    <p style="margin:0 0 16px 0">${t('download_clear_all_confirm') || '确定要清空所有下载历史记录吗？'}</p>
+                    <label class="checkbox-label" style="display:flex;align-items:center;gap:8px;cursor:pointer">
+                        <input type="checkbox" id="clear-include-files">
+                        <span>${t('download_clear_also_files_prompt') || '同时删除已下载的文件'}</span>
+                    </label>
+                </div>
+                <div class="modal__footer">
+                    <button class="btn btn-ghost modal-cancel-btn">${t('cancel') || '取消'}</button>
+                    <button class="btn btn-danger modal-confirm-btn">
+                        <span class="btn-icon">🗑️</span>
+                        <span>${t('confirm_clear') || '确认清空'}</span>
+                    </button>
+                </div>
+            </div>
+        `;
+
+        const close = () => {
+            overlay.classList.remove('open');
+            setTimeout(() => overlay.remove(), 200);
+        };
+
+        overlay.querySelector('.modal__close').addEventListener('click', close);
+        overlay.querySelector('.modal-cancel-btn').addEventListener('click', close);
+        overlay.addEventListener('click', (e) => {
+            if (e.target === overlay) close();
+        });
+
+        overlay.querySelector('.modal-confirm-btn').addEventListener('click', () => {
+            const includeFiles = overlay.querySelector('#clear-include-files').checked;
+            close();
+            this.clearHistory(includeFiles);
+        });
+
+        document.getElementById('modal-container').appendChild(overlay);
+        requestAnimationFrame(() => {
+            overlay.classList.add('open');
+        });
+    },
+
+    /**
      * Clear download history.
      */
-    clearHistory() {
+    async clearHistory(includeFiles = false) {
+        console.log('[STS2Downloads] clearHistory called, current history length:', this.history.length, 'includeFiles:', includeFiles);
         this.history = [];
+
+        // 同时清空 Godot 端的 download_history.json
+        if (this._app?.api?.clearDownloadHistory) {
+            try {
+                await this._app.api.clearDownloadHistory(includeFiles);
+                console.log('[STS2Downloads] Backend history cleared via API');
+            } catch (e) {
+                console.warn('[STS2Downloads] Failed to clear backend history:', e);
+            }
+        }
+
         this._saveHistory();
         this.renderHistory();
 
@@ -1027,10 +1144,12 @@ const STS2Downloads = {
                         // 注意：后端progress范围为0-100，前端使用0-1，需要进行归一化
                         if (apiDl.progress !== undefined) existing.progress = this._normalizeProgress(apiDl.progress);
                         if (apiDl.speed !== undefined) existing.speed = apiDl.speed;
-                        if (apiDl.status !== undefined) existing.status = apiDl.status;
+                        if (apiDl.status !== undefined) existing.status = apiDl.status === 'aria2_downloading' ? 'downloading' : apiDl.status;
                         if (apiDl.downloaded !== undefined) existing.downloaded = apiDl.downloaded;
                         if (apiDl.total_size !== undefined) existing.total_size = apiDl.total_size;
                         if (apiDl.mod_name !== undefined) existing.mod_name = apiDl.mod_name;
+                        // 更新 gid（如果后端提供了的话）
+                        if (apiDl.gid !== undefined && apiDl.gid !== null) existing.gid = apiDl.gid;
 
                         // Handle terminal states from API
                         // 注意：Godot 后端返回 "completed"，而 WebUI 使用 "complete"
@@ -1091,10 +1210,11 @@ const STS2Downloads = {
                             url: apiDl.url || '',
                             progress: this._normalizeProgress(apiDl.progress) || 0,
                             speed: apiDl.speed || 0,
-                            status: apiDl.status || 'downloading',
+                            status: (apiDl.status === 'aria2_downloading' ? 'downloading' : apiDl.status) || 'downloading',
                             started_at: apiDl.started_at || Date.now(),
                             total_size: apiDl.total_size || 0,
                             downloaded: apiDl.downloaded || 0,
+                            gid: apiDl.gid || null,  // Aria2 GID from API
                             timer_id: null,
                         };
                     }

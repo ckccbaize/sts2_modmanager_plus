@@ -31,10 +31,11 @@ signal download_progress(bytes_downloaded: int, total_bytes: int)
 signal download_completed(success: bool, file_path: String, error: String)
 signal binary_search_progress(current_attempt: int, total_attempts: int, current_range: String)
 
-# 获取应用基础路径（编辑器中为res://，导出后为exe所在目录）
+# 获取应用基础路径（返回真实文件系统路径，不是 Godot 虚拟路径）
 func get_base_path() -> String:
 	if OS.has_feature("editor"):
-		return "res://"
+		# 将 res:// 转换为实际文件系统路径
+		return ProjectSettings.globalize_path("res://").replace("res://", "")
 	else:
 		return OS.get_executable_path().get_base_dir() + "/"
 

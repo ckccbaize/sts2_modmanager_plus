@@ -15,7 +15,7 @@
     flex-direction: column;
     width: 100vw;
     height: 100vh;
-    min-width: 800px;
+    /* /* min-width: 800px; removed for adaptive scaling */ removed for scaling */
     background-color: var(--bg-deep);
     overflow: hidden;
 }
@@ -504,3 +504,8 @@
 .absolute      { position: absolute; }
 .overflow-hidden { overflow: hidden; }
 .truncate      { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+
+.split-layout > * {
+    min-width: 0;
+}

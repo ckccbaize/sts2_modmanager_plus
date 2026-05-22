@@ -1,9 +1,11 @@
 extends RefCounted
 class_name UpdateChecker
 
-## 更新源 URL 配置
-var gitee_url: String = "https://gitee.com/ckccbaize/STS2_modmanager/raw/class/version.json"
-var github_url: String = "https://raw.githubusercontent.com/ckccbaize/STS2_modmanager/class/version.json"
+## 更新源 URL 配置（从本地 version.json 读取，不再硬编码）
+var gitee_url: String = ""
+var github_url: String = ""
+## 自定义更新源 URL
+var custom_url: String = ""
 
 ## 当前版本（从 config 读取）
 var current_version: String = "v0.0.0"
@@ -23,10 +25,37 @@ var _download_error_callback: Callable
 ## 超时时间（秒）
 var timeout: float = 10.0
 
-## 设置更新源 URL
-func set_urls(gitee: String, github: String) -> void:
-	gitee_url = gitee
-	github_url = github
+## 初始化：加载本地 version.json 中的 update_urls
+func _init() -> void:
+	_load_update_urls_from_version_json()
+
+## 从本地 version.json 读取更新源 URL
+func _load_update_urls_from_version_json() -> void:
+	var exe_dir = OS.get_executable_path().get_base_dir()
+	var version_file_path = exe_dir + "/version.json"
+
+	if FileAccess.file_exists(version_file_path):
+		var file = FileAccess.open(version_file_path, FileAccess.READ)
+		if file:
+			var json_str = file.get_as_text()
+			file.close()
+			var json = JSON.new()
+			if json.parse(json_str) == OK:
+				var data = json.get_data()
+				if data.has("update_urls"):
+					var urls = data["update_urls"]
+					gitee_url = urls.get("gitee", "")
+					github_url = urls.get("github", "")
+					print("[UpdateChecker] Loaded update URLs from version.json - gitee: ", gitee_url, ", github: ", github_url)
+					return
+
+	# 如果本地 version.json 没有配置，使用空字符串（后续检查时会提示配置）
+	print("[UpdateChecker] No update_urls found in local version.json")
+
+## 设置自定义更新源 URL
+func set_custom_url(url: String) -> void:
+	custom_url = url
+	print("[UpdateChecker] Custom URL set: ", custom_url)
 
 ## 设置当前版本
 func set_current_version(version: String) -> void:
@@ -132,17 +161,22 @@ func check_for_updates(auto_check: bool = true) -> Dictionary:
 
 
 func _check_updates_async(auto_check: bool) -> void:
-	# 优先尝试 Gitee
-	var result = await _fetch_version_from_url(gitee_url)
-	if result.success:
-		_handle_version_response(result.data, auto_check)
-		return
+	var urls_to_try: Array = []
 
-	# Gitee 失败，尝试 GitHub
-	result = await _fetch_version_from_url(github_url)
-	if result.success:
-		_handle_version_response(result.data, auto_check)
-		return
+	# 优先级：custom_url > gitee_url > github_url
+	if not custom_url.is_empty():
+		urls_to_try.append(custom_url)
+	urls_to_try.append(gitee_url)
+	urls_to_try.append(github_url)
+
+	# 按顺序尝试每个 URL
+	for url in urls_to_try:
+		if url.is_empty():
+			continue
+		var result = await _fetch_version_from_url(url)
+		if result.success:
+			_handle_version_response(result.data, auto_check)
+			return
 
 	# 全部失败
 	if not auto_check:

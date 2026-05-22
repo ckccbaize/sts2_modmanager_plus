@@ -1,6 +1,7 @@
 window.STS2LOCALES = {
     zh_CN: {
-    "app_name": "杀戮尖塔2模组管理器",
+    "app_name": "杀戮尖塔2模组管理器Plus",
+      "drag_to_launch": "拖拽以启动",
     "mods": "模组",
     "saves": "存档",
     "settings": "设置",
@@ -564,7 +565,7 @@ window.STS2LOCALES = {
     "create_bundle": "创建"
 },
     en_US: {
-    "app_name": "Slay the Spire 2 Mod Manager",
+    "app_name": "STS2ModManagerPlus",
     "mods": "Mods",
     "saves": "Saves",
     "settings": "Settings",
@@ -912,6 +913,9 @@ window.STS2LOCALES = {
     "download_clear_all_title": "Clear History",
     "download_clear_all_confirm": "Are you sure you want to clear all download history?",
     "download_clear_also_files": "Also clear downloaded files",
+    "download_clear_also_files_prompt": "Also delete downloaded files",
+    "confirm_clear": "Confirm Clear",
+    "history_cleared": "Download history cleared",
     "download_delete_title": "Delete Record",
     "download_delete_confirm": "Delete download record for \"%name\"?",
     "download_delete_file": "Also delete local file",
