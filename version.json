@@ -1,7 +1,7 @@
-﻿{
-  "version": "v3.1.5",
-  "update_urls": {
-	"gitee": "https://gitee.com/ckccbaize/STS2_modmanager/raw/class/version.json",
-	"github": "https://raw.githubusercontent.com/ckccbaize/STS2_modmanager/class/version.json"
+  {
+    "version": "v3.1.5",
+    "download_url":
+  "https://gitee.com/ckccbaize/sts2_modmanager_plus/releases/download/3.1.5/STS2_ModManager_Plus.zip",
+    "changelog": "全面重构全面升级，给你不一样的体验",
+    "released_at": "2026-05-22"
   }
-}
