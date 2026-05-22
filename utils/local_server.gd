@@ -708,13 +708,18 @@ func _parse_body_json(body: String) -> Dictionary:
 ## 从路径中提取 ID（/api/mods/{id}/enable → {id}）
 func _extract_path_id(path: String, prefix: String) -> String:
 	var remainder = path.substr(prefix.length())
-	# 去掉开头的 /
-	if remainder.begins_with("/"):
+	# 去掉开头的 / 或 \
+	if remainder.begins_with("/") or remainder.begins_with("\\"):
 		remainder = remainder.substr(1)
-	# 取第一个 / 之前的部分
+	# 取第一个 / 或 \ 之前的部分
 	var slash_idx = remainder.find("/")
-	if slash_idx >= 0:
-		return remainder.substr(0, slash_idx)
+	var backslash_idx = remainder.find("\\")
+	# 取最近的斜杠
+	var sep_idx = slash_idx
+	if backslash_idx >= 0 and (slash_idx < 0 or backslash_idx < slash_idx):
+		sep_idx = backslash_idx
+	if sep_idx >= 0:
+		return remainder.substr(0, sep_idx)
 	return remainder
 
 
@@ -1006,14 +1011,14 @@ func _handle_downloads_routes(method: String, path: String, headers: Dictionary,
 		return _bridge_request("open_downloads_folder")
 
 	# POST /api/downloads/{id}/pause - 暂停下载
-	if method == "POST" and path.find("/pause") > 0:
+	if method == "POST" and (path.find("/pause") > 0 or path.find("\\pause") > 0):
 		var dl_id = _extract_path_id(path, "/api/downloads")
 		if dl_id.is_empty():
 			return {"code": 400, "data": {"error": "Missing download ID"}}
 		return _bridge_request("pause_download", {"download_id": dl_id})
 
 	# POST /api/downloads/{id}/resume - 恢复下载
-	if method == "POST" and path.find("/resume") > 0:
+	if method == "POST" and (path.find("/resume") > 0 or path.find("\\resume") > 0):
 		var dl_id = _extract_path_id(path, "/api/downloads")
 		if dl_id.is_empty():
 			return {"code": 400, "data": {"error": "Missing download ID"}}

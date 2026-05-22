@@ -1073,12 +1073,12 @@ window.STS2Settings = {
                     const detectedPath = resp?.path || resp?.data?.path;
                     if (detectedPath) {
                         // Normalize path separators
-                        detectedPath = detectedPath.replace(/\//g, '\\');
-                        this.settings[settingKey] = detectedPath;
-                        input.value = detectedPath;
-                        this.onSettingChange(settingKey, detectedPath);
+                        const normalizedPath = detectedPath.replace(/\//g, '\\');
+                        this.settings[settingKey] = normalizedPath;
+                        input.value = normalizedPath;
+                        this.onSettingChange(settingKey, normalizedPath);
                         this._app.notifications.show(
-                            (this._t('path_detected') || '已检测') + ': ' + detectedPath,
+                            (this._t('path_detected') || '已检测') + ': ' + normalizedPath,
                             'success', 3000
                         );
                     } else {

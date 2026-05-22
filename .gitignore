@@ -123,11 +123,13 @@ nexus_page_full.png*
 # BrowserHost builds (keep source only)
 browser_host/bin/
 browser_host/obj/
+browser_host/publish2/
 
 # Local config (local only)
 config.cfg
 config_path
 mod_notes.json
+download_history.json
 
 # Debug
 debug.log

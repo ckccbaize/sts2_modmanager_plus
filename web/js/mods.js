@@ -1577,16 +1577,6 @@ const STS2Mods = {
             }
         }
 
-        // Create ghost (follows cursor)
-        const ghost = sourceEl.cloneNode(true);
-        ghost.className = sourceEl.className + ' drag-ghost';
-        ghost.style.cssText = `position:fixed;pointer-events:none;z-index:10000;
-            width:${sourceEl.offsetWidth}px;opacity:0.85;
-            box-shadow:0 8px 24px rgba(0,0,0,0.4);border-radius:6px;
-            transition:none;`;
-        document.body.appendChild(ghost);
-        this._dragGhost = ghost;
-
         // Bind move/up on document
         this._onDragMove = (ev) => this._moveDrag(ev);
         this._onDragEnd = (ev) => this._endDrag(ev);
@@ -1606,6 +1596,21 @@ const STS2Mods = {
 
         if (!this._dragMoved) {
             this._dragMoved = true;
+            // Create ghost only when drag actually starts
+            const sourceEl = this._dragSourceModId
+                ? this._dom.modList?.querySelector(`.mod-item[data-mod-id="${this._dragSourceModId}"]`)
+                : this._dom.modList?.querySelector(`.mod-box[data-box-id="${this._dragSourceBoxId}"]`);
+            if (sourceEl) {
+                const ghost = sourceEl.cloneNode(true);
+                ghost.className = sourceEl.className + ' drag-ghost';
+                ghost.style.cssText = `position:fixed;pointer-events:none;z-index:10000;
+                    left:${e.clientX - 20}px;top:${e.clientY - 16}px;
+                    width:${sourceEl.offsetWidth}px;opacity:0.85;
+                    box-shadow:0 8px 24px rgba(0,0,0,0.4);border-radius:6px;
+                    transition:none;`;
+                document.body.appendChild(ghost);
+                this._dragGhost = ghost;
+            }
             // Add dragging class to the source element
             if (this._dragSourceModId) {
                 const el = this._dom.modList?.querySelector(`.mod-item[data-mod-id="${this._dragSourceModId}"]`);

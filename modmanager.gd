@@ -3981,6 +3981,7 @@ func _api_handle_request(type: String, params: Dictionary, request_id: String = 
 		"batch_enable_mods": return _api_batch_enable_mods(params)
 		"batch_disable_mods": return _api_batch_disable_mods(params)
 		"get_mod_notes": return _api_get_mod_notes(params)
+		"resolve_conflicts": return _api_resolve_conflicts(params)
 		"save_mod_notes": return _api_save_mod_notes(params)
 		"save_tag_data": return _api_save_tag_data(params)
 		"save_mod_organization": return _api_save_mod_organization(params)
@@ -4010,7 +4011,11 @@ func _api_handle_request(type: String, params: Dictionary, request_id: String = 
 		"set_settings": return _api_set_settings(params)
 		"detect_game_path": return _api_detect_game_path(params)
 		"detect_save_path": return _api_detect_save_path(params)
+		"detect_gse_cloud_path": return _api_detect_gse_cloud_path(params)
+		"detect_steam_cloud_path": return _api_detect_steam_cloud_path(params)
 		"get_downloads": return _api_get_downloads(params)
+		"clear_download_history": return _api_clear_download_history(params)
+		"open_downloads_folder": return _api_open_download_folder(params)
 		"pause_download": return _api_pause_download(params)
 		"resume_download": return _api_resume_download(params)
 		"cancel_download": return _api_cancel_download(params)
@@ -4134,7 +4139,16 @@ func _api_install_mod(params: Dictionary) -> Dictionary:
 	# 清理临时文件
 	DirAccess.remove_absolute(temp_path)
 
-	if result.get("success", false):
+	# 先检查冲突（即使 success=true 也可能有冲突）
+	if result.get("has_conflicts", false):
+		return {"code": 200, "data": {
+			"success": false,
+			"has_conflicts": true,
+			"conflicts": result.get("conflicts", []),
+			"conflict_pending_dir": result.get("conflict_pending_dir", ""),
+			"message": result.get("message", "Conflicts detected")
+		}}
+	elif result.get("success", false):
 		load_mods()  # 重新加载模组列表
 		var mod_info = result.get("mod_info", {})
 		mod_info.erase("path")
@@ -4142,13 +4156,6 @@ func _api_install_mod(params: Dictionary) -> Dictionary:
 			"success": true,
 			"message": "Mod installed successfully",
 			"mod_info": mod_info
-		}}
-	elif result.get("has_conflicts", false):
-		return {"code": 200, "data": {
-			"success": false,
-			"has_conflicts": true,
-			"conflicts": result.get("conflicts", []),
-			"message": result.get("message", "Conflicts detected")
 		}}
 	else:
 		var response_data = {
@@ -4209,6 +4216,52 @@ func _api_batch_disable_mods(params: Dictionary) -> Dictionary:
 
 func _api_get_mod_notes(_params: Dictionary) -> Dictionary:
 	return {"code": 200, "data": {"notes": mod_notes}}
+
+
+func _api_resolve_conflicts(params: Dictionary) -> Dictionary:
+	var conflict_pending_dir = params.get("conflict_pending_dir", "")
+	if conflict_pending_dir.is_empty():
+		return {"code": 400, "data": {"success": false, "message": "Missing conflict_pending_dir"}}
+
+	print("[_api_resolve_conflicts] Resolving conflicts with dir: ", conflict_pending_dir)
+
+	# 检查临时目录是否存在
+	if not DirAccess.dir_exists_absolute(conflict_pending_dir):
+		return {"code": 404, "data": {"success": false, "message": "Conflict directory not found"}}
+
+	# 列出临时目录中的所有模组
+	var temp_dir = DirAccess.open(conflict_pending_dir)
+	if temp_dir == null:
+		return {"code": 500, "data": {"success": false, "message": "Cannot open conflict directory"}}
+
+	var resolved_count = 0
+	var failed_count = 0
+	temp_dir.list_dir_begin()
+	var entry = temp_dir.get_next()
+	while entry != "":
+		if not entry.begins_with("."):
+			var mod_path = conflict_pending_dir.path_join(entry)
+			if DirAccess.dir_exists_absolute(mod_path):
+				# 这是模组目录，尝试安装
+				var result = ModUtils.install_mod(mod_path, "", "", mod_required_fields)
+				if result.get("success", false):
+					resolved_count += 1
+				else:
+					failed_count += 1
+					print("[_api_resolve_conflicts] Failed to resolve: ", entry, " - ", result.get("message", ""))
+		entry = temp_dir.get_next()
+	temp_dir.list_dir_end()
+
+	# 清理临时目录
+	_delete_directory_recursive(conflict_pending_dir)
+
+	load_mods()
+	return {"code": 200, "data": {
+		"success": true,
+		"resolved_count": resolved_count,
+		"failed_count": failed_count,
+		"message": "Conflicts resolved: %d success, %d failed" % [resolved_count, failed_count]
+	}}
 
 
 func _api_save_mod_notes(params: Dictionary) -> Dictionary:
@@ -8371,9 +8424,15 @@ func _pause_download(download_id: String) -> void:
 
 
 func _resume_download(download_id: String) -> void:
-	"""继续下载 - 支持断点续传"""
 	var task = download_tasks.get(download_id)
-	if not task:
+	if not task: return
+	# 如果是 aria2 下载（有gid），跳过 Godot 自己的下载线程和文件操作
+	if task.has("aria2_gid") and task.get("aria2_gid", "") != "":
+		print("[_resume_download] Aria2 download, resuming monitor and skipping Godot thread")
+		task["is_paused"] = false
+		task["status"] = "aria2_downloading"
+		_monitor_aria2_progress(download_id)
+		_update_download_task_ui(download_id)
 		return
 
 	# 获取保存路径
@@ -19583,14 +19642,42 @@ func _api_detect_save_path(_params: Dictionary) -> Dictionary:
 	return {"code": 200, "data": {"path": detected}}
 
 
+func _api_detect_gse_cloud_path(_params: Dictionary) -> Dictionary:
+	print("[_api_detect_gse_cloud_path] Detecting GSE cloud path via API")
+	var gse_ids = SaveUtils.detect_gse_app_ids()
+	if gse_ids.is_empty():
+		return {"code": 200, "data": {"path": "", "ids": []}}
+	# 优先返回 2868840（GSE 学习版存档 ID）
+	for item in gse_ids:
+		if item.get("app_id", "") == "2868840":
+			return {"code": 200, "data": {"path": item.get("path", ""), "ids": gse_ids}}
+	# 没有 2868840 就返回第一个有效的
+	if gse_ids.size() >= 1:
+		return {"code": 200, "data": {"path": gse_ids[0].get("path", ""), "ids": gse_ids}}
+	return {"code": 200, "data": {"path": "", "ids": gse_ids}}
+
+
+func _api_detect_steam_cloud_path(_params: Dictionary) -> Dictionary:
+	print("[_api_detect_steam_cloud_path] Detecting Steam cloud path via API")
+	var detected_path = SaveUtils.detect_steam_cloud_save_path()
+	return {"code": 200, "data": {"path": detected_path}}
+
+
 # ── 下载 API ───────────────────────────────────────────────────
 
 func _api_clear_download_history(_params: Dictionary) -> Dictionary:
 	print("[_api_clear_download_history] Clearing download history...")
 	download_history.clear()
 	_save_download_history()
+	if _params.has("include_files") and _params["include_files"]:
+		_clear_downloads_folder()
 	_update_download_history_ui()
 	return {"code": 200, "data": {"success": true, "message": "History cleared"}}
+
+func _api_open_download_folder(_params: Dictionary) -> Dictionary:
+	print("[_api_open_download_folder] Opening download folder via API")
+	_on_open_downloads_folder()
+	return {"code": 200, "data": {"success": true}}
 
 func _api_get_downloads(_params: Dictionary) -> Dictionary:
 	var active: Array = []

@@ -26,14 +26,12 @@ window.Aria2 = {
                 return false;
             }
 
-            // 检查 Aria2 是否已经在运行（通过获取全局选项验证 RPC 连接）
+            // 检查 Aria2 是否已经在运行（通过 GetAllDownloadsAsync 测试 RPC 连接）
             try {
-                const options = await browserHost.GetGlobalOptionsAsync();
-                if (options && typeof options === 'object') {
-                    console.log('[Aria2] Connected (Aria2 already running)');
-                    this._initialized = true;
-                    return true;
-                }
+                const downloads = await aria2Manager.GetAllDownloadsAsync();
+                console.log('[Aria2] Connected (Aria2 already running)');
+                this._initialized = true;
+                return true;
             } catch (e) {
                 console.log('[Aria2] RPC check failed:', e.message || e);
             }
@@ -61,10 +59,12 @@ window.Aria2 = {
         try {
             const host = window.chrome.webview.hostObjects.browserHost.aria2Manager;
 
-            // 转换 options 为 Dictionary<string, string>
+            // 转换 options 为 Dictionary<string, string>（如果是 null 则传空对象）
             const ariaOptions = {};
-            for (const [key, value] of Object.entries(options)) {
-                ariaOptions[key] = String(value);
+            if (options) {
+                for (const [key, value] of Object.entries(options)) {
+                    ariaOptions[key] = String(value);
+                }
             }
 
             const gid = await host.AddDownloadAsync(url, savePath, ariaOptions);
@@ -84,9 +84,13 @@ window.Aria2 = {
      * @param {string} gid
      */
     async pause(gid) {
+        console.log('[Aria2] pause called with gid:', gid);
         try {
             const host = window.chrome.webview.hostObjects.browserHost.aria2Manager;
-            return await host.PauseAsync(gid);
+            console.log('[Aria2] host.aria2Manager:', host);
+            const result = await host.PauseAsync(gid);
+            console.log('[Aria2] PauseAsync returned:', result);
+            return result === "true";
         } catch (e) {
             console.error('[Aria2] Pause failed:', e);
             return false;
@@ -98,9 +102,12 @@ window.Aria2 = {
      * @param {string} gid
      */
     async resume(gid) {
+        console.log('[Aria2] resume called with gid:', gid);
         try {
             const host = window.chrome.webview.hostObjects.browserHost.aria2Manager;
-            return await host.UnpauseAsync(gid);
+            const result = await host.UnpauseAsync(gid);
+            console.log('[Aria2] UnpauseAsync returned:', result);
+            return result === "true";
         } catch (e) {
             console.error('[Aria2] Resume failed:', e);
             return false;
@@ -112,9 +119,12 @@ window.Aria2 = {
      * @param {string} gid
      */
     async remove(gid) {
+        console.log('[Aria2] remove called with gid:', gid);
         try {
             const host = window.chrome.webview.hostObjects.browserHost.aria2Manager;
-            return await host.RemoveAsync(gid);
+            const result = await host.RemoveAsync(gid);
+            console.log('[Aria2] RemoveAsync returned:', result);
+            return result;
         } catch (e) {
             console.error('[Aria2] Remove failed:', e);
             return false;
@@ -144,12 +154,36 @@ window.Aria2 = {
     async getAllActive() {
         try {
             const host = window.chrome.webview.hostObjects.browserHost.aria2Manager;
-            const downloads = await host.GetAllDownloadsAsync();
-            return downloads || [];
+            const result = await host.GetAllDownloadsAsync();
+            if (!result) return [];
+            // 如果返回的是 JSON 字符串（C# 新版），解析它
+            if (typeof result === 'string') {
+                try {
+                    return JSON.parse(result) || [];
+                } catch {
+                    return [];
+                }
+            }
+            // WebView2 may serialize List<T> as an object with numeric keys, not array
+            if (Array.isArray(result)) {
+                return result;
+            }
+            // Handle object with numeric keys (WebView2 serialization quirk)
+            if (typeof result === 'object') {
+                const keys = Object.keys(result).filter(k => !isNaN(parseInt(k)));
+                if (keys.length > 0) {
+                    return keys.map(k => result[k]);
+                }
+            }
+            return [];
         } catch (e) {
             console.error('[Aria2] GetAllActive failed:', e);
             return [];
         }
+    },
+
+    async getAll() {
+        return await this.getAllActive();
     },
 
     /**

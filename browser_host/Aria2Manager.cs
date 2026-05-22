@@ -33,7 +33,7 @@ namespace BrowserHost
         };
 
         // 下载任务状态缓存
-        private Dictionary<string, Aria2Download> _activeDownloads = new();
+        private Dictionary<string, Aria2Download> _activeDownloads = new();     
 
         public bool IsRunning => _isRunning;
 
@@ -55,7 +55,7 @@ namespace BrowserHost
         {
             try
             {
-                var process = System.Diagnostics.Process.GetProcessById(pid);
+                var process = System.Diagnostics.Process.GetProcessById(pid);   
                 return process.MainModule?.FileName ?? "unknown";
             }
             catch
@@ -161,13 +161,21 @@ namespace BrowserHost
                         // 日志会直接输出到控制台（CreateNoWindow=true 时会丢失，但不影响功能）
 
                         // 等待 RPC 服务器就绪（增加超时）
-                        System.Threading.Thread.Sleep(2000); // 等待进程初始化
+                        System.Threading.Thread.Sleep(2000); // 等待进程初始化  
                         if (_waitForRpcReady(rpcPort, 30000))
                         {
-                            _isRunning = true;
-                            Console.WriteLine("[Aria2Manager] Aria2 started and RPC ready on port " + rpcPort);
-                            _ = PollStatusAsync();
-                            return true;
+                            // 进一步验证 Token 是否正确
+                            if (_verifyRpcToken().GetAwaiter().GetResult())
+                            {
+                                _isRunning = true;
+                                Console.WriteLine("[Aria2Manager] Aria2 started and RPC ready on port " + rpcPort);
+                                _ = PollStatusAsync();
+                                return true;
+                            }
+                            else
+                            {
+                                Console.WriteLine("[Aria2Manager] RPC port ready but Token verification failed. Possible secret mismatch with existing process.");
+                            }
                         }
 
                         // 第一次超时，再等 10 秒
@@ -238,8 +246,8 @@ namespace BrowserHost
             {
                 try
                 {
-                    // 尝试连接 RPC 端口（使用 127.0.0.1 避免 DNS 解析问题）
-                    using var client = new System.Net.Sockets.TcpClient();
+                    // 尝试连接 RPC 端口（使用 127.0.0.1 避免 DNS 解析问题）    
+                    using var client = new System.Net.Sockets.TcpClient();      
                     client.SendTimeout = 500;
                     client.ReceiveTimeout = 500;
                     try
@@ -268,6 +276,30 @@ namespace BrowserHost
                 System.Threading.Thread.Sleep(100);
             }
             return false;
+        }
+
+        /// <summary>
+        /// 验证 RPC Token 是否正确
+        /// </summary>
+        private async Task<bool> _verifyRpcToken()
+        {
+            try
+            {
+                var request = new
+                {
+                    jsonrpc = "2.0",
+                    id = Guid.NewGuid().ToString(),
+                    method = "aria2.getVersion",
+                    @params = new object[] { $"token:{_rpcToken}" }
+                };
+
+                var response = await SendRpcRequestAsync(request);
+                return response != null;
+            }
+            catch
+            {
+                return false;
+            }
         }
 
         /// <summary>
@@ -328,7 +360,7 @@ namespace BrowserHost
                     SavePath = savePath,
                     Status = "active"
                 };
-                Console.WriteLine("[Aria2Manager] Added download: " + gid);
+                Console.WriteLine("[Aria2Manager] Added download: " + gid);     
                 return gid;
             }
 
@@ -338,35 +370,57 @@ namespace BrowserHost
         /// <summary>
         /// 暂停下载
         /// </summary>
-        public async Task<bool> PauseAsync(string gid)
+        public async Task<string> PauseAsync(string gid)
         {
-            var request = new
+            try
             {
-                jsonrpc = "2.0",
-                id = Guid.NewGuid().ToString(),
-                method = "aria2.pause",
-                @params = new object[] { $"token:{_rpcToken}", gid }
-            };
+                Console.WriteLine($"[Aria2Manager] PauseAsync called for gid={gid}");
+                var request = new
+                {
+                    jsonrpc = "2.0",
+                    id = Guid.NewGuid().ToString(),
+                    method = "aria2.pause",
+                    @params = new object[] { $"token:{_rpcToken}", gid }        
+                };
 
-            var response = await SendRpcRequestAsync(request);
-            return response != null;
+                var response = await SendRpcRequestAsync(request);
+                bool success = response != null;
+                Console.WriteLine($"[Aria2Manager] PauseAsync result for {gid}: {success}");
+                return success ? "true" : "false";
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[Aria2Manager] PauseAsync Exception: {ex.Message}");
+                return "false";
+            }
         }
 
         /// <summary>
         /// 恢复下载
         /// </summary>
-        public async Task<bool> UnpauseAsync(string gid)
+        public async Task<string> UnpauseAsync(string gid)
         {
-            var request = new
+            try
             {
-                jsonrpc = "2.0",
-                id = Guid.NewGuid().ToString(),
-                method = "aria2.unpause",
-                @params = new object[] { $"token:{_rpcToken}", gid }
-            };
+                Console.WriteLine($"[Aria2Manager] UnpauseAsync called for gid={gid}");
+                var request = new
+                {
+                    jsonrpc = "2.0",
+                    id = Guid.NewGuid().ToString(),
+                    method = "aria2.unpause",
+                    @params = new object[] { $"token:{_rpcToken}", gid }       
+                };
 
-            var response = await SendRpcRequestAsync(request);
-            return response != null;
+                var response = await SendRpcRequestAsync(request);
+                bool success = response != null;
+                Console.WriteLine($"[Aria2Manager] UnpauseAsync result for {gid}: {success}");
+                return success ? "true" : "false";
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[Aria2Manager] UnpauseAsync Exception: {ex.Message}");
+                return "false";
+            }
         }
 
         /// <summary>
@@ -374,21 +428,31 @@ namespace BrowserHost
         /// </summary>
         public async Task<bool> RemoveAsync(string gid)
         {
-            var request = new
+            try
             {
-                jsonrpc = "2.0",
-                id = Guid.NewGuid().ToString(),
-                method = "aria2.remove",
-                @params = new object[] { $"token:{_rpcToken}", gid }
-            };
+                Console.WriteLine($"[Aria2Manager] RemoveAsync called for gid={gid}");
+                var request = new
+                {
+                    jsonrpc = "2.0",
+                    id = Guid.NewGuid().ToString(),
+                    method = "aria2.remove",
+                    @params = new object[] { $"token:{_rpcToken}", gid }        
+                };
 
-            var response = await SendRpcRequestAsync(request);
-            if (response != null)
-            {
-                _activeDownloads.Remove(gid);
-                return true;
+                var response = await SendRpcRequestAsync(request);
+                bool success = response != null;
+                Console.WriteLine($"[Aria2Manager] RemoveAsync result for {gid}: {success}");
+                if (success)
+                {
+                    _activeDownloads.Remove(gid);
+                }
+                return success;
             }
-            return false;
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[Aria2Manager] RemoveAsync Exception: {ex.Message}");
+                return false;
+            }
         }
 
         /// <summary>
@@ -431,13 +495,13 @@ namespace BrowserHost
                     }
                     else
                     {
-                        Console.WriteLine($"[Aria2Manager] Array is empty!");
+                        Console.WriteLine($"[Aria2Manager] Array is empty!");   
                         statusResult = default;
                     }
                 }
                 else if (result.ValueKind == JsonValueKind.Object)
                 {
-                    // 直接使用对象（Aria2 tellStatus 通常返回单个对象）
+                    // 直接使用对象（Aria2 tellStatus 通常返回单个对象）        
                     Console.WriteLine($"[Aria2Manager] result is object, parsing directly");
                     statusResult = result;
                 }
@@ -472,9 +536,9 @@ namespace BrowserHost
 
             // fallback: 尝试从活跃列表中查找
             Console.WriteLine($"[Aria2Manager] Trying to find in active downloads...");
-            var activeDownloads = await GetAllDownloadsAsync();
+            var activeDownloads = await GetAllDownloadsListAsync();
             Console.WriteLine($"[Aria2Manager] Active downloads count: {activeDownloads.Count}");
-            var found = activeDownloads.FirstOrDefault(d => d.Gid == gid);
+            var found = activeDownloads.FirstOrDefault(d => d.Gid == gid);      
             if (found != null)
             {
                 Console.WriteLine($"[Aria2Manager] Found in active list: {gid}");
@@ -487,7 +551,7 @@ namespace BrowserHost
             if (stoppedResult != null)
             {
                 Console.WriteLine($"[Aria2Manager] Stopped downloads count: {stoppedResult.Count}");
-                found = stoppedResult.FirstOrDefault(d => d.Gid == gid);
+                found = stoppedResult.FirstOrDefault(d => d.Gid == gid);        
                 if (found != null)
                 {
                     Console.WriteLine($"[Aria2Manager] Found in stopped: GID={gid}, status={found.Status}, errorCode={found.ErrorCode}, errorMessage={found.ErrorMessage}");
@@ -502,7 +566,7 @@ namespace BrowserHost
         /// <summary>
         /// 获取已停止的下载（包括完成、错误、已移除）
         /// </summary>
-        public async Task<List<Aria2Download>> GetStoppedDownloadsAsync()
+        public async Task<List<Aria2Download>> GetStoppedDownloadsAsync()       
         {
             var request = new
             {
@@ -536,7 +600,7 @@ namespace BrowserHost
         /// <summary>
         /// 获取所有活跃下载
         /// </summary>
-        public async Task<List<Aria2Download>> GetAllDownloadsAsync()
+        public async Task<List<Aria2Download>> GetAllDownloadsListAsync()       
         {
             var request = new
             {
@@ -545,8 +609,7 @@ namespace BrowserHost
                 method = "aria2.tellActive",
                 @params = new object[]
                 {
-                    $"token:{_rpcToken}",
-                    new[] { "status", "totalLength", "completedLength", "downloadSpeed", "files" }
+                    $"token:{_rpcToken}"
                 }
             };
 
@@ -563,6 +626,88 @@ namespace BrowserHost
             }
 
             return downloads;
+        }
+
+        public async Task<string> GetAllDownloadsJsonAsync()
+        {
+            var request = new
+            {
+                jsonrpc = "2.0",
+                id = Guid.NewGuid().ToString(),
+                method = "aria2.tellActive",
+                @params = new object[]
+                {
+                    $"token:{_rpcToken}"
+                }
+            };
+
+            var response = await SendRpcRequestAsync(request);
+            if (response == null) {
+                Console.WriteLine("[Aria2Manager] GetAllDownloadsJsonAsync: RPC response is null");
+                return "[]";
+            }
+
+            var downloads = new List<object>();
+
+            if (response.Value.TryGetProperty("result", out var result) && response.Value.TryGetProperty("result", out var arrayResult) && result.ValueKind == JsonValueKind.Array)
+            {
+                Console.WriteLine($"[Aria2Manager] tellActive returned {result.GetArrayLength()} items");
+                foreach (var item in result.EnumerateArray())
+                {
+                    var dl = ParseDownloadStatus(item);
+                    if (dl != null)
+                    {
+                        string? gid = dl.Gid;
+                        if (string.IsNullOrEmpty(gid))
+                        {
+                            foreach (var kvp in _activeDownloads)
+                            {
+                                // URL matching - most reliable since we store original URL
+                                if (!string.IsNullOrEmpty(dl.Url) && kvp.Value.Url == dl.Url)
+                                {
+                                    gid = kvp.Key;
+                                    Console.WriteLine($"[Aria2Manager] GID matched by URL: {gid}");
+                                    break;
+                                }
+                            }
+                        }
+                        if (string.IsNullOrEmpty(gid))
+                        {
+                            foreach (var kvp in _activeDownloads)
+                            {
+                                // SavePath matching as fallback
+                                if (!string.IsNullOrEmpty(dl.SavePath) && kvp.Value.SavePath == dl.SavePath)
+                                {
+                                    gid = kvp.Key;
+                                    Console.WriteLine($"[Aria2Manager] GID matched by SavePath: {gid}");
+                                    break;
+                                }
+                            }
+                        }
+                        Console.WriteLine($"[Aria2Manager] Final GID for download: {gid ?? "null"}, URL: {dl.Url}, SavePath: {dl.SavePath}");
+                        downloads.Add(new {
+                            gid = gid ?? "",
+                            status = dl.Status,
+                            totalLength = dl.TotalLength,
+                            completedLength = dl.CompletedLength,
+                            speed = dl.Speed,
+                            progress = dl.Progress,
+                            url = dl.Url,
+                            savePath = dl.SavePath,
+                            errorCode = dl.ErrorCode,
+                            errorMessage = dl.ErrorMessage
+                        });
+                    }
+                }
+            }
+
+            return JsonSerializer.Serialize(downloads);
+        }
+
+        // Alias for WebView2 - returns JSON string
+        public async Task<string> GetAllDownloadsAsync()
+        {
+            return await GetAllDownloadsJsonAsync();
         }
 
         /// <summary>
@@ -589,7 +734,7 @@ namespace BrowserHost
         /// <summary>
         /// 获取全局选项
         /// </summary>
-        public async Task<Dictionary<string, string>> GetGlobalOptionsAsync()
+        public async Task<Dictionary<string, string>> GetGlobalOptionsAsync()   
         {
             var request = new
             {
@@ -622,7 +767,7 @@ namespace BrowserHost
             {
                 try
                 {
-                    var downloads = await GetAllDownloadsAsync();
+                    var downloads = await GetAllDownloadsListAsync();
 
                     foreach (var dl in downloads)
                     {
@@ -637,7 +782,7 @@ namespace BrowserHost
                                 cached.Progress = progress;
                                 cached.Speed = dl.Speed;
                                 cached.TotalLength = dl.TotalLength;
-                                cached.CompletedLength = dl.CompletedLength;
+                                cached.CompletedLength = dl.CompletedLength;    
 
                                 ProgressChanged?.Invoke(this, (dl.Gid, progress, dl.Speed));
                             }
@@ -665,33 +810,46 @@ namespace BrowserHost
             }
         }
 
-        private async Task<JsonElement?> SendRpcRequestAsync(object request)
+        private async Task<JsonElement?> SendRpcRequestAsync(object request)    
         {
             try
             {
                 var json = JsonSerializer.Serialize(request);
-                Console.WriteLine($"[Aria2Manager] RPC Request: {json.Substring(0, Math.Min(200, json.Length))}...");
+                Console.WriteLine($"[Aria2Manager] RPC Request: {json.Substring(0, Math.Min(500, json.Length))}...");
 
                 var content = new StringContent(json, Encoding.UTF8, "application/json");
-                var response = await _httpClient.PostAsync(_rpcUrl, content);
+                var response = await _httpClient.PostAsync(_rpcUrl, content);   
 
                 var statusCode = (int)response.StatusCode;
-                var responseBody = await response.Content.ReadAsStringAsync();
-                Console.WriteLine($"[Aria2Manager] RPC Response ({statusCode}): {responseBody.Substring(0, Math.Min(300, responseBody.Length))}...");
+                var responseBody = await response.Content.ReadAsStringAsync();  
+                Console.WriteLine($"[Aria2Manager] RPC Response ({statusCode}): {responseBody.Substring(0, Math.Min(1000, responseBody.Length))}...");
 
                 if (response.IsSuccessStatusCode)
                 {
                     var doc = JsonDocument.Parse(responseBody);
-                    return doc.RootElement;
+                    var root = doc.RootElement;
+                    
+                    // 检查 Aria2 级别的错误
+                    if (root.TryGetProperty("error", out var error))
+                    {
+                        Console.WriteLine($"[Aria2Manager] Aria2 RPC Error: {error.GetRawText()}");
+                        return null; // 返回 null 表示逻辑上的失败
+                    }
+                    
+                    return root;
                 }
                 else
                 {
-                    Console.WriteLine($"[Aria2Manager] RPC failed with status {statusCode}");
+                    Console.WriteLine($"[Aria2Manager] HTTP failed with status {statusCode}: {responseBody}");
                 }
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"[Aria2Manager] RPC error: {ex.GetType().Name}: {ex.Message}");
+                Console.WriteLine($"[Aria2Manager] RPC Exception: {ex.GetType().Name}: {ex.Message}");
+                if (ex.InnerException != null)
+                {
+                    Console.WriteLine($"[Aria2Manager] Inner Exception: {ex.InnerException.Message}");
+                }
             }
             return null;
         }
@@ -705,9 +863,9 @@ namespace BrowserHost
                     // Gid 可能不在 result 中（tellStatus 返回的对象没有 gid），由调用者设置
                     Gid = result.TryGetProperty("gid", out var g) ? g.GetString() ?? "" : "",
                     Status = result.TryGetProperty("status", out var s) ? s.GetString() ?? "unknown" : "unknown",
-                    TotalLength = GetJsonValueAsLong(result, "totalLength"),
+                    TotalLength = GetJsonValueAsLong(result, "totalLength"),    
                     CompletedLength = GetJsonValueAsLong(result, "completedLength"),
-                    Speed = GetJsonValueAsLong(result, "downloadSpeed"),
+                    Speed = GetJsonValueAsLong(result, "downloadSpeed"),        
                     ErrorCode = result.TryGetProperty("errorCode", out var ec) ? ec.GetString() : null,
                     ErrorMessage = result.TryGetProperty("errorMessage", out var em) ? em.GetString() : null
                 };
@@ -718,6 +876,15 @@ namespace BrowserHost
                     if (firstFile.TryGetProperty("path", out var path))
                     {
                         dl.SavePath = path.GetString() ?? "";
+                    }
+                    // aria2 返回的 URIs 在 files[0].uris 数组中
+                    if (firstFile.TryGetProperty("uris", out var uris) && uris.ValueKind == JsonValueKind.Array && uris.GetArrayLength() > 0)
+                    {
+                        var firstUri = uris[0];
+                        if (firstUri.TryGetProperty("uri", out var uri))        
+                        {
+                            dl.Url = uri.GetString() ?? "";
+                        }
                     }
                 }
 
@@ -735,7 +902,7 @@ namespace BrowserHost
         {
             try
             {
-                if (!parent.TryGetProperty(propertyName, out var element))
+                if (!parent.TryGetProperty(propertyName, out var element))      
                     return 0;
 
                 // 如果是数字类型，直接返回
@@ -770,7 +937,7 @@ namespace BrowserHost
         {
             try
             {
-                var targetDir = System.IO.Path.GetDirectoryName(targetPath);
+                var targetDir = System.IO.Path.GetDirectoryName(targetPath);    
                 if (!string.IsNullOrEmpty(targetDir) && !System.IO.Directory.Exists(targetDir))
                 {
                     System.IO.Directory.CreateDirectory(targetDir);

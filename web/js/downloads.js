@@ -257,7 +257,7 @@ const STS2Downloads = {
         this._stopAria2Polling();
         this._aria2PollTimer = setInterval(async () => {
             try {
-                const active = await window.Aria2?.getAllActive();
+                const active = await window.Aria2?.getAll();
                 if (active && Array.isArray(active)) {
                     for (const dl of active) {
                         this._updateDownloadFromAria2(dl);
@@ -288,20 +288,36 @@ const STS2Downloads = {
     _updateDownloadFromAria2(aria2Dl) {
         // 查找对应的下载（通过 GID 或其他标识）
         for (const [id, dl] of Object.entries(this.active_downloads)) {
-            if (dl.gid === aria2Dl.gid) {
-                // 更新进度
-                if (aria2Dl.totalLength > 0) {
-                    dl.total_size = parseInt(aria2Dl.totalLength);
-                    dl.downloaded = parseInt(aria2Dl.completedLength);
-                    dl.progress = dl.total_size > 0 ? dl.downloaded / dl.total_size : 0;
-                }
-                dl.speed = parseInt(aria2Dl.downloadSpeed) || 0;
-                dl.status = aria2Dl.status === 'active' ? 'downloading' : aria2Dl.status;
-
-                this.renderActiveDownloads();
+            // 优先通过 GID 匹配
+            if (dl.gid && dl.gid === aria2Dl.gid) {
+                this._applyAria2Progress(dl, aria2Dl);
                 return;
             }
+            // GID 不匹配时，通过 URL 或文件名匹配
+            if (!dl.gid || dl.gid !== aria2Dl.gid) {
+                const aria2Url = aria2Dl.url || '';
+                const aria2SavePath = aria2Dl.savePath || '';
+                const dlName = dl.mod_name || '';
+                // URL 匹配或文件名匹配
+                if ((aria2Url && dl.url && aria2Url === dl.url) ||
+                    (aria2SavePath && dlName && aria2SavePath.includes(dlName))) {
+                    dl.gid = aria2Dl.gid; // 回填 GID
+                    this._applyAria2Progress(dl, aria2Dl);
+                    return;
+                }
+            }
         }
+    },
+
+    _applyAria2Progress(dl, aria2Dl) {
+        if (aria2Dl.totalLength > 0) {
+            dl.total_size = parseInt(aria2Dl.totalLength);
+            dl.downloaded = parseInt(aria2Dl.completedLength);
+            dl.progress = dl.total_size > 0 ? dl.downloaded / dl.total_size : 0;
+        }
+        dl.speed = parseInt(aria2Dl.speed) || parseInt(aria2Dl.downloadSpeed) || 0;
+        dl.status = aria2Dl.status === 'active' ? 'downloading' : aria2Dl.status;
+        this.renderActiveDownloads();
     },
 
     /**
@@ -558,11 +574,8 @@ const STS2Downloads = {
         // 尝试通过 Aria2 下载
         if (window.Aria2?.isConnected() && url) {
             try {
-                const gid = await window.Aria2.addDownload(url, '', {
-                    'split': '16',
-                    'max-connection-per-server': '16',
-                    'continue': 'true',
-                });
+                const savePath = this._downloadDir || 'E:/modmanager_project/sts-2-modmanager/downloads/';
+                const gid = await window.Aria2.addDownload(url, savePath, null);
 
                 if (gid) {
                     dl.gid = gid;
@@ -592,33 +605,67 @@ const STS2Downloads = {
         const dl = this.active_downloads[id];
         if (!dl || dl.status !== 'downloading') return;
 
-        // 如果有 GID，通过 Aria2 暂停
-        if (dl.gid && window.Aria2?.isConnected()) {
+        // 如果没有 GID，尝试从 Aria2 活跃下载中查找匹配的下载
+        var targetGid = dl.gid;
+        if (!targetGid && window.Aria2?.isConnected()) {
             try {
-                await window.Aria2.pause(dl.gid);
+                const active = await window.Aria2.getAllActive();
+                for (const aria2Dl of active) {
+                    // 通过 URL 或 savePath 匹配
+                    if (aria2Dl.url === dl.url || (aria2Dl.savePath && dl.mod_name && aria2Dl.savePath.includes(dl.mod_name))) {
+                        targetGid = aria2Dl.gid;
+                        dl.gid = targetGid; // 回填 GID
+                        console.log('[STS2Downloads] Found missing GID from Aria2:', targetGid);
+                        break;
+                    }
+                }
+            } catch (e) {
+                console.warn('[STS2Downloads] Failed to find GID from Aria2:', e);
+            }
+        }
+
+        // 如果有 GID，通过 Aria2 暂停
+        var aria2Paused = false;
+        if (targetGid && window.Aria2?.isConnected()) {
+            try {
+                const success = await window.Aria2.pause(targetGid);
+                if (success) {
+                    aria2Paused = true;
+                    console.log('[STS2Downloads] Aria2 pause succeeded for gid:', targetGid);
+                } else {
+                    console.warn('[STS2Downloads] Aria2 pause returned false, may have failed');
+                }
             } catch (e) {
                 console.warn('[STS2Downloads] Aria2 pause failed:', e);
             }
         }
 
-        // 先更新本地状态
-        dl.status = 'paused';
-        if (dl.timer_id) {
-            clearInterval(dl.timer_id);
-            dl.timer_id = null;
-        }
-        dl.speed = 0;
-        this.renderActiveDownloads();
+        // 只有当 Aria2 暂停成功时才更新本地状态
+        if (aria2Paused || !targetGid) {
+            // 没有 GID 时也允许暂停（通过后端处理）
+            dl.status = 'paused';
+            dl._actionLockTime = Date.now();
+            if (dl.timer_id) {
+                clearInterval(dl.timer_id);
+                dl.timer_id = null;
+            }
+            dl.speed = 0;
+            this.renderActiveDownloads();
 
-        // 调用后端 API
-        try {
-            const result = await this._app.api.pauseDownload(id);
-            console.log('[STS2Downloads] Download paused on backend:', id, result);
-        } catch (e) {
-            console.error('[STS2Downloads] Failed to pause download on backend:', e);
-        }
+            // 调用后端 API
+            try {
+                const result = await this._app.api.pauseDownload(id);
+                console.log('[STS2Downloads] Download paused on backend:', id, result);
+            } catch (e) {
+                console.error('[STS2Downloads] Failed to pause download on backend:', e);
+            }
 
-        this._app.emit('download-paused', { id });
+            this._app.emit('download-paused', { id });
+        } else {
+            // Aria2 暂停失败，不更新状态，显示错误
+            console.error('[STS2Downloads] Cannot pause: Aria2 pause failed and no gid available');
+            this._app.notifications?.show('暂停下载失败，请重试', 'error');
+        }
     },
 
     /**
@@ -629,29 +676,60 @@ const STS2Downloads = {
         const dl = this.active_downloads[id];
         if (!dl || dl.status !== 'paused') return;
 
-        // 如果有 GID，通过 Aria2 恢复
-        if (dl.gid && window.Aria2?.isConnected()) {
+        // 如果没有 GID，尝试从 Aria2 活跃下载中查找匹配的下载
+        var targetGid = dl.gid;
+        if (!targetGid && window.Aria2?.isConnected()) {
             try {
-                await window.Aria2.resume(dl.gid);
+                const active = await window.Aria2.getAllActive();
+                for (const aria2Dl of active) {
+                    if (aria2Dl.url === dl.url || (aria2Dl.savePath && dl.mod_name && aria2Dl.savePath.includes(dl.mod_name))) {
+                        targetGid = aria2Dl.gid;
+                        dl.gid = targetGid;
+                        break;
+                    }
+                }
+            } catch (e) {
+                console.warn('[STS2Downloads] Failed to find GID from Aria2:', e);
+            }
+        }
+
+        // 如果有 GID，通过 Aria2 恢复
+        var aria2Resumed = false;
+        if (targetGid && window.Aria2?.isConnected()) {
+            try {
+                const success = await window.Aria2.resume(targetGid);
+                if (success) {
+                    aria2Resumed = true;
+                    console.log('[STS2Downloads] Aria2 resume succeeded for gid:', targetGid);
+                } else {
+                    console.warn('[STS2Downloads] Aria2 resume returned false, may have failed');
+                }
             } catch (e) {
                 console.warn('[STS2Downloads] Aria2 resume failed:', e);
             }
         }
 
-        // 先更新本地状态
-        dl.status = 'downloading';
-        this._simulateProgress(id);
-        this.renderActiveDownloads();
+        // 只有当 Aria2 恢复成功时才更新本地状态
+        if (aria2Resumed || !targetGid) {
+            // 没有 GID 时也允许恢复（通过后端处理）
+            dl.status = 'downloading';
+            dl._actionLockTime = Date.now();
+            this.renderActiveDownloads();
 
-        // 调用后端 API
-        try {
-            const result = await this._app.api.resumeDownload(id);
-            console.log('[STS2Downloads] Download resumed on backend:', id, result);
-        } catch (e) {
-            console.error('[STS2Downloads] Failed to resume download on backend:', e);
+            // 调用后端 API
+            try {
+                const result = await this._app.api.resumeDownload(id);
+                console.log('[STS2Downloads] Download resumed on backend:', id, result);
+            } catch (e) {
+                console.error('[STS2Downloads] Failed to resume download on backend:', e);
+            }
+
+            this._app.emit('download-resumed', { id });
+        } else {
+            // Aria2 恢复失败，显示错误
+            console.error('[STS2Downloads] Cannot resume: Aria2 resume failed and no gid available');
+            this._app.notifications?.show('恢复下载失败，请重试', 'error');
         }
-
-        this._app.emit('download-resumed', { id });
     },
 
     /**
@@ -662,10 +740,28 @@ const STS2Downloads = {
         const dl = this.active_downloads[id];
         if (!dl) return;
 
-        // 如果有 GID，通过 Aria2 取消
-        if (dl.gid && window.Aria2?.isConnected()) {
+        // 如果没有 GID，尝试从 Aria2 活跃下载中查找匹配的下载
+        var targetGid = dl.gid;
+        if (!targetGid && window.Aria2?.isConnected()) {
             try {
-                await window.Aria2.remove(dl.gid);
+                const active = await window.Aria2.getAllActive();
+                for (const aria2Dl of active) {
+                    if (aria2Dl.url === dl.url || (aria2Dl.savePath && dl.mod_name && aria2Dl.savePath.includes(dl.mod_name))) {
+                        targetGid = aria2Dl.gid;
+                        dl.gid = targetGid;
+                        break;
+                    }
+                }
+            } catch (e) {
+                console.warn('[STS2Downloads] Failed to find GID from Aria2:', e);
+            }
+        }
+
+        // 如果有 GID，通过 Aria2 取消
+        if (targetGid && window.Aria2?.isConnected()) {
+            try {
+                await window.Aria2.remove(targetGid);
+                console.log('[STS2Downloads] Aria2 remove succeeded for gid:', targetGid);
             } catch (e) {
                 console.warn('[STS2Downloads] Aria2 remove failed:', e);
             }
