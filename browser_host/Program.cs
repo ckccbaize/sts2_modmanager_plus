@@ -2244,7 +2244,7 @@ namespace BrowserHost
             _drawerPanel.Controls.Add(drawerContent);
 
             // ����������ҳ��ť
-            var homeBtn = new DrawerMenuButton("? ��ҳ", 44);
+            var homeBtn = new DrawerMenuButton(" 首页", 44);
             homeBtn.Dock = DockStyle.Top;
             homeBtn.Click += async (s, e) =>
             {
@@ -2265,7 +2265,7 @@ namespace BrowserHost
             drawerContent.Controls.Add(homeBtn);
 
             // ����ˢ��ҳ�水ť
-            var refreshBtn = new DrawerMenuButton("? ˢ��", 44);
+            var refreshBtn = new DrawerMenuButton(" 刷新", 44);
             refreshBtn.Dock = DockStyle.Top;
             refreshBtn.Click += (s, e) =>
             {
@@ -2286,7 +2286,7 @@ namespace BrowserHost
             drawerContent.Controls.Add(configPage);
 
             // �������ð�ť
-            var configBtn = new DrawerMenuButton("? ����", 44);
+            var configBtn = new DrawerMenuButton(" 配置", 44);
             configBtn.Dock = DockStyle.Top;
             configBtn.Click += (s, e) =>
             {
@@ -2385,7 +2385,7 @@ namespace BrowserHost
             drawerContent.Controls.Add(sep1);
 
             // ��������ԭ�水ť
-            var vanillaBtn = new DrawerMenuButton("? ����ԭ��", 44);
+            var vanillaBtn = new DrawerMenuButton(" 启动原版", 44);
             vanillaBtn.Dock = DockStyle.Top;
             vanillaBtn.Click += (s, e) =>
             {
@@ -2396,7 +2396,7 @@ namespace BrowserHost
             drawerContent.Controls.Add(vanillaBtn);
 
             // ��������ģ��水ť
-            var moddedBtn = new DrawerMenuButton("? ����ģ���", 44);
+            var moddedBtn = new DrawerMenuButton(" 启动模组版", 44);
             moddedBtn.Dock = DockStyle.Top;
             moddedBtn.Click += (s, e) =>
             {
@@ -2416,7 +2416,7 @@ namespace BrowserHost
             drawerContent.Controls.Add(sep2);
 
             // �����˳���ť
-            var exitBtn = new DrawerMenuButton("? �˳�", 44);
+            var exitBtn = new DrawerMenuButton(" 退出", 44);
             exitBtn.Dock = DockStyle.Top;
             exitBtn.Click += (s, e) =>
             {
