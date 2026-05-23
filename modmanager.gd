@@ -110,6 +110,9 @@ func _on_window_size_changed() -> void:
 	config.set_value("window", "maximized", mode == Window.MODE_MAXIMIZED)
 	config.save("user://config.cfg")
 
+	# 同步 WebUI 缩放
+	_notify_browser_host_dpi_scale()
+
 
 # 获取pack_mods目录路径
 func _get_new_package_dir() -> String:
