@@ -2786,6 +2786,9 @@ func _on_tag_selected(tag_name: String) -> void:
 
 	print("[_on_tag_selected] Switched to tag: ", current_tag)
 
+	# 通知 BrowserHost 切换 WebUI 标签
+	_notify_browser_host_tag_selected(current_tag)
+
 
 # 保存当前标签的启用模组
 func _save_current_tag_mods() -> void:
@@ -20303,6 +20306,56 @@ func _notify_browser_host_dpi_scale() -> void:
 
 	http_client.close()
 	print("[_notify_browser_host_dpi_scale] DPI scale sent: ", dpi_scale)
+
+
+func _notify_browser_host_tag_selected(tag_name: String) -> void:
+	"""通知 BrowserHost WebUI 标签已切换"""
+	var http_client = HTTPClient.new()
+	var browser_port = 18765  # BrowserHost HTTP API 端口
+
+	var err = http_client.connect_to_host("127.0.0.1", browser_port)
+	if err != OK:
+		print("[_notify_browser_host_tag_selected] Failed to connect to BrowserHost: ", err)
+		return
+
+	# 等待连接
+	var poll_count = 0
+	while http_client.get_status() == HTTPClient.STATUS_CONNECTING:
+		http_client.poll()
+		OS.delay_msec(10)
+		poll_count += 1
+		if poll_count > 100:  # 1 秒超时
+			print("[_notify_browser_host_tag_selected] Connection timeout")
+			http_client.close()
+			return
+
+	if http_client.get_status() != HTTPClient.STATUS_CONNECTED:
+		print("[_notify_browser_host_tag_selected] Not connected, status: ", http_client.get_status())
+		http_client.close()
+		return
+
+	# 发送 tag
+	var body = JSON.stringify({"tag": tag_name})
+	var headers = PackedStringArray(["Content-Type: application/json"])
+	err = http_client.request(HTTPClient.METHOD_POST, "/tag-selected", headers, body)
+	if err != OK:
+		print("[_notify_browser_host_tag_selected] Failed to send request: ", err)
+		http_client.close()
+		return
+
+	# 等待响应
+	poll_count = 0
+	while http_client.get_status() == HTTPClient.STATUS_REQUESTING:
+		http_client.poll()
+		OS.delay_msec(10)
+		poll_count += 1
+		if poll_count > 100:  # 1 秒超时
+			print("[_notify_browser_host_tag_selected] Request timeout")
+			http_client.close()
+			return
+
+	http_client.close()
+	print("[_notify_browser_host_tag_selected] Tag sent: ", tag_name)
 
 
 func _notify_webui_install_complete(download_id: String, mod_name: String) -> void:

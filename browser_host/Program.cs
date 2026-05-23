@@ -825,6 +825,32 @@ namespace BrowserHost
                         context.Response.StatusCode = 500;
                     }
                 }
+                else if (path == "/tag-selected" && context.Request.HttpMethod == "POST")
+                {
+                    try
+                    {
+                        using var reader = new StreamReader(context.Request.InputStream);
+                        var body = await reader.ReadToEndAsync();
+                        var json = System.Text.Json.JsonDocument.Parse(body);
+                        var tagName = json.RootElement.GetProperty("tag").GetString();
+                        var script = $@"
+                            (function() {{
+                                if (window.app && window.app.router) {{
+                                    window.app.router.navigateTo('{tagName}');
+                                    console.log('[BrowserHost] Tag switched to: {tagName}');
+                                }}
+                            }})();
+                        ";
+                        _webView?.CoreWebView2?.ExecuteScriptAsync(script);
+                        Console.WriteLine($"[BrowserHost] /tag-selected: {tagName}");
+                        context.Response.StatusCode = 200;
+                    }
+                    catch (Exception ex)
+                    {
+                        Console.WriteLine($"[BrowserHost] /tag-selected error: {ex.Message}");
+                        context.Response.StatusCode = 500;
+                    }
+                }
                 else if (path == "/api/downloads/clear_history" && context.Request.HttpMethod == "POST")
                 {
                     HandleClearDownloadHistory(context);
