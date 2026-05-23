@@ -563,6 +563,12 @@ class STS2App {
             multiplayer: '2868840',
         };
         const appId = appIds[mode] || '2868840';
+
+        // Switch to mods tab for visual feedback before launch
+        if (this.router) {
+            this.router.navigateTo('mods');
+        }
+
         this.notifications.show(
             `Launching Slay the Spire 2 (${mode})...`,
             'info',
