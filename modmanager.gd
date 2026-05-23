@@ -2736,12 +2736,14 @@ func _on_title_bar_input(event: InputEvent) -> void:
 
 # 标签选中处理
 func _on_tag_selected(tag_name: String) -> void:
+	print("[_on_tag_selected] Called with tag_name: ", tag_name, ", current_tag: ", current_tag)
 	# 如果已启用整合包，禁止切换标签
 	if not active_bundle.is_empty():
 		show_notification(translate("bundle_active_tag_locked"), false)
 		return
 
 	if current_tag == tag_name:
+		print("[_on_tag_selected] Same tag, returning early")
 		return
 
 	# 退出全选模式（避免切换标签后点击复选框触发全选逻辑）
@@ -10651,6 +10653,8 @@ func _launch_multiplayer_with_fix() -> void:
 	# 2. 应用联机补丁文件
 	if not _apply_fix_steam_patch():
 		show_notification(translate("launch_failed"), false)
+		# 即使补丁失败也要通知 BrowserHost 切换标签
+		_notify_browser_host_tag_selected("联机模组")
 		return
 
 	# 3. 启动游戏 - 使用与模组模式相同的启动方式
@@ -20310,6 +20314,7 @@ func _notify_browser_host_dpi_scale() -> void:
 
 func _notify_browser_host_tag_selected(tag_name: String) -> void:
 	"""通知 BrowserHost WebUI 标签已切换"""
+	print("[_notify_browser_host_tag_selected] Sending tag: ", tag_name)
 	var http_client = HTTPClient.new()
 	var browser_port = 18765  # BrowserHost HTTP API 端口
 
