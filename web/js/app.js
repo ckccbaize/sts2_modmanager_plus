@@ -574,8 +574,18 @@ class STS2App {
             'info',
             2000
         );
-        // In a real environment this would call: window.open(`steam://launch/${appId}/dialog`)
-        window.open(`steam://launch/${appId}/dialog`);
+
+        // Call Godot API to launch game (this will trigger tag switching and proper launch flow)
+        const launchModes = { vanilla: 'vanilla', modded: 'modded', multiplayer: 'multiplayer' };
+        const apiMode = launchModes[mode] || 'modded';
+
+        this.api.launchGame(apiMode).then(resp => {
+            console.log('[STS2App] Launch via API:', resp);
+        }).catch(err => {
+            console.error('[STS2App] Launch API error:', err);
+            // Fallback to direct window.open if API fails
+            window.open(`steam://launch/${appId}/dialog`);
+        });
     }
 
     // ── First-run tutorial ─────────────────────────────────────
