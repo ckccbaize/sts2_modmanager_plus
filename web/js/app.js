@@ -569,7 +569,7 @@ class STS2App {
             2000
         );
         // In a real environment this would call: window.open(`steam://launch/${appId}/dialog`)
-        console.log(`[STS2App] Launch: steam://launch/${appId}/dialog`);
+        window.open(`steam://launch/${appId}/dialog`);
     }
 
     // ── First-run tutorial ─────────────────────────────────────
