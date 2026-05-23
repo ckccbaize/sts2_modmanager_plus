@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.IO;
 using System.Threading.Tasks;
 using System.Windows.Forms;
@@ -14,7 +14,7 @@ using System.Text;
 
 namespace BrowserHost
 {
-    // Aria2 HTTP API Server (供 Godot 调用)
+    // Aria2 HTTP API Server (�� Godot ����)
     internal class Aria2ApiServer
     {
         private HttpListener? _listener;
@@ -146,9 +146,9 @@ namespace BrowserHost
     public class BrowserHostObject
     {
         public Aria2Manager? aria2Manager { get; set; }
-        public Microsoft.Web.WebView2.WinForms.WebView2? _webView { get; set; }  // 用于执行 JavaScript
+        public Microsoft.Web.WebView2.WinForms.WebView2? _webView { get; set; }  // ����ִ�� JavaScript
 
-        // Aria2 便捷方法
+        // Aria2 ��ݷ���
         public bool Start(string aria2Path)
         {
             if (aria2Manager != null)
@@ -158,14 +158,14 @@ namespace BrowserHost
             return false;
         }
 
-        // 通知 WebUI 安装完成（供 Godot 调用）
+        // ֪ͨ WebUI ��װ��ɣ��� Godot ���ã�
         public void NotifyInstallComplete(string modName, string downloadId)
         {
             Console.WriteLine($"[BrowserHostObject] NotifyInstallComplete: {modName}, id={downloadId}");
             Program.NotifyWebUIOfInstallComplete(modName, downloadId);
         }
 
-        // 执行 JavaScript 并返回结果（异步）
+        // ִ�� JavaScript �����ؽ�����첽��
         public async Task<string?> ExecuteScriptAsync(string script)
         {
             if (_webView?.CoreWebView2 == null)
@@ -187,7 +187,7 @@ namespace BrowserHost
             }
         }
 
-        // 同步执行 JavaScript（用于 Host Object 方法）
+        // ͬ��ִ�� JavaScript������ Host Object ������
         public string ExecuteScript(string script)
         {
             if (_webView?.CoreWebView2 == null)
@@ -208,7 +208,7 @@ namespace BrowserHost
             }
         }
 
-        // 显示下载完成通知到 WebUI
+        // ��ʾ�������֪ͨ�� WebUI
         public void NotifyDownloadComplete(string modName, string downloadId)
         {
             Console.WriteLine($"[BrowserHostObject] NotifyDownloadComplete: {modName}, id={downloadId}");
@@ -217,7 +217,7 @@ namespace BrowserHost
             var script = $@"
                 (function() {{
                     if (window.app && window.app.notifications) {{
-                        window.app.notifications.show('下载完成: {escapedName}', 'success', 3000);
+                        window.app.notifications.show('�������: {escapedName}', 'success', 3000);
                     }}
                     if (window.STS2Downloads) {{
                         window.STS2Downloads.onBackendDownloadComplete('{escapedId}', '{escapedName}');
@@ -228,7 +228,7 @@ namespace BrowserHost
             ExecuteScript(script);
         }
 
-        // 设置 WebUI 的 DPI 缩放（供 Godot 调用）
+        // ���� WebUI �� DPI ���ţ��� Godot ���ã�
         public void SetDpiScale(double scale)
         {
             Console.WriteLine($"[BrowserHostObject] SetDpiScale: {scale}");
@@ -242,7 +242,7 @@ namespace BrowserHost
             ExecuteScript(script);
         }
 
-        // 获取全局选项
+        // ��ȡȫ��ѡ��
         public async Task<object> GetGlobalOptionsAsync()
         {
             if (aria2Manager != null)
@@ -252,7 +252,7 @@ namespace BrowserHost
             return new Dictionary<string, string>();
         }
 
-        // 添加 Aria2 下载（供 Godot 调用）
+        // ���� Aria2 ���أ��� Godot ���ã�
         public string? AddAria2Download(string url, string savePath)
         {
             if (aria2Manager == null || !aria2Manager.IsRunning)
@@ -280,9 +280,9 @@ namespace BrowserHost
             }
         }
 
-        // 更新弹窗回调
+        // ���µ����ص�
         private Action<string, string, string, string>? _showUpdateDialogCallback;
-        // 导航回调
+        // �����ص�
         private Action<string>? _navigateCallback;
 
         public void SetUpdateDialogCallback(Action<string, string, string, string> callback)
@@ -305,7 +305,7 @@ namespace BrowserHost
         {
             using (var dialog = new FolderBrowserDialog())
             {
-                dialog.Description = "选择导出目录";
+                dialog.Description = "ѡ�񵼳�Ŀ¼";
                 dialog.UseDescriptionForTitle = true;
                 dialog.ShowNewFolderButton = true;
                 if (dialog.ShowDialog() == DialogResult.OK)
@@ -316,13 +316,13 @@ namespace BrowserHost
             return null;
         }
 
-        // 选择本地 ZIP 文件进行导入
+        // ѡ�񱾵� ZIP �ļ����е���
         public string SelectBundleFile()
         {
             using (var dialog = new OpenFileDialog())
             {
-                dialog.Filter = "整合包文件 (*.zip)|*.zip|所有文件 (*.*)|*.*";
-                dialog.Title = "选择整合包";
+                dialog.Filter = "���ϰ��ļ� (*.zip)|*.zip|�����ļ� (*.*)|*.*";
+                dialog.Title = "ѡ�����ϰ�";
                 dialog.CheckFileExists = true;
                 dialog.CheckPathExists = true;
                 if (dialog.ShowDialog() == DialogResult.OK)
@@ -377,12 +377,12 @@ namespace BrowserHost
             Console.WriteLine("[BrowserHost] NavigateToLocalhost called");
             try
             {
-                // 取消任何挂起的 HTTP 请求，防止线程池饥饿
+                // ȡ���κι���� HTTP ���󣬷�ֹ�̳߳ؼ���
                 Program.CancelPendingRequests();
 
                 var port = Program.GetCurrentPort();
 
-                // 使用 hash 路由 #mods，服务器返回 index.html，JavaScript 检测 hash 切换页面
+                // ʹ�� hash ·�� #mods������������ index.html��JavaScript ��� hash �л�ҳ��
                 var targetUrl = $"http://localhost:{port}/index.html#mods";
 
                 // Use the stored navigation callback if available
@@ -438,19 +438,19 @@ namespace BrowserHost
                 Console.WriteLine($"[BrowserHost] SendDownloadRequest called");
                 Console.WriteLine($"[BrowserHost] Download request: {jsonData?.Substring(0, Math.Min(200, jsonData?.Length ?? 0))}...");
 
-                // 解析请求
+                // ��������
                 var doc = System.Text.Json.JsonDocument.Parse(jsonData ?? "{}");
                 var root = doc.RootElement;
                 var downloadType = root.TryGetProperty("type", out var t) ? t.GetString() : "";
                 var modName = root.TryGetProperty("mod_name", out var mn) ? mn.GetString() : "mod";
                 var downloadUrl = root.TryGetProperty("download_url", out var du) ? du.GetString() : "";
 
-                // 如果有直链 URL，优先使用 Aria2 下载
+                // �����ֱ�� URL������ʹ�� Aria2 ����
                 if (!string.IsNullOrEmpty(downloadUrl) && downloadUrl.StartsWith("http"))
                 {
                     Console.WriteLine($"[BrowserHost] Using Aria2 for direct URL download");
 
-                    // 构建保存路径
+                    // ��������·��
                     var safeName = modName.Replace("/", "_").Replace("\\", "_").Replace(":", "_")
                         .Replace("*", "_").Replace("?", "_").Replace("\"", "_")
                         .Replace("<", "_").Replace(">", "_").Replace("|", "_");
@@ -460,7 +460,7 @@ namespace BrowserHost
                     Directory.CreateDirectory(downloadsDir);
                     var savePath = Path.Combine(downloadsDir, safeName + ".zip");
 
-                    // 使用 Aria2 下载
+                    // ʹ�� Aria2 ����
                     if (aria2Manager != null && aria2Manager.IsRunning)
                     {
                         var options = new Dictionary<string, string>
@@ -476,13 +476,13 @@ namespace BrowserHost
                             {
                                 Console.WriteLine($"[BrowserHost] Aria2 download started: {gid}");
 
-                                // 通知 Godot 下载已开始
+                                // ֪ͨ Godot �����ѿ�ʼ
                                 ForwardToGodot(jsonData, gid, "aria2");
                             }
                             else
                             {
                                 Console.WriteLine($"[BrowserHost] Aria2 AddDownload failed");
-                                // 降级到 Godot 下载
+                                // ������ Godot ����
                                 ForwardToGodot(jsonData, null, "fallback");
                             }
                         }
@@ -500,8 +500,8 @@ namespace BrowserHost
                     return;
                 }
 
-                // 对于 NXM URL，直接转发给 Godot 处理
-                // Godot 有完整的 Nexus API 认证，可以获取真实下载链接后再调用 Aria2
+                // ���� NXM URL��ֱ��ת���� Godot ����
+                // Godot �������� Nexus API ��֤�����Ի�ȡ��ʵ�������Ӻ��ٵ��� Aria2
                 Console.WriteLine($"[BrowserHost] NXM URL detected, forwarding to Godot for processing");
                 ForwardToGodot(jsonData, null, "nxm-forward");
             }
@@ -532,7 +532,7 @@ namespace BrowserHost
                     return;
                 }
 
-                // 调用 Nexus API 获取真实下载链接
+                // ���� Nexus API ��ȡ��ʵ��������
                 Console.WriteLine($"[BrowserHost] Getting download link from Nexus API: mod={modId}, file={fileId}");
                 var downloadUrl = await _GetNexusDownloadLink(modId, fileId, apiKey, expires, userId);
 
@@ -545,7 +545,7 @@ namespace BrowserHost
 
                 Console.WriteLine($"[BrowserHost] Got download URL, using Aria2");
 
-                // 使用 Aria2 下载
+                // ʹ�� Aria2 ����
                 var safeName = modName.Replace("/", "_").Replace("\\", "_").Replace(":", "_")
                     .Replace("*", "_").Replace("?", "_").Replace("\"", "_")
                     .Replace("<", "_").Replace(">", "_").Replace("|", "_");
@@ -595,7 +595,7 @@ namespace BrowserHost
                 var httpClient = new System.Net.Http.HttpClient();
                 httpClient.DefaultRequestHeaders.Add("Accept", "application/json");
 
-                // 构建 URL - 对于非 Premium 用户需要 key/expires/user_id 三个参数
+                // ���� URL - ���ڷ� Premium �û���Ҫ key/expires/user_id ��������
                 var url = $"https://api.nexusmods.com/v1/games/slaythespire2/mods/{modId}/files/{fileId}/download_link.json?key={apiKey}&expires={expires}&user_id={userId}";
                 Console.WriteLine($"[BrowserHost] Calling Nexus API: {url}");
 
@@ -613,7 +613,7 @@ namespace BrowserHost
                 else
                 {
                     Console.WriteLine($"[BrowserHost] Nexus API error: {response.StatusCode}");
-                    // 打印响应内容以便调试
+                    // ��ӡ��Ӧ�����Ա����
                     var errorContent = await response.Content.ReadAsStringAsync();
                     Console.WriteLine($"[BrowserHost] API response: {errorContent}");
                 }
@@ -629,7 +629,7 @@ namespace BrowserHost
         {
             try
             {
-                // 如果有 Aria2 GID，修改 JSON 添加 aria2_gid
+                // ����� Aria2 GID���޸� JSON ���� aria2_gid
                 string dataToSend = jsonData ?? "{}";
                 if (!string.IsNullOrEmpty(aria2Gid))
                 {
@@ -678,7 +678,7 @@ namespace BrowserHost
         private static Aria2Manager? _sharedAria2Manager;
         private static bool _httpListenerStarted = false;
         private static Microsoft.Web.WebView2.WinForms.WebView2? _webView;
-        // 保存 UI 线程的 SynchronizationContext，用于跨线程调用
+        // ���� UI �̵߳� SynchronizationContext�����ڿ��̵߳���
         private static System.Threading.SynchronizationContext? _uiContext;
 
         public static Microsoft.Web.WebView2.WinForms.WebView2? WebView => _webView;
@@ -688,13 +688,13 @@ namespace BrowserHost
         public static int GetCurrentPort() => _staticPort;
         public static void SetCurrentPort(int port) => _staticPort = port;
 
-        // 设置共享的 Aria2Manager 引用
+        // ���ù����� Aria2Manager ����
         public static void SetAria2Manager(Aria2Manager manager)
         {
             _sharedAria2Manager = manager;
         }
 
-        // 启动 HTTP 监听器（防止重复启动）
+        // ���� HTTP ����������ֹ�ظ�������
         public static void StartHttpListener(int port)
         {
             if (_httpListenerStarted) return;
@@ -707,7 +707,7 @@ namespace BrowserHost
         {
             Console.WriteLine($"[Program] Starting HTTP listener on port {port}");
             _httpListener = new HttpListener();
-            // 同时监听 localhost 和 127.0.0.1，因为 Godot 可能用两者之一
+            // ͬʱ���� localhost �� 127.0.0.1����Ϊ Godot ����������֮һ
             _httpListener.Prefixes.Add($"http://localhost:{port}/");
             _httpListener.Prefixes.Add($"http://127.0.0.1:{port}/");
             Console.WriteLine($"[Program] HttpListener prefix registered: http://localhost:{port}/ and http://127.0.0.1:{port}/");
@@ -780,7 +780,7 @@ namespace BrowserHost
                 }
             }
         }
-        private static void HandleHttpRequest(HttpListenerContext context)
+        private static async Task HandleHttpRequest(HttpListenerContext context)
         {
             try
             {
@@ -805,7 +805,7 @@ namespace BrowserHost
                 }
                 else if (path == "/dpi-scale" && context.Request.HttpMethod == "POST")
                 {
-                    // 接收 Godot 的 dpi_scale 并应用到 WebUI
+                    // ���� Godot �� dpi_scale ��Ӧ�õ� WebUI
                     try
                     {
                         using var reader = new StreamReader(context.Request.InputStream);
@@ -831,12 +831,12 @@ namespace BrowserHost
                 }
                 else if (path.StartsWith("/api/settings/") || path == "/api/settings")
                 {
-                    // API 请求 - 转发给 Godot LocalServer（支持 GET 和 POST）
+                    // API ���� - ת���� Godot LocalServer��֧�� GET �� POST��
                     ForwardToGodot(context);
                 }
                 else if (path.StartsWith("/css/") || path.StartsWith("/js/") || path.StartsWith("/assets/") || path.StartsWith("/locales") || path.StartsWith("/mock-") || path == "/icon.svg" || path == "/variables.css" || path == "/index.html")
                 {
-                    // 静态文件请求 - 转发给 Godot LocalServer
+                    // ��̬�ļ����� - ת���� Godot LocalServer
                     ForwardToGodotStaticFile(context);
                 }
                 else if (path == "/api/health")
@@ -848,7 +848,7 @@ namespace BrowserHost
                 }
                 else if (path.StartsWith("/api/"))
                 {
-                    // API 请求 - 转发给 Godot LocalServer（支持所有 HTTP 方法）
+                    // API ���� - ת���� Godot LocalServer��֧������ HTTP ������
                     ForwardToGodot(context);
                 }
                 else
@@ -902,7 +902,7 @@ namespace BrowserHost
                     return;
                 }
 
-                // 调用 Aria2 下载
+                // ���� Aria2 ����
                 if (_sharedAria2Manager != null && _sharedAria2Manager.IsRunning)
                 {
                     var options = new Dictionary<string, string>
@@ -939,7 +939,7 @@ namespace BrowserHost
         {
             try
             {
-                // 获取 GID 参数
+                // ��ȡ GID ����
                 var gid = context.Request.QueryString["gid"] ?? "";
 
                 if (string.IsNullOrEmpty(gid))
@@ -960,14 +960,14 @@ namespace BrowserHost
                     return;
                 }
 
-                // 获取下载状态
+                // ��ȡ����״̬
                 var status = _sharedAria2Manager.GetStatusAsync(gid).GetAwaiter().GetResult();
                 Console.WriteLine($"[Program] HandleAria2Progress: gid={gid}, status={(status != null ? status.Status : "null")}, total={status?.TotalLength}, completed={status?.CompletedLength}");
 
                 if (status == null)
                 {
-                    // status == null 表示 GID 在 Aria2 中不存在（可能 Aria2 重启后任务丢失）
-                    // 返回 not_found 状态，让 Godot 端知道需要重新开始下载
+                    // status == null ��ʾ GID �� Aria2 �в����ڣ����� Aria2 ����������ʧ��
+                    // ���� not_found ״̬���� Godot ��֪����Ҫ���¿�ʼ����
                     context.Response.StatusCode = 200;
                     context.Response.ContentType = "application/json";
                     var buffer = Encoding.UTF8.GetBytes("{\"gid\":\"" + gid + "\",\"completed\":false,\"status\":\"not_found\",\"error\":\"GID not found in Aria2, may need to restart download\"}");
@@ -1006,13 +1006,13 @@ namespace BrowserHost
                 var body = reader.ReadToEnd();
                 Console.WriteLine($"[Program] Download complete notification: {body}");
 
-                // 获取 WebView 引用（在 HTTP 线程上）
+                // ��ȡ WebView ���ã��� HTTP �߳��ϣ�
                 var webViewRef = _webView;
                 if (webViewRef != null)
                 {
                     Console.WriteLine("[Program] Download WebView available, dispatching via BeginInvoke...");
 
-                    // 准备脚本内容（在 HTTP 线程上执行转义）
+                    // ׼���ű����ݣ��� HTTP �߳���ִ��ת�壩
                     var bodyJson = Uri.EscapeDataString(body);
                     var script = $@"
                         (function() {{
@@ -1029,13 +1029,13 @@ namespace BrowserHost
                         }})();
                     ";
 
-                    // 使用 BeginInvoke 在 UI 线程上执行脚本
-                    // BeginInvoke 会将回调排队到 UI 线程，不会立即执行
+                    // ʹ�� BeginInvoke �� UI �߳���ִ�нű�
+                    // BeginInvoke �Ὣ�ص��Ŷӵ� UI �̣߳���������ִ��
                     webViewRef.BeginInvoke(new Action(() =>
                     {
                         try
                         {
-                            // 在 UI 线程上访问 CoreWebView2
+                            // �� UI �߳��Ϸ��� CoreWebView2
                             var coreWebView2 = webViewRef.CoreWebView2;
                             if (coreWebView2 == null)
                             {
@@ -1073,15 +1073,15 @@ namespace BrowserHost
                 var body = reader.ReadToEnd();
                 Console.WriteLine($"[Program] Install complete notification: {body}");
 
-                // 通知 WebView2 JavaScript（必须从 UI 线程调用）
-                // 先获取 WebView 的本地引用
+                // ֪ͨ WebView2 JavaScript������� UI �̵߳��ã�
+                // �Ȼ�ȡ WebView �ı�������
                 var webViewRef = _webView;
                 var uiContext = _uiContext;
                 if (webViewRef != null)
                 {
                     Console.WriteLine("[Program] WebView available, dispatching event...");
 
-                    // 准备脚本内容（在主线程上执行转义）
+                    // ׼���ű����ݣ������߳���ִ��ת�壩
                     var bodyJson = Uri.EscapeDataString(body);
                     var script = $@"
                         (function() {{
@@ -1098,13 +1098,13 @@ namespace BrowserHost
                         }})();
                     ";
 
-                    // 使用 BeginInvoke 在 UI 线程上执行脚本
+                    // ʹ�� BeginInvoke �� UI �߳���ִ�нű�
                     webViewRef.BeginInvoke(new Action(() =>
                     {
                         try
                         {
-                            // 在 UI 线程上直接访问 CoreWebView2
-                            // BeginInvoke 回调在 UI 线程上运行，此时 CoreWebView2 应该可用
+                            // �� UI �߳���ֱ�ӷ��� CoreWebView2
+                            // BeginInvoke �ص��� UI �߳������У���ʱ CoreWebView2 Ӧ�ÿ���
                             if (webViewRef.CoreWebView2 == null)
                             {
                                 Console.WriteLine("[Program] Install: CoreWebView2 is null!");
@@ -1137,12 +1137,12 @@ namespace BrowserHost
             }
         }
 
-        // 清空下载历史（WebUI -> Godot）
+        // ���������ʷ��WebUI -> Godot��
         private static void HandleClearDownloadHistory(HttpListenerContext context)
         {
             try
             {
-                // 读取 WebUI 发送的请求体（可能包含 include_files 参数）
+                // ��ȡ WebUI ���͵������壨���ܰ��� include_files ������
                 string requestBody = "";
                 using (var reader = new StreamReader(context.Request.InputStream))
                 {
@@ -1151,7 +1151,7 @@ namespace BrowserHost
 
                 Console.WriteLine($"[Program] HandleClearDownloadHistory: requestBody={requestBody}");
 
-                // 转发给 Godot 处理
+                // ת���� Godot ����
                 var httpClient = new System.Net.Http.HttpClient();
                 httpClient.Timeout = TimeSpan.FromSeconds(10);
 
@@ -1165,8 +1165,8 @@ namespace BrowserHost
                     var buffer = Encoding.UTF8.GetBytes("{\"success\":true}");
                     context.Response.OutputStream.Write(buffer);
 
-                    // 清空成功后，通知 WebUI 本地历史也被清空
-                    // 这样可以防止 WebUI 在收到响应前就收到下一轮的轮询数据
+                    // ��ճɹ���֪ͨ WebUI ������ʷҲ�����
+                    // �������Է�ֹ WebUI ���յ���Ӧǰ���յ���һ�ֵ���ѯ����
                     NotifyWebUIClearHistoryComplete();
                 }
                 else
@@ -1185,7 +1185,7 @@ namespace BrowserHost
             }
         }
 
-        // 转发请求给 Godot LocalServer（支持所有 HTTP 方法）
+        // ת������� Godot LocalServer��֧������ HTTP ������
         private static void ForwardToGodot(HttpListenerContext context)
         {
             try
@@ -1199,10 +1199,10 @@ namespace BrowserHost
                 var httpClient = new System.Net.Http.HttpClient();
                 httpClient.Timeout = TimeSpan.FromSeconds(30);
 
-                // 创建请求，保留原始 HTTP 方法
+                // �������󣬱���ԭʼ HTTP ����
                 var request = new HttpRequestMessage(new HttpMethod(context.Request.HttpMethod), url);
 
-                // 转发请求头（排除 host）
+                // ת������ͷ���ų� host��
                 foreach (var key in context.Request.Headers.AllKeys)
                 {
                     if (key != null)
@@ -1215,7 +1215,7 @@ namespace BrowserHost
                     }
                 }
 
-                // 转发请求体（如果是 POST/PUT）
+                // ת�������壨����� POST/PUT��
                 if (context.Request.HttpMethod == "POST" || context.Request.HttpMethod == "PUT")
                 {
                     using var reader = new StreamReader(context.Request.InputStream);
@@ -1241,7 +1241,7 @@ namespace BrowserHost
             }
         }
 
-        // 转发静态文件请求给 Godot LocalServer（仅 GET）
+        // ת����̬�ļ������ Godot LocalServer���� GET��
         private static void ForwardToGodotStaticFile(HttpListenerContext context)
         {
             try
@@ -1255,7 +1255,7 @@ namespace BrowserHost
                 var httpClient = new System.Net.Http.HttpClient();
                 httpClient.Timeout = TimeSpan.FromSeconds(10);
 
-                // 转发请求到 Godot
+                // ת������ Godot
                 var request = new HttpRequestMessage(HttpMethod.Get, url);
                 foreach (var key in context.Request.Headers.AllKeys)
                 {
@@ -1284,7 +1284,7 @@ namespace BrowserHost
             }
         }
 
-        // 通知 WebUI 历史清空完成（用于阻止轮询重新填充历史）
+        // ֪ͨ WebUI ��ʷ�����ɣ�������ֹ��ѯ���������ʷ��
         private static void NotifyWebUIClearHistoryComplete()
         {
             var webView = _webView;
@@ -1301,7 +1301,7 @@ namespace BrowserHost
                         return;
                     }
 
-                    // 发送一个事件，通知 downloads.js 设置 _localHistoryCleared = true
+                    // ����һ���¼���֪ͨ downloads.js ���� _localHistoryCleared = true
                     var script = @"
                         (function() {
                             if (window.STS2Downloads) {
@@ -1318,7 +1318,7 @@ namespace BrowserHost
             }));
         }
 
-        // 通知 WebUI 下载完成（静态方法，供 Aria2 事件回调调用）
+        // ֪ͨ WebUI ������ɣ���̬�������� Aria2 �¼��ص����ã�
         public static void NotifyWebUIOfDownloadComplete(string modName, string downloadId)
         {
             var webView = _webView;
@@ -1358,7 +1358,7 @@ namespace BrowserHost
             }));
         }
 
-        // 閫氱煡 WebUI 瀹夎瀹屾垚锛堥潤鎬佹柟娉曪紝渚?Godot 璋冪敤锛?
+        // 通知 WebUI 安装完成（静态方法，�?Godot 调用�?
         public static void NotifyWebUIOfInstallComplete(string modName, string downloadId)
         {
             var webView = _webView;
@@ -1398,7 +1398,7 @@ namespace BrowserHost
             }));
         }
 
-        // 通知 WebUI DPI 缩放变化（静态方法，供 HTTP 端点调用）
+        // ֪ͨ WebUI DPI ���ű仯����̬�������� HTTP �˵���ã�
         public static void SetDpiScale(double scale)
         {
             var webView = _webView;
@@ -1482,32 +1482,32 @@ namespace BrowserHost
         [STAThread]
         static void Main(string[] args)
         {
-            // 创建 Job Object - 这是关键！确保进程终止时自动清理所有句柄
+            // ���� Job Object - ���ǹؼ���ȷ��������ֹʱ�Զ��������о��
             IntPtr jobHandle = CreateJobObjectW(IntPtr.Zero, null);
             if (jobHandle != IntPtr.Zero)
             {
-                // 设置 Job 限制：进程组的句柄关闭时自动终止进程
+                // ���� Job ���ƣ�������ľ���ر�ʱ�Զ���ֹ����
                 var limitInfo = new JOBOBJECT_BASIC_LIMIT_INFORMATION();
                 limitInfo.LimitFlags = JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE;
 
-                // 将当前进程加入 Job Object
+                // ����ǰ���̼��� Job Object
                 IntPtr currentProcess = GetCurrentProcess();
                 bool assigned = AssignProcessToJobObject(jobHandle, currentProcess);
-                Console.WriteLine($"[BrowserHost] Job Object 创建: {assigned}");
+                Console.WriteLine($"[BrowserHost] Job Object ����: {assigned}");
 
-                // 注意：不需要手动 CloseHandle(jobHandle)，进程退出时系统会自动清理
+                // ע�⣺����Ҫ�ֶ� CloseHandle(jobHandle)�������˳�ʱϵͳ���Զ�����
             }
 
             IntPtr parentHwnd = IntPtr.Zero;
             int initialWidth = 1280;
             int initialHeight = 720;
-            int initialPort = 28900;  // 默认端口
+            int initialPort = 28900;  // Ĭ�϶˿�
 
-            // 从命令行参数获取父窗口句柄和初始尺寸
+            // �������в�����ȡ�����ھ���ͳ�ʼ�ߴ�
             if (args.Length >= 1 && long.TryParse(args[0], out var parsedHwnd))
             {
                 parentHwnd = new IntPtr(parsedHwnd);
-                Console.WriteLine($"[BrowserHost] 父窗口句柄: {parentHwnd}");
+                Console.WriteLine($"[BrowserHost] �����ھ��: {parentHwnd}");
             }
 
             if (args.Length >= 4)
@@ -1518,7 +1518,7 @@ namespace BrowserHost
                     initialHeight = h;
                 if (int.TryParse(args[3], out var p))
                     initialPort = p;
-                Console.WriteLine($"[BrowserHost] 初始尺寸: {initialWidth}x{initialHeight}, 端口: {initialPort}");
+                Console.WriteLine($"[BrowserHost] ��ʼ�ߴ�: {initialWidth}x{initialHeight}, �˿�: {initialPort}");
             }
             else if (args.Length >= 3)
             {
@@ -1526,10 +1526,10 @@ namespace BrowserHost
                     initialWidth = w;
                 if (int.TryParse(args[2], out var h))
                     initialHeight = h;
-                Console.WriteLine($"[BrowserHost] 初始尺寸: {initialWidth}x{initialHeight}");
+                Console.WriteLine($"[BrowserHost] ��ʼ�ߴ�: {initialWidth}x{initialHeight}");
             }
 
-            // 创建 WebView2 宿主
+            // ���� WebView2 ����
             var browser = new BrowserHost(parentHwnd, initialWidth, initialHeight);
 
             Application.Run();
@@ -1577,8 +1577,8 @@ namespace BrowserHost
         private System.Windows.Forms.Timer? _mouseCheckTimer;
         private System.Drawing.Point _lastMousePos;
         private const int DRAWER_WIDTH = 260;
-        private const int TOGGLE_WIDTH_EXPANDED = 44;   // 展开后完整宽度
-        private const int TOGGLE_WIDTH_COLLAPSED = 12;  // 常态露出12px在边缘
+        private const int TOGGLE_WIDTH_EXPANDED = 44;   // չ������������
+        private const int TOGGLE_WIDTH_COLLAPSED = 12;  // ��̬¶��12px�ڱ�Ե
         private const int TOGGLE_HEIGHT = 44;
         private const int ANIM_STEPS = 10;
         private const int ANIM_INTERVAL = 15;
@@ -1592,6 +1592,12 @@ namespace BrowserHost
 
         [DllImport("user32.dll")]
         private static extern bool GetWindowRect(IntPtr hWnd, out RECT lpRect);
+
+        [DllImport("user32.dll")]
+        private static extern bool GetClientRect(IntPtr hWnd, out RECT lpRect);
+
+        [DllImport("user32.dll")]
+        private static extern bool IsWindow(IntPtr hWnd);
 
         [DllImport("user32.dll")]
         private static extern bool ShowWindow(IntPtr hWnd, int nCmdShow);
@@ -1645,7 +1651,7 @@ namespace BrowserHost
 
             _currentPort = _readPortFromFile();
 
-            Console.WriteLine("[BrowserHost] 创建容器窗体");
+            Console.WriteLine("[BrowserHost] ������������");
             _container = new Form();
             _container.FormBorderStyle = FormBorderStyle.None;
             _container.Text = "BrowserHost";
@@ -1660,7 +1666,7 @@ namespace BrowserHost
             _container.AutoScaleMode = AutoScaleMode.Dpi;
             _container.Closing += (s, e) =>
             {
-                Console.WriteLine("[BrowserHost] 容器正在关闭");
+                Console.WriteLine("[BrowserHost] �������ڹر�");
             };
 
             InitializeAsync();
@@ -1679,13 +1685,13 @@ namespace BrowserHost
                     var content = File.ReadAllText(portFilePath).Trim();
                     if (int.TryParse(content, out int port))
                     {
-                        Console.WriteLine($"[BrowserHost] 从文件读取端口: {port}");
+                        Console.WriteLine($"[BrowserHost] ���ļ���ȡ�˿�: {port}");
                         return port;
                     }
                 }
                 catch (Exception ex)
                 {
-                    Console.WriteLine($"[BrowserHost] 读取端口文件失败: {ex.Message}");
+                    Console.WriteLine($"[BrowserHost] ��ȡ�˿��ļ�ʧ��: {ex.Message}");
                 }
             }
 
@@ -1699,17 +1705,17 @@ namespace BrowserHost
                     var content = File.ReadAllText(altPath).Trim();
                     if (int.TryParse(content, out int port))
                     {
-                        Console.WriteLine($"[BrowserHost] 从备用路径读取端口: {port}");
+                        Console.WriteLine($"[BrowserHost] �ӱ���·����ȡ�˿�: {port}");
                         return port;
                     }
                 }
                 catch (Exception ex)
                 {
-                    Console.WriteLine($"[BrowserHost] 读取备用端口文件失败: {ex.Message}");
+                    Console.WriteLine($"[BrowserHost] ��ȡ���ö˿��ļ�ʧ��: {ex.Message}");
                 }
             }
 
-            Console.WriteLine($"[BrowserHost] 使用默认端口: {_defaultPort}");
+            Console.WriteLine($"[BrowserHost] ʹ��Ĭ�϶˿�: {_defaultPort}");
             return _defaultPort;
         }
 
@@ -1723,10 +1729,10 @@ namespace BrowserHost
             }
         }
 
-        // 检测实际可用的端口
+        // ���ʵ�ʿ��õĶ˿�
         private async Task<int> _detectAvailablePortAsync()
         {
-            // 首先读取端口文件
+            // ���ȶ�ȡ�˿��ļ�
             var filePort = _readPortFromFile();
             var portsToTry = new List<int> { filePort };
             portsToTry.AddRange(_backupPorts);
@@ -1736,33 +1742,33 @@ namespace BrowserHost
                 try
                 {
                     using var client = new System.Net.Http.HttpClient();
-                    // 增加超时时间到 5 秒，给 Godot 更多响应时间
+                    // ���ӳ�ʱʱ�䵽 5 �룬�� Godot ������Ӧʱ��
                     client.Timeout = TimeSpan.FromSeconds(5);
                     var response = await client.GetAsync($"http://localhost:{port}/api/health");
                     if (response.IsSuccessStatusCode)
                     {
-                        Console.WriteLine($"[BrowserHost] 端口 {port} 可用");
+                        Console.WriteLine($"[BrowserHost] �˿� {port} ����");
                         return port;
                     }
                 }
                 catch (Exception ex)
                 {
-                    Console.WriteLine($"[BrowserHost] 端口 {port} 不可用: {ex.Message}");
+                    Console.WriteLine($"[BrowserHost] �˿� {port} ������: {ex.Message}");
                 }
             }
 
-            // 如果都不可用，返回文件中的端口作为默认值
-            Console.WriteLine($"[BrowserHost] 没有检测到可用端口，使用默认值: {filePort}");
+            // ����������ã������ļ��еĶ˿���ΪĬ��ֵ
+            Console.WriteLine($"[BrowserHost] û�м�⵽���ö˿ڣ�ʹ��Ĭ��ֵ: {filePort}");
             return filePort;
         }
 
-        // 带超时限制的端口检测（用于导航操作，避免长时间等待）
-        // 策略：直接使用文件中的端口，不做串行检测
-        // 因为 LocalServer 一旦启动就会保持运行，端口不会变
+        // ����ʱ���ƵĶ˿ڼ�⣨���ڵ������������ⳤʱ��ȴ���
+        // ���ԣ�ֱ��ʹ���ļ��еĶ˿ڣ��������м��
+        // ��Ϊ LocalServer һ�������ͻᱣ�����У��˿ڲ����
         private Task<int> _detectAvailablePortWithTimeoutAsync()
         {
             var filePort = _readPortFromFile();
-            Console.WriteLine($"[BrowserHost] 使用端口: {filePort}");
+            Console.WriteLine($"[BrowserHost] ʹ�ö˿�: {filePort}");
             return Task.FromResult(filePort);
         }
 
@@ -1770,7 +1776,7 @@ namespace BrowserHost
         {
             try
             {
-                Console.WriteLine("[BrowserHost] 开始初始化 WebView2");
+                Console.WriteLine("[BrowserHost] ��ʼ��ʼ�� WebView2");
 
                 var userDataFolder = Path.Combine(
                     Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
@@ -1778,17 +1784,17 @@ namespace BrowserHost
 
                 Directory.CreateDirectory(userDataFolder);
 
-                Console.WriteLine($"[BrowserHost] 用户数据目录: {userDataFolder}");
+                Console.WriteLine($"[BrowserHost] �û�����Ŀ¼: {userDataFolder}");
 
                 var env = await CoreWebView2Environment.CreateAsync(null, userDataFolder);
-                Console.WriteLine("[BrowserHost] 环境创建成功");
+                Console.WriteLine("[BrowserHost] ���������ɹ�");
 
                 _webView = new Microsoft.Web.WebView2.WinForms.WebView2();
                 _webView.Dock = DockStyle.Fill;
 
                 // Register WebView with Program class for static handlers
                 Program.SetWebView(_webView);
-                // 保存 UI 线程的 SynchronizationContext
+                // ���� UI �̵߳� SynchronizationContext
                 Program.SetUiContext(System.Threading.SynchronizationContext.Current);
 
                 _container!.Controls.Add(_webView);
@@ -1799,21 +1805,21 @@ namespace BrowserHost
                 await Task.Delay(200);
 
                 await _webView.EnsureCoreWebView2Async(env);
-                Console.WriteLine("[BrowserHost] CoreWebView2 初始化成功");
+                Console.WriteLine("[BrowserHost] CoreWebView2 ��ʼ���ɹ�");
 
                 _webView.CoreWebView2.Settings.AreDevToolsEnabled = true;
                 _webView.CoreWebView2.Settings.IsScriptEnabled = true;
                 _webView.CoreWebView2.Settings.IsWebMessageEnabled = true;
                 _webView.CoreWebView2.Settings.IsStatusBarEnabled = false;
 
-                // 注意：AddHostObjectToScript 不能在 Navigate 之前调用，必须在页面加载后
-                // 所以在 NavigationCompleted 中注册（见下方）
+                // ע�⣺AddHostObjectToScript ������ Navigate ֮ǰ���ã�������ҳ����غ�
+                // ������ NavigationCompleted ��ע�ᣨ���·���
 
                 _webView.NavigationStarting += (s, e) =>
                 {
-                    Console.WriteLine($"[BrowserHost] 导航开始: {e.Uri}");
+                    Console.WriteLine($"[BrowserHost] ������ʼ: {e.Uri}");
 
-                    // 取消任何挂起的请求，防止线程池饥饿
+                    // ȡ���κι�������󣬷�ֹ�̳߳ؼ���
                     Program.CancelPendingRequests();
 
                     // Track current port for download requests
@@ -1831,77 +1837,77 @@ namespace BrowserHost
                 _webView.NavigationCompleted += async (s, e) =>
                 {
                     var currentUrl = _webView.CoreWebView2?.Source ?? "";
-                    Console.WriteLine($"[BrowserHost] 导航完成: 成功={e.IsSuccess}, HTTP={e.HttpStatusCode}, URL={currentUrl}");
+                    Console.WriteLine($"[BrowserHost] �������: �ɹ�={e.IsSuccess}, HTTP={e.HttpStatusCode}, URL={currentUrl}");
 
-                    // 如果是 Nexus Mods 页面，不管成功失败都不进行本地重试
+                    // ����� Nexus Mods ҳ�棬���ܳɹ�ʧ�ܶ������б�������
                     if (currentUrl.Contains("nexusmods.com"))
                     {
                         if (!e.IsSuccess)
                         {
-                            Console.WriteLine($"[BrowserHost] Nexus 页面加载失败: {e.WebErrorStatus}");
-                            // 不执行任何重试，保持错误页面显示
+                            Console.WriteLine($"[BrowserHost] Nexus ҳ�����ʧ��: {e.WebErrorStatus}");
+                            // ��ִ���κ����ԣ����ִ���ҳ����ʾ
                         }
-                        return; // 跳过本地页面的 HostObject 注册逻辑
+                        return; // ��������ҳ��� HostObject ע���߼�
                     }
 
                     if (!e.IsSuccess)
                     {
-                        Console.WriteLine($"[BrowserHost] 错误: {e.WebErrorStatus}");
-                        // 只在首次失败时重试一次
+                        Console.WriteLine($"[BrowserHost] ����: {e.WebErrorStatus}");
+                        // ֻ���״�ʧ��ʱ����һ��
                         if (_retryCount == 0)
                         {
                             _retryCount = 1;
-                            // 重试时使用 hash URL，让 WebUI 正确切换到模组页
+                            // ����ʱʹ�� hash URL���� WebUI ��ȷ�л���ģ��ҳ
                             var retryUrl = $"http://localhost:{_currentPort}/index.html#mods";
-                            Console.WriteLine($"[BrowserHost] 重试导航到: {retryUrl}");
-                            // 重试前取消所有挂起请求
+                            Console.WriteLine($"[BrowserHost] ���Ե�����: {retryUrl}");
+                            // ����ǰȡ�����й�������
                             Program.CancelPendingRequests();
                             Thread.Sleep(300);
                             _webView.CoreWebView2.Navigate(retryUrl);
                         }
                         else
                         {
-                            Console.WriteLine($"[BrowserHost] 重试也失败，放弃");
-                            // 不再显示 MessageBox，避免阻塞 UI
-                            // 用户可以通过抽屉菜单的返回首页按钮重试
+                            Console.WriteLine($"[BrowserHost] ����Ҳʧ�ܣ�����");
+                            // ������ʾ MessageBox���������� UI
+                            // �û�����ͨ������˵��ķ�����ҳ��ť����
                         }
                     }
                     else
                     {
-                        Console.WriteLine($"[BrowserHost] 成功连接到端口 {_currentPort}");
-                        // 创建 BrowserHostObject 并设置更新弹窗回调
+                        Console.WriteLine($"[BrowserHost] �ɹ����ӵ��˿� {_currentPort}");
+                        // ���� BrowserHostObject �����ø��µ����ص�
                         var browserHostObj = new BrowserHostObject();
                         browserHostObj.aria2Manager = new Aria2Manager();
 
-                        // 立即启动 Aria2，确保页面加载前已就绪
-                        // 使用相对路径（与 BrowserHost.exe 同目录）
+                        // �������� Aria2��ȷ��ҳ�����ǰ�Ѿ���
+                        // ʹ�����·������ BrowserHost.exe ͬĿ¼��
                         string aria2Path = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "aria2c.exe");
                         Console.WriteLine($"[BrowserHost] Aria2 path: {aria2Path}");
                         Console.WriteLine($"[BrowserHost] Aria2 exists: {File.Exists(aria2Path)}");
                         var aria2Started = browserHostObj.aria2Manager.Start(aria2Path);
                         Console.WriteLine($"[BrowserHost] Aria2 started: {aria2Started}");
 
-                        // 设置共享 Aria2Manager 并启动 HTTP 监听器
-                        // 使用固定端口 18765 作为 Aria2 HTTP API 端口
+                        // ���ù��� Aria2Manager ������ HTTP ������
+                        // ʹ�ù̶��˿� 18765 ��Ϊ Aria2 HTTP API �˿�
                         Program.SetAria2Manager(browserHostObj.aria2Manager);
                         Console.WriteLine($"[BrowserHost] Shared Aria2Manager set, IsRunning: {browserHostObj.aria2Manager.IsRunning}");
 
-                        // 连接 Aria2 下载完成事件（用于通知 WebUI）
+                        // ���� Aria2 ��������¼�������֪ͨ WebUI��
                         browserHostObj.aria2Manager.DownloadComplete += (sender, dl) => {
                             Console.WriteLine($"[BrowserHost] Aria2 download complete: GID={dl.Gid}, path={dl.SavePath}");
-                            // 从下载路径提取文件名作为 mod_name
+                            // ������·����ȡ�ļ�����Ϊ mod_name
                             var modName = Path.GetFileNameWithoutExtension(dl.SavePath);
-                            // 从缓存的发送数据获取 download_id（通过 GID 匹配）
-                            // 这里直接使用文件名作为标识
+                            // �ӻ���ķ������ݻ�ȡ download_id��ͨ�� GID ƥ�䣩
+                            // ����ֱ��ʹ���ļ�����Ϊ��ʶ
                             var downloadId = $"aria2_{dl.Gid}";
                             Program.NotifyWebUIOfDownloadComplete(modName, downloadId);
                         };
 
-                        // 连接下载进度事件（用于更新 WebUI）
+                        // �������ؽ����¼������ڸ��� WebUI��
                         browserHostObj.aria2Manager.ProgressChanged += (sender, progressData) => {
                             var (gid, progress, speed) = progressData;
-                            // 进度更新可以通过轮询机制传递到 WebUI
-                            // 目前暂时不实现实时进度推送（WebUI 通过 /api/downloads 轮询获取活跃任务）
+                            // ���ȸ��¿���ͨ����ѯ���ƴ��ݵ� WebUI
+                            // Ŀǰ��ʱ��ʵ��ʵʱ�������ͣ�WebUI ͨ�� /api/downloads ��ѯ��ȡ��Ծ����
                             // Console.WriteLine($"[BrowserHost] Aria2 progress: GID={gid}, {progress}%, {speed} bytes/s");
                         };
 
@@ -1911,11 +1917,11 @@ namespace BrowserHost
                         // aria2Manager.CleanupOrphanProcesses() will be called here if needed
                         browserHostObj.SetUpdateDialogCallback((currentVer, newVer, changelog, downloadUrl) =>
                         {
-                            Console.WriteLine($"[BrowserHost] 显示更新弹窗: {currentVer} -> {newVer}");
+                            Console.WriteLine($"[BrowserHost] ��ʾ���µ���: {currentVer} -> {newVer}");
                             ShowUpdateDialog(currentVer, newVer, changelog, downloadUrl);
                         });
 
-                        // 设置导航回调
+                        // ���õ����ص�
                         browserHostObj.SetNavigateCallback((url) =>
                         {
                             Console.WriteLine($"[BrowserHost] Navigate callback: {url}");
@@ -1925,17 +1931,17 @@ namespace BrowserHost
                             }
                         });
 
-                        // 导航成功后注册 Host Object（必须在页面加载后）
+                        // �����ɹ���ע�� Host Object��������ҳ����غ�
                         try
                         {
-                            // 设置 WebView 引用（用于 ExecuteScript）
+                            // ���� WebView ���ã����� ExecuteScript��
                             browserHostObj._webView = _webView;
                             _webView.CoreWebView2.AddHostObjectToScript("browserHost", browserHostObj);
-                            Console.WriteLine("[BrowserHost] AddHostObjectToScript 已注册");
+                            Console.WriteLine("[BrowserHost] AddHostObjectToScript ��ע��");
                         }
                         catch (Exception ex2)
                         {
-                            Console.WriteLine($"[BrowserHost] AddHostObjectToScript 注册失败: {ex2.Message}");
+                            Console.WriteLine($"[BrowserHost] AddHostObjectToScript ע��ʧ��: {ex2.Message}");
                             Console.WriteLine($"[BrowserHost] ex2 type: {ex2.GetType().FullName}");
                         }
                     }
@@ -1943,7 +1949,7 @@ namespace BrowserHost
 
                 _webView.CoreWebView2.NewWindowRequested += (s, e) =>
                 {
-                    Console.WriteLine($"[BrowserHost] 新窗口请求: {e.Uri}");
+                    Console.WriteLine($"[BrowserHost] �´�������: {e.Uri}");
                     e.Handled = true;
                     _webView?.CoreWebView2.Navigate(e.Uri);
                 };
@@ -1960,13 +1966,13 @@ namespace BrowserHost
                     Console.WriteLine($"[BrowserHost] Nexus page loaded, injecting extension...");
                     Console.WriteLine($"[BrowserHost] Current URL: {currentUrl}");
 
-                    // 等待页面完全加载（包括动态内容）
+                    // �ȴ�ҳ����ȫ���أ�������̬���ݣ�
                     await Task.Delay(2000);
 
                     await InjectExtensionScriptAsync();
                 };
 
-                // 监听 URL 变化（SPA 导航）
+                // ���� URL �仯��SPA ������
                 string lastInjectedUrl = "";
                 _webView.CoreWebView2.SourceChanged += async (s, e) =>
                 {
@@ -1974,14 +1980,14 @@ namespace BrowserHost
                     if (string.IsNullOrEmpty(currentUrl) || !currentUrl.Contains("nexusmods.com"))
                         return;
 
-                    // 避免重复注入同一页面
+                    // �����ظ�ע��ͬһҳ��
                     if (currentUrl == lastInjectedUrl)
                         return;
 
                     Console.WriteLine($"[BrowserHost] Nexus URL changed to: {currentUrl}");
                     lastInjectedUrl = currentUrl;
 
-                    // 等待页面内容更新
+                    // �ȴ�ҳ�����ݸ���
                     await Task.Delay(2000);
 
                     await InjectExtensionScriptAsync();
@@ -2017,7 +2023,7 @@ namespace BrowserHost
 
                             Console.WriteLine($"[BrowserHost] Extension script injected into Nexus page");
 
-                            // 延迟后检查脚本是否成功运行
+                            // �ӳٺ���ű��Ƿ�ɹ�����
                             await Task.Delay(3000);
                             var consoleCheck = await _webView.CoreWebView2.ExecuteScriptAsync(
                                 "(function(){ return !!window.STS2_EXTENSION_LOADED; })()"
@@ -2047,15 +2053,15 @@ namespace BrowserHost
                 }
 
                 _webView.CoreWebView2.Navigate($"http://localhost:{_currentPort}/index.html");
-                Console.WriteLine($"[BrowserHost] 导航到: http://localhost:{_currentPort}/index.html");
-                Console.WriteLine($"[BrowserHost] NavigationCompleted handler 已注册，等待页面加载...");
-                Console.WriteLine($"[BrowserHost] _webView.CoreWebView2 对象: {_webView.CoreWebView2 != null}");
+                Console.WriteLine($"[BrowserHost] ������: http://localhost:{_currentPort}/index.html");
+                Console.WriteLine($"[BrowserHost] NavigationCompleted handler ��ע�ᣬ�ȴ�ҳ�����...");
+                Console.WriteLine($"[BrowserHost] _webView.CoreWebView2 ����: {_webView.CoreWebView2 != null}");
 
-                // 延迟 3 秒后检查 Host Objects 是否注入（用于调试）
+                // �ӳ� 3 ����� Host Objects �Ƿ�ע�루���ڵ��ԣ�
                 await Task.Delay(3000);
-                Console.WriteLine($"[BrowserHost] 延迟检查完成");
+                Console.WriteLine($"[BrowserHost] �ӳټ�����");
 
-                // 诊断：检查 Host Object 是否在 JavaScript 中可用
+                // ��ϣ���� Host Object �Ƿ��� JavaScript �п���
                 try
                 {
                     var result = await _webView.CoreWebView2.ExecuteScriptAsync(
@@ -2067,17 +2073,17 @@ namespace BrowserHost
                         "  hasSyncBrowserHost: !!(window.chrome && window.chrome.webview && window.chrome.webview.hostObjects && window.chrome.webview.hostObjects.sync && window.chrome.webview.hostObjects.sync.browserHost)" +
                         "})"
                     );
-                    Console.WriteLine($"[BrowserHost] Host Object 诊断: {result}");
+                    Console.WriteLine($"[BrowserHost] Host Object ���: {result}");
                 }
                 catch (Exception diagEx)
                 {
-                    Console.WriteLine($"[BrowserHost] Host Object 诊断失败: {diagEx.Message}");
+                    Console.WriteLine($"[BrowserHost] Host Object ���ʧ��: {diagEx.Message}");
                 }
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"[BrowserHost] 初始化失败: {ex.Message}");
-                MessageBox.Show($"WebView2 初始化失败: {ex.Message}", "错误", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                Console.WriteLine($"[BrowserHost] ��ʼ��ʧ��: {ex.Message}");
+                MessageBox.Show($"WebView2 ��ʼ��ʧ��: {ex.Message}", "����", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }
 
@@ -2087,12 +2093,19 @@ namespace BrowserHost
 
             try
             {
+                // ��鸸�����Ƿ���Ч
+                if (!IsWindow(_parentHwnd))
+                {
+                    Console.WriteLine($"[BrowserHost] ��������Ч (0x{_parentHwnd:X})������Ƕ��");
+                    return;
+                }
+
                 IntPtr containerHwnd = _container.Handle;
-                Console.WriteLine($"[BrowserHost] 容器句柄: {containerHwnd}");
+                Console.WriteLine($"[BrowserHost] �������: {containerHwnd}");
 
                 if (containerHwnd == IntPtr.Zero)
                 {
-                    Console.WriteLine("[BrowserHost] 容器句柄为 0，等待...");
+                    Console.WriteLine("[BrowserHost] �������Ϊ 0���ȴ�...");
                     var timer = new System.Windows.Forms.Timer();
                     timer.Interval = 500;
                     timer.Tick += (s, e) =>
@@ -2108,20 +2121,20 @@ namespace BrowserHost
                     return;
                 }
 
-                // 先设置窗口大小
+                // �����ó�ʼ���ڴ�С
                 UpdateContainerSize();
 
-                // 再 SetParent
+                // �� SetParent
                 var result = SetParent(containerHwnd, _parentHwnd);
-                Console.WriteLine($"[BrowserHost] SetParent 结果: {result}");
+                Console.WriteLine($"[BrowserHost] SetParent ���: {result}");
 
-                // 清除 WS_EX_CLIENTEDGE 扩展样式（这会导致内容区向内缩进）
+                // ��� WS_EX_CLIENTEDGE ��չ��ʽ����ᵼ������������������
                 int exStyle = NativeMethods.GetWindowLong(containerHwnd, -20); // GWL_EXSTYLE = -20
                 if ((exStyle & 0x200) != 0) // WS_EX_CLIENTEDGE = 0x200
                 {
                     NativeMethods.SetWindowLong(containerHwnd, -20, exStyle & ~0x200);
-                    DebugLog($"[EmbedToParent] 清除 WS_EX_CLIENTEDGE, 原样式={exStyle}");
-                    // 让窗口重新应用样式
+                    DebugLog($"[EmbedToParent] ��� WS_EX_CLIENTEDGE, ԭ��ʽ={exStyle}");
+                    // �ô�������Ӧ����ʽ
                     SetWindowPos(containerHwnd, IntPtr.Zero, 0, 0, 0, 0, 0x0040 | 0x0001); // SWP_FRAMECHANGED | SWP_NOACTIVATE
                 }
 
@@ -2132,17 +2145,20 @@ namespace BrowserHost
                     _webView.BringToFront();
                 }
 
-                // 定期更新位置和大小
+                // SetParent �������ٴ����óߴ磬ȷ��������ȷ�ĸ����ڳߴ�
+                UpdateContainerSize();
+
+                // ���ڸ���λ�úʹ�С
                 _resizeTimer = new System.Windows.Forms.Timer();
                 _resizeTimer.Interval = 100;
                 _resizeTimer.Tick += (s, e) => UpdateContainerSize();
                 _resizeTimer.Start();
 
-                Console.WriteLine("[BrowserHost] 容器嵌入完成");
+                Console.WriteLine("[BrowserHost] ����Ƕ�����");
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"[BrowserHost] 嵌入失败: {ex.Message}");
+                Console.WriteLine($"[BrowserHost] Ƕ��ʧ��: {ex.Message}");
             }
         }
 
@@ -2153,25 +2169,36 @@ namespace BrowserHost
             try
             {
                 RECT parentRect;
-                if (!GetWindowRect(_parentHwnd, out parentRect))
+                if (!GetClientRect(_parentHwnd, out parentRect))
                 {
-                    DebugLog($"[UpdateContainerSize] GetWindowRect 失败");
-                    return;
+                    DebugLog($"[UpdateContainerSize] GetClientRect failed, fallback to GetWindowRect");
+                    if (!GetWindowRect(_parentHwnd, out parentRect))
+                    {
+                        DebugLog($"[UpdateContainerSize] GetWindowRect also failed");
+                        return;
+                    }
                 }
+                DebugLog($"[UpdateContainerSize] Using rect: {parentRect.Right - parentRect.Left}x{parentRect.Bottom - parentRect.Top}");
 
                 int parentWidth = parentRect.Right - parentRect.Left;
                 int parentHeight = parentRect.Bottom - parentRect.Top;
 
-                
+                // ǿ����С�߶ȣ���ֹ�����С�ߴ磨�� 48px��
+                // ����Ҫ����ǿ�ƣ�����������ʵ�ʿͻ����ߴ�
+                const int MIN_WIDTH = 400;
+                const int MIN_HEIGHT = 400;
+                if (parentWidth < MIN_WIDTH) parentWidth = MIN_WIDTH;
+                if (parentHeight < MIN_HEIGHT) parentHeight = MIN_HEIGHT;
+
                 if (parentWidth == _lastParentWidth && parentHeight == _lastParentHeight)
                     return;
 
                 _lastParentWidth = parentWidth;
                 _lastParentHeight = parentHeight;
 
-                Console.WriteLine($"[BrowserHost] 父窗口尺寸: {parentWidth}x{parentHeight}");
+                Console.WriteLine($"[BrowserHost] �����ڳߴ�: {parentWidth}x{parentHeight}");
 
-                // 子窗口位置相对于父窗口客户区
+                // �Ӵ���λ������ڸ����ڿͻ���
                 SetWindowPos(_container.Handle, IntPtr.Zero, 0, 0, parentWidth, parentHeight,
                     SWP_NOACTIVATE | SWP_NOZORDER | SWP_SHOWWINDOW);
 
@@ -2184,13 +2211,13 @@ namespace BrowserHost
                     _webView.Height = parentHeight;
                 }
 
-                Console.WriteLine($"[BrowserHost] 容器已调整: {_container!.Width}x{_container!.Height}");
+                Console.WriteLine($"[BrowserHost] �����ѵ���: {_container!.Width}x{_container!.Height}");
 
                 UpdateToggleButton();
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"[BrowserHost] 调整大小失败: {ex.Message}");
+                Console.WriteLine($"[BrowserHost] ������Сʧ��: {ex.Message}");
             }
         }
 
@@ -2198,7 +2225,7 @@ namespace BrowserHost
         {
                         if (_container == null) return;
 
-            // 创建抽屉面板（默认折叠在左侧）
+            // ����������壨Ĭ���۵�����ࣩ
             _drawerPanel = new Panel();
             _drawerPanel.Name = "DrawerPanel";
             _drawerPanel.Size = new System.Drawing.Size(DRAWER_WIDTH, _container.Height);
@@ -2209,62 +2236,62 @@ namespace BrowserHost
             _drawerPanel.Margin = new Padding(0);
             _drawerPanel.BorderStyle = BorderStyle.None;
 
-            // 创建抽屉内容容器
+            // ����������������
             var drawerContent = new VStackPanel();
             drawerContent.Name = "DrawerContent";
             drawerContent.Dock = DockStyle.Fill;
             drawerContent.BackColor = Color.Transparent;
             _drawerPanel.Controls.Add(drawerContent);
 
-            // 创建返回首页按钮
-            var homeBtn = new DrawerMenuButton("⌂ 首页", 44);
+            // ����������ҳ��ť
+            var homeBtn = new DrawerMenuButton("? ��ҳ", 44);
             homeBtn.Dock = DockStyle.Top;
             homeBtn.Click += async (s, e) =>
             {
-                Console.WriteLine("[BrowserHost] 抽屉菜单: 返回首页");
+                Console.WriteLine("[BrowserHost] ����˵�: ������ҳ");
                 if (_webView?.CoreWebView2 != null)
                 {
-                    // 取消任何挂起的请求，防止线程池饥饿
+                    // ȡ���κι�������󣬷�ֹ�̳߳ؼ���
                     Program.CancelPendingRequests();
 
-                    // 检测实际可用的端口（带超时限制）
+                    // ���ʵ�ʿ��õĶ˿ڣ�����ʱ���ƣ�
                     var availablePort = await _detectAvailablePortWithTimeoutAsync();
-                    Console.WriteLine($"[BrowserHost] 返回首页，检测到可用端口: {availablePort}");
-                    // 使用 hash 路由 #mods，服务器返回 index.html，JavaScript 检测 hash 切换页面
+                    Console.WriteLine($"[BrowserHost] ������ҳ����⵽���ö˿�: {availablePort}");
+                    // ʹ�� hash ·�� #mods������������ index.html��JavaScript ��� hash �л�ҳ��
                     _webView.CoreWebView2.Navigate($"http://localhost:{availablePort}/index.html#mods");
                 }
                 CloseDrawer();
             };
             drawerContent.Controls.Add(homeBtn);
 
-            // 创建刷新页面按钮
-            var refreshBtn = new DrawerMenuButton("↻ 刷新", 44);
+            // ����ˢ��ҳ�水ť
+            var refreshBtn = new DrawerMenuButton("? ˢ��", 44);
             refreshBtn.Dock = DockStyle.Top;
             refreshBtn.Click += (s, e) =>
             {
-                Console.WriteLine("[BrowserHost] 抽屉菜单: 刷新页面");
+                Console.WriteLine("[BrowserHost] ����˵�: ˢ��ҳ��");
                 if (_webView?.CoreWebView2 != null)
                 {
                     _webView.CoreWebView2.Reload();
-                    Console.WriteLine("[BrowserHost] 页面已刷新");
+                    Console.WriteLine("[BrowserHost] ҳ����ˢ��");
                 }
                 CloseDrawer();
             };
             drawerContent.Controls.Add(refreshBtn);
 
-            // 创建配置页面
+            // ��������ҳ��
             var configPage = new ConfigPage();
             configPage.Visible = false;
             configPage.Dock = DockStyle.Fill;
             drawerContent.Controls.Add(configPage);
 
-            // 创建配置按钮
-            var configBtn = new DrawerMenuButton("⚙ 配置", 44);
+            // �������ð�ť
+            var configBtn = new DrawerMenuButton("? ����", 44);
             configBtn.Dock = DockStyle.Top;
             configBtn.Click += (s, e) =>
             {
-                Console.WriteLine("[BrowserHost] 抽屉菜单: 配置");
-                // 隐藏菜单，显示配置页面
+                Console.WriteLine("[BrowserHost] ����˵�: ����");
+                // ���ز˵�����ʾ����ҳ��
                 foreach (Control c in drawerContent.Controls)
                 {
                     c.Visible = false;
@@ -2274,7 +2301,7 @@ namespace BrowserHost
             };
             drawerContent.Controls.Add(configBtn);
 
-            // 配置文件页面，用于返回菜单
+            // �����ļ�ҳ�棬���ڷ��ز˵�
             configPage.OnBack += () =>
             {
                 configPage.Reset();
@@ -2286,40 +2313,40 @@ namespace BrowserHost
                 }
             };
 
-            // 保存端口
+            // ����˿�
             configPage.OnSavePort += (port) =>
             {
                 _updatePort(port);
-                MessageBox.Show("端口已保存，需要重启应用程序才能生效。", "提示", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                MessageBox.Show("�˿��ѱ��棬��Ҫ����Ӧ�ó��������Ч��", "��ʾ", MessageBoxButtons.OK, MessageBoxIcon.Information);
             };
 
-            // 重启服务
+            // ��������
             configPage.OnRestartService += () =>
             {
-                Console.WriteLine("[BrowserHost] 重启本地服务...");
-                // 重新导航到当前端口刷新连接
+                Console.WriteLine("[BrowserHost] �������ط���...");
+                // ���µ�������ǰ�˿�ˢ������
                 if (_webView?.CoreWebView2 != null)
                 {
                     _webView.CoreWebView2.Navigate($"http://localhost:{_currentPort}/index.html");
                 }
-                MessageBox.Show("服务已重启。", "提示", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                MessageBox.Show("������������", "��ʾ", MessageBoxButtons.OK, MessageBoxIcon.Information);
             };
 
-            // 清除缓存并刷新
+            // ������沢ˢ��
             configPage.OnClearCache += () =>
             {
-                Console.WriteLine("[BrowserHost] 清除缓存并刷新...");
+                Console.WriteLine("[BrowserHost] ������沢ˢ��...");
                 if (_webView?.CoreWebView2 != null)
                 {
                     _webView.CoreWebView2.Navigate($"http://localhost:{_currentPort}/index.html");
                 }
-                MessageBox.Show("缓存已清除，页面已刷新。", "提示", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                MessageBox.Show("�����������ҳ����ˢ�¡�", "��ʾ", MessageBoxButtons.OK, MessageBoxIcon.Information);
             };
 
-            // 检查更新 - 直接调用 API 并处理结果，与原版 STS2Settings.checkForUpdates 流程一致
+            // ������ - ֱ�ӵ��� API �������������ԭ�� STS2Settings.checkForUpdates ����һ��
             configPage.OnCheckUpdates += () =>
             {
-                Console.WriteLine("[BrowserHost] 检查更新...");
+                Console.WriteLine("[BrowserHost] ������...");
                 if (_webView?.CoreWebView2 != null)
                 {
                     string script = "(async function() { " +
@@ -2348,7 +2375,7 @@ namespace BrowserHost
                 }
             };
 
-            // 创建分隔线
+            // �����ָ���
             var sep1 = new Panel();
             sep1.Name = "Sep1";
             sep1.Size = new System.Drawing.Size(DRAWER_WIDTH - 20, 1);
@@ -2357,29 +2384,29 @@ namespace BrowserHost
             sep1.Margin = new Padding(10, 10, 10, 0);
             drawerContent.Controls.Add(sep1);
 
-            // 创建启动原版按钮
-            var vanillaBtn = new DrawerMenuButton("▶ 启动原版", 44);
+            // ��������ԭ�水ť
+            var vanillaBtn = new DrawerMenuButton("? ����ԭ��", 44);
             vanillaBtn.Dock = DockStyle.Top;
             vanillaBtn.Click += (s, e) =>
             {
-                Console.WriteLine("[BrowserHost] 抽屉菜单: 启动原版");
+                Console.WriteLine("[BrowserHost] ����˵�: ����ԭ��");
                 System.Diagnostics.Process.Start("steam://launch/2868840");
                 CloseDrawer();
             };
             drawerContent.Controls.Add(vanillaBtn);
 
-            // 创建启动模组版按钮
-            var moddedBtn = new DrawerMenuButton("▶ 启动模组版", 44);
+            // ��������ģ��水ť
+            var moddedBtn = new DrawerMenuButton("? ����ģ���", 44);
             moddedBtn.Dock = DockStyle.Top;
             moddedBtn.Click += (s, e) =>
             {
-                Console.WriteLine("[BrowserHost] 抽屉菜单: 启动模组版");
+                Console.WriteLine("[BrowserHost] ����˵�: ����ģ���");
                 System.Diagnostics.Process.Start("steam://launch/2868840/dialog");
                 CloseDrawer();
             };
             drawerContent.Controls.Add(moddedBtn);
 
-            // 创建分隔线
+            // �����ָ���
             var sep2 = new Panel();
             sep2.Name = "Sep2";
             sep2.Size = new System.Drawing.Size(DRAWER_WIDTH - 20, 1);
@@ -2388,12 +2415,12 @@ namespace BrowserHost
             sep2.Margin = new Padding(10, 10, 10, 0);
             drawerContent.Controls.Add(sep2);
 
-            // 创建退出按钮
-            var exitBtn = new DrawerMenuButton("✕ 退出", 44);
+            // �����˳���ť
+            var exitBtn = new DrawerMenuButton("? �˳�", 44);
             exitBtn.Dock = DockStyle.Top;
             exitBtn.Click += (s, e) =>
             {
-                Console.WriteLine("[BrowserHost] 抽屉菜单: 退出");
+                Console.WriteLine("[BrowserHost] ����˵�: �˳�");
                 Environment.Exit(0);
             };
             drawerContent.Controls.Add(exitBtn);
@@ -2401,7 +2428,7 @@ namespace BrowserHost
             _container.Controls.Add(_drawerPanel);
             _drawerPanel.BringToFront();
 
-            // 创建 Toggle 按钮
+            // ���� Toggle ��ť
             _toggleBtn = new ToggleButton();
             _toggleBtn.Name = "ToggleDrawer";
             _toggleBtn.Size = new System.Drawing.Size(TOGGLE_WIDTH_COLLAPSED, TOGGLE_HEIGHT);
@@ -2410,7 +2437,7 @@ namespace BrowserHost
             _container.Controls.Add(_toggleBtn);
             _toggleBtn.BringToFront();
 
-            // 鼠标离开时延迟收缩
+            // ����뿪ʱ�ӳ�����
             _toggleBtn.MouseLeave += (s, e) =>
             {
                 _isHovering = false;
@@ -2435,20 +2462,20 @@ namespace BrowserHost
                 else OpenDrawer();
             };
 
-            // 启动定时器轮询检测鼠标位置
+            // ������ʱ����ѯ������λ��
             _mouseCheckTimer = new System.Windows.Forms.Timer();
-            _mouseCheckTimer.Interval = 50;  // 每 50ms 检测一次
+            _mouseCheckTimer.Interval = 50;  // ÿ 50ms ���һ��
             _mouseCheckTimer.Tick += (s, e) => OnMouseCheckTick();
             _mouseCheckTimer.Start();
 
-            Console.WriteLine("[BrowserHost] DrawerToggleButton 已创建");
+            Console.WriteLine("[BrowserHost] DrawerToggleButton �Ѵ���");
         }
 
         private void OnMouseCheckTick()
         {
             if (_toggleBtn == null || _container == null) return;
 
-            // 抽屉展开时，不处理悬停逻辑
+            // ����չ��ʱ����������ͣ�߼�
             if (_isDrawerOpen) return;
 
             var mouseScreenPos = System.Windows.Forms.Control.MousePosition;
@@ -2494,9 +2521,9 @@ namespace BrowserHost
         private System.Drawing.Drawing2D.GraphicsPath CreateRoundedRectRight(System.Drawing.Rectangle rect, int radius)
         {
             var path = new System.Drawing.Drawing2D.GraphicsPath();
-            // 限制圆角半径
+            // ����Բ�ǰ뾶
             radius = Math.Min(radius, rect.Width / 2 - 1);
-            // 宽度太小时不画圆角，直接用矩形
+            // ����̫Сʱ����Բ�ǣ�ֱ���þ���
             if (radius <= 1 || rect.Width <= 8)
             {
                 path.AddRectangle(rect);
@@ -2506,12 +2533,12 @@ namespace BrowserHost
             int right = rect.Right;
             int bottom = rect.Bottom;
 
-            // 从顶边开始，顺时针绘制
-            path.AddLine(rect.Left, rect.Top + radius, right - radius, rect.Top);  // 上边
-            path.AddArc(right - diameter, rect.Top, diameter, diameter, 270, 90);   // 右上圆角
-            path.AddArc(right - diameter, bottom - diameter, diameter, diameter, 0, 90); // 右下圆角
-            path.AddLine(rect.Left, bottom, right - radius, bottom);                // 下边
-            path.AddLine(rect.Left, bottom, rect.Left, rect.Top + radius);              // 左边（直角）
+            // �Ӷ��߿�ʼ��˳ʱ�����
+            path.AddLine(rect.Left, rect.Top + radius, right - radius, rect.Top);  // �ϱ�
+            path.AddArc(right - diameter, rect.Top, diameter, diameter, 270, 90);   // ����Բ��
+            path.AddArc(right - diameter, bottom - diameter, diameter, diameter, 0, 90); // ����Բ��
+            path.AddLine(rect.Left, bottom, right - radius, bottom);                // �±�
+            path.AddLine(rect.Left, bottom, rect.Left, rect.Top + radius);              // ��ߣ�ֱ�ǣ�
             path.CloseFigure();
             return path;
         }
@@ -2541,11 +2568,11 @@ namespace BrowserHost
             if (_drawerPanel == null || _isDrawerOpen) return;
             _isDrawerOpen = true;
             _isAnimating = true;
-            // 确保抽屉面板可见
+            // ȷ���������ɼ�
             if (_drawerPanel != null)
             {
                 _drawerPanel.Visible = true;
-                Console.WriteLine("[BrowserHost] OpenDrawer: DrawerPanel 已显示");
+                Console.WriteLine("[BrowserHost] OpenDrawer: DrawerPanel ����ʾ");
             }
 
             var tween = new System.Windows.Forms.Timer();
@@ -2560,7 +2587,7 @@ namespace BrowserHost
                 int newX = startX + (endX - startX) * step / ANIM_STEPS;
                 _drawerPanel.Location = new System.Drawing.Point(newX, 0);
 
-                // ToggleButton 跟随移动
+                // ToggleButton �����ƶ�
                 if (_toggleBtn != null)
                 {
                     int btnNewX = newX + DRAWER_WIDTH;
@@ -2571,7 +2598,7 @@ namespace BrowserHost
                 {
                     tween.Stop();
                     _isAnimating = false;
-                    // 动画结束，按钮跟随到抽屉右边
+                    // ������������ť���浽�����ұ�
                     if (_toggleBtn != null)
                     {
                         _toggleBtn.Location = new System.Drawing.Point(DRAWER_WIDTH, _toggleBtn.Location.Y);
@@ -2599,7 +2626,7 @@ namespace BrowserHost
                 int newX = startX + (endX - startX) * step / ANIM_STEPS;
                 _drawerPanel.Location = new System.Drawing.Point(newX, 0);
 
-                // ToggleButton 跟随抽屉移动（保持相对位置）
+                // ToggleButton ��������ƶ����������λ�ã�
                 if (_toggleBtn != null)
                 {
                     int btnNewX = newX + DRAWER_WIDTH;
@@ -2610,11 +2637,11 @@ namespace BrowserHost
                 {
                     tween.Stop();
                     _isAnimating = false;
-                    // 动画结束后隐藏抽屉面板，避免阴影残留
+                    // �������������س�����壬������Ӱ����
                     if (_drawerPanel != null)
                     {
                         _drawerPanel.Visible = false;
-                        Console.WriteLine("[BrowserHost] CloseDrawer: DrawerPanel 已隐藏");
+                        Console.WriteLine("[BrowserHost] CloseDrawer: DrawerPanel ������");
                     }
                 }
             };
@@ -2637,7 +2664,7 @@ namespace BrowserHost
         {
             if (_toggleBtn == null || _container == null) return;
 
-            // 按钮放在容器左边缘，垂直居中
+            // ��ť�����������Ե����ֱ����
             _toggleBtn.Location = new System.Drawing.Point(0, (_container.Height - TOGGLE_HEIGHT) / 2);
             _toggleBtn.BringToFront();
         }
@@ -2645,22 +2672,22 @@ namespace BrowserHost
         [DllImport("user32.dll")]
         private static extern bool DestroyMenu(IntPtr hMenu);
 
-        // 显示更新弹窗 - 在容器内显示覆盖层
+        // ��ʾ���µ��� - ����������ʾ���ǲ�
         private void ShowUpdateDialog(string currentVersion, string newVersion, string changelog, string downloadUrl)
         {
             Console.WriteLine($"[BrowserHost] ShowUpdateDialog called: current={currentVersion}, new={newVersion}");
 
             if (_container == null) return;
 
-            // 保存 ToggleButton 引用，供弹窗关闭后恢复
+            // ���� ToggleButton ���ã��������رպ�ָ�
             var toggleBtnRef = _toggleBtn;
             if (toggleBtnRef != null)
             {
                 toggleBtnRef.Visible = false;
-                Console.WriteLine("[BrowserHost] 隐藏 ToggleButton");
+                Console.WriteLine("[BrowserHost] ���� ToggleButton");
             }
 
-            // 在主线程创建和显示面板
+            // �����̴߳�������ʾ���
             if (_container.InvokeRequired)
             {
                 _container.Invoke(new Action(() =>
@@ -2676,16 +2703,16 @@ namespace BrowserHost
 
         private void ShowUpdateDialogInternal(string currentVersion, string newVersion, string changelog, string downloadUrl, ToggleButton? toggleBtnRef)
         {
-            // 显示弹窗时先关闭抽屉并完全隐藏，避免背景干扰
+            // ��ʾ����ʱ�ȹرճ��벢��ȫ���أ����ⱳ������
             CloseDrawer();
-            // 完全隐藏抽屉面板，避免阴影显示
+            // ��ȫ���س�����壬������Ӱ��ʾ
             if (_drawerPanel != null)
             {
                 _drawerPanel.Visible = false;
-                Console.WriteLine("[BrowserHost] 隐藏 DrawerPanel");
+                Console.WriteLine("[BrowserHost] ���� DrawerPanel");
             }
 
-            // 清理所有已存在的更新弹窗（防止重复添加）
+            // ���������Ѵ��ڵĸ��µ�������ֹ�ظ����ӣ�
             if (_container != null)
             {
                 var toRemove = new List<Control>();
@@ -2700,26 +2727,26 @@ namespace BrowserHost
                 {
                     _container.Controls.Remove(c);
                     c.Dispose();
-                    Console.WriteLine("[BrowserHost] 移除旧弹窗: " + c.Name);
+                    Console.WriteLine("[BrowserHost] �Ƴ��ɵ���: " + c.Name);
                 }
             }
             _updateDialogPanel = null;
 
-            // 创建新的更新弹窗面板
+            // �����µĸ��µ������
             _updateDialogPanel = new UpdateDialogPanel(currentVersion, newVersion, changelog);
             _updateDialogPanel.OnUpdateNow += () =>
             {
-                Console.WriteLine("[BrowserHost] 用户选择立即更新，调用Godot下载更新");
-                // 调用Web API触发Godot下载更新
+                Console.WriteLine("[BrowserHost] �û�ѡ���������£�����Godot���ظ���");
+                // ����Web API����Godot���ظ���
                 if (_webView?.CoreWebView2 != null)
                 {
                     var script = $@"
                         (async () => {{
                             try {{
                                 const result = await window.api.downloadUpdate('{downloadUrl.Replace("'", "\\'")}');
-                                console.log('[BrowserHost] 下载更新API返回:', result);
+                                console.log('[BrowserHost] ���ظ���API����:', result);
                             }} catch(e) {{
-                                console.error('[BrowserHost] 调用下载更新API失败:', e.message);
+                                console.error('[BrowserHost] �������ظ���APIʧ��:', e.message);
                             }}
                         }})()
                     ";
@@ -2727,45 +2754,45 @@ namespace BrowserHost
                 }
                 else
                 {
-                    Console.WriteLine("[BrowserHost] WebView2未就绪，无法调用下载API");
+                    Console.WriteLine("[BrowserHost] WebView2δ�������޷���������API");
                 }
-                // 关闭弹窗并清理
+                // �رյ���������
                 if (_updateDialogPanel != null)
                 {
                     _updateDialogPanel.Visible = false;
                     _container.Controls.Remove(_updateDialogPanel);
                     _updateDialogPanel.Dispose();
                     _updateDialogPanel = null;
-                    Console.WriteLine("[BrowserHost] 更新弹窗已关闭并清理");
+                    Console.WriteLine("[BrowserHost] ���µ����ѹرղ�����");
                 }
-                // 恢复 ToggleButton
+                // �ָ� ToggleButton
                 if (toggleBtnRef != null) toggleBtnRef.Visible = true;
             };
             _updateDialogPanel.OnLater += () =>
             {
-                Console.WriteLine("[BrowserHost] 用户选择稍后更新");
-                // 关闭弹窗并清理
+                Console.WriteLine("[BrowserHost] �û�ѡ���Ժ����");
+                // �رյ���������
                 if (_updateDialogPanel != null)
                 {
                     _updateDialogPanel.Visible = false;
                     _container.Controls.Remove(_updateDialogPanel);
                     _updateDialogPanel.Dispose();
                     _updateDialogPanel = null;
-                    Console.WriteLine("[BrowserHost] 更新弹窗已关闭并清理");
+                    Console.WriteLine("[BrowserHost] ���µ����ѹرղ�����");
                 }
-                // 恢复 ToggleButton
+                // �ָ� ToggleButton
                 if (toggleBtnRef != null) toggleBtnRef.Visible = true;
             };
 
-            // 添加到容器并显示
+            // ���ӵ���������ʾ
             _container.Controls.Add(_updateDialogPanel);
             _updateDialogPanel.BringToFront();
             _updateDialogPanel.ShowWithAnimation();
 
-            Console.WriteLine("[BrowserHost] UpdateDialogPanel 已显示");
+            Console.WriteLine("[BrowserHost] UpdateDialogPanel ����ʾ");
         }
 
-        // 配置页面 - 在抽屉内显示多页配置
+        // ����ҳ�� - �ڳ�������ʾ��ҳ����
         class ConfigPage : Panel
         {
             public event Action? OnBack;
@@ -2792,9 +2819,9 @@ namespace BrowserHost
                 DoubleBuffered = true;
                 SetStyle(ControlStyles.UserPaint | ControlStyles.AllPaintingInWmPaint, true);
 
-                // 返回按钮
+                // ���ذ�ť
                 _backBtn = new Button();
-                _backBtn.Text = "← 返回";
+                _backBtn.Text = "�� ����";
                 _backBtn.Size = new Size(80, 32);
                 _backBtn.Location = new Point(10, 10);
                 _backBtn.FlatStyle = FlatStyle.Flat;
@@ -2804,18 +2831,18 @@ namespace BrowserHost
                 _backBtn.Click += (s, e) => OnBack?.Invoke();
                 this.Controls.Add(_backBtn);
 
-                // 标题
+                // ����
                 _titleLabel = new Label();
-                _titleLabel.Text = "管理器配置";
+                _titleLabel.Text = "����������";
                 _titleLabel.Font = new Font("Segoe UI", 12f, FontStyle.Bold);
                 _titleLabel.ForeColor = Color.FromArgb(200, 220, 240);
                 _titleLabel.Location = new Point(10, 60);
                 _titleLabel.AutoSize = true;
                 this.Controls.Add(_titleLabel);
 
-                // 端口设置
+                // �˿�����
                 _portLabel = new Label();
-                _portLabel.Text = "端口:";
+                _portLabel.Text = "�˿�:";
                 _portLabel.Font = new Font("Segoe UI", 10f);
                 _portLabel.ForeColor = Color.FromArgb(180, 185, 200);
                 _portLabel.Location = new Point(10, 110);
@@ -2833,7 +2860,7 @@ namespace BrowserHost
                 this.Controls.Add(_portInput);
 
                 _saveBtn = new Button();
-                _saveBtn.Text = "保存";
+                _saveBtn.Text = "����";
                 _saveBtn.Size = new Size(80, 32);
                 _saveBtn.Location = new Point(170, 104);
                 _saveBtn.FlatStyle = FlatStyle.Flat;
@@ -2845,28 +2872,28 @@ namespace BrowserHost
                     int port;
                     if (int.TryParse(_portInput.Text, out port) && port >= 1024 && port <= 65535)
                     {
-                        Console.WriteLine($"[BrowserHost] 保存端口: {port}");
+                        Console.WriteLine($"[BrowserHost] ����˿�: {port}");
                         OnSavePort?.Invoke(port);
                     }
                     else
                     {
-                        Console.WriteLine($"[BrowserHost] 无效端口: {_portInput.Text}");
+                        Console.WriteLine($"[BrowserHost] ��Ч�˿�: {_portInput.Text}");
                     }
                 };
                 this.Controls.Add(_saveBtn);
 
-                // 版本信息
+                // �汾��Ϣ
                 _versionLabel = new Label();
-                _versionLabel.Text = "当前版本: v1.0.0";
+                _versionLabel.Text = "��ǰ�汾: v1.0.0";
                 _versionLabel.Font = new Font("Segoe UI", 10f);
                 _versionLabel.ForeColor = Color.FromArgb(150, 155, 170);
                 _versionLabel.Location = new Point(10, 160);
                 _versionLabel.AutoSize = true;
                 this.Controls.Add(_versionLabel);
 
-                // 重启服务按钮
+                // ��������ť
                 _restartBtn = new Button();
-                _restartBtn.Text = "重启服务";
+                _restartBtn.Text = "��������";
                 _restartBtn.Size = new Size(110, 32);
                 _restartBtn.Location = new Point(10, 210);
                 _restartBtn.FlatStyle = FlatStyle.Flat;
@@ -2875,14 +2902,14 @@ namespace BrowserHost
                 _restartBtn.Cursor = Cursors.Hand;
                 _restartBtn.Click += (s, e) =>
                 {
-                    Console.WriteLine("[BrowserHost] 重启服务");
+                    Console.WriteLine("[BrowserHost] ��������");
                     OnRestartService?.Invoke();
                 };
                 this.Controls.Add(_restartBtn);
 
-                // 清除缓存并刷新按钮
+                // ������沢ˢ�°�ť
                 _clearCacheBtn = new Button();
-                _clearCacheBtn.Text = "清除缓存并刷新";
+                _clearCacheBtn.Text = "������沢ˢ��";
                 _clearCacheBtn.Size = new Size(130, 32);
                 _clearCacheBtn.Location = new Point(130, 210);
                 _clearCacheBtn.FlatStyle = FlatStyle.Flat;
@@ -2891,14 +2918,14 @@ namespace BrowserHost
                 _clearCacheBtn.Cursor = Cursors.Hand;
                 _clearCacheBtn.Click += (s, e) =>
                 {
-                    Console.WriteLine("[BrowserHost] 清除缓存并刷新");
+                    Console.WriteLine("[BrowserHost] ������沢ˢ��");
                     OnClearCache?.Invoke();
                 };
                 this.Controls.Add(_clearCacheBtn);
 
-                // 检查更新按钮
+                // �����°�ť
                 _checkUpdateBtn = new Button();
-                _checkUpdateBtn.Text = "检查更新";
+                _checkUpdateBtn.Text = "������";
                 _checkUpdateBtn.Size = new Size(110, 32);
                 _checkUpdateBtn.Location = new Point(10, 260);
                 _checkUpdateBtn.FlatStyle = FlatStyle.Flat;
@@ -2907,12 +2934,12 @@ namespace BrowserHost
                 _checkUpdateBtn.Cursor = Cursors.Hand;
                 _checkUpdateBtn.Click += (s, e) =>
                 {
-                    Console.WriteLine("[BrowserHost] 检查更新");
+                    Console.WriteLine("[BrowserHost] ������");
                     OnCheckUpdates?.Invoke();
                 };
                 this.Controls.Add(_checkUpdateBtn);
 
-                // 更新状态标签
+                // ����״̬��ǩ
                 _updateStatusLabel = new Label();
                 _updateStatusLabel.Text = "";
                 _updateStatusLabel.Font = new Font("Segoe UI", 9f);
@@ -2922,13 +2949,13 @@ namespace BrowserHost
                 this.Controls.Add(_updateStatusLabel);
             }
 
-            // 设置更新状态文本
+            // ���ø���״̬�ı�
             public void SetUpdateStatus(string status)
             {
                 _updateStatusLabel.Text = status;
             }
 
-            // 重置页面状态
+            // ����ҳ��״̬
             public void Reset()
             {
                 _portInput.Text = "28900";
@@ -2942,7 +2969,7 @@ namespace BrowserHost
             }
         }
 
-        // 抽屉菜单按钮 - WebUI 风格
+        // ����˵���ť - WebUI ���
         class DrawerMenuButton : Button
         {
             private bool _isHovered = false;
@@ -2989,13 +3016,13 @@ namespace BrowserHost
                 g.SmoothingMode = SmoothingMode.AntiAlias;
                 g.TextRenderingHint = System.Drawing.Text.TextRenderingHint.ClearTypeGridFit;
 
-                // 背景
+                // ����
                 using (var bgBrush = new SolidBrush(this.BackColor))
                 {
                     g.FillRectangle(bgBrush, 0, 0, Width, Height);
                 }
 
-                // 左边高亮条（悬停时显示蓝色指示条）
+                // ��߸���������ͣʱ��ʾ��ɫָʾ����
                 if (_isHovered)
                 {
                     using (var indicatorBrush = new SolidBrush(Color.FromArgb(100, 192, 250)))
@@ -3004,7 +3031,7 @@ namespace BrowserHost
                     }
                 }
 
-                // 文字
+                // ����
                 using (var textBrush = new SolidBrush(this.ForeColor))
                 using (var font = new Font("Segoe UI", 10f, FontStyle.Regular))
                 {
@@ -3016,7 +3043,7 @@ namespace BrowserHost
             }
         }
 
-        // 垂直堆叠面板（用于抽屉内容）
+        // ��ֱ�ѵ���壨���ڳ������ݣ�
         class VStackPanel : Panel
         {
             public VStackPanel()
@@ -3026,7 +3053,7 @@ namespace BrowserHost
             }
         }
 
-        // 自定义 ToggleButton - 简化版本，避免渲染错误
+        // �Զ��� ToggleButton - �򻯰汾��������Ⱦ����
         class ToggleButton : Panel
         {
             public event EventHandler? ExpandRequested;
@@ -3098,7 +3125,7 @@ namespace BrowserHost
                 path.AddLine(0, h, 0, 0);
                 path.CloseFigure();
 
-                // 用路径作为裁剪区域，防止 WinForms 在路径外绘制背景
+                // ��·����Ϊ�ü����򣬷�ֹ WinForms ��·������Ʊ���
                 g.SetClip(path);
 
                 using (var brush = new SolidBrush(System.Drawing.Color.FromArgb(60, 90, 140)))
@@ -3198,7 +3225,7 @@ namespace BrowserHost
             public bool IsExpanded => _isExpanded;
         }
 
-        // 更新弹窗面板 - 简化版本，无动画，避免渲染问题
+        // ���µ������ - �򻯰汾���޶�����������Ⱦ����
         class UpdateDialogPanel : Panel
         {
             public event Action? OnUpdateNow;
@@ -3214,7 +3241,7 @@ namespace BrowserHost
                 _newVersion = newVersion;
                 _changelog = changelog;
 
-                // 面板配置 - 填充整个容器
+                // ������� - �����������
                 this.Name = "UpdateDialogPanel";
                 this.Dock = DockStyle.Fill;
                 this.BackColor = Color.FromArgb(22, 28, 38);
@@ -3222,47 +3249,47 @@ namespace BrowserHost
                 this.Margin = new Padding(0);
                 this.Visible = false;
 
-                // 创建中央内容面板（卡片样式）
+                // ��������������壨��Ƭ��ʽ��
                 var cardPanel = new Panel();
                 cardPanel.Name = "CardPanel";
                 cardPanel.Size = new Size(440, 380);
                 cardPanel.BackColor = Color.FromArgb(35, 42, 55);
                 cardPanel.BorderStyle = BorderStyle.None;
 
-                // 顶部装饰条
+                // ����װ����
                 var headerBar = new Panel();
                 headerBar.Size = new Size(440, 4);
                 headerBar.Location = new Point(0, 0);
                 headerBar.BackColor = Color.FromArgb(60, 130, 200);
                 cardPanel.Controls.Add(headerBar);
 
-                // 图标和标题区域
+                // ͼ��ͱ�������
                 var iconPanel = new Panel();
                 iconPanel.Size = new Size(440, 60);
                 iconPanel.Location = new Point(0, 20);
                 iconPanel.BackColor = Color.Transparent;
                 cardPanel.Controls.Add(iconPanel);
 
-                // 下载图标（用 Label 模拟）
+                // ����ͼ�꣨�� Label ģ�⣩
                 var iconLabel = new Label();
-                iconLabel.Text = "⬇";
+                iconLabel.Text = "?";
                 iconLabel.Font = new Font("Segoe UI", 28f, FontStyle.Regular);
                 iconLabel.ForeColor = Color.FromArgb(60, 130, 200);
                 iconLabel.Location = new Point(25, 0);
                 iconLabel.AutoSize = true;
                 iconPanel.Controls.Add(iconLabel);
 
-                // 顶部标题栏
+                // ����������
                 var titleLabel = new Label();
                 titleLabel.Name = "TitleLabel";
-                titleLabel.Text = "发现新版本";
+                titleLabel.Text = "�����°汾";
                 titleLabel.Font = new Font("Segoe UI", 18f, FontStyle.Bold);
                 titleLabel.ForeColor = Color.FromArgb(220, 230, 245);
                 titleLabel.Location = new Point(70, 8);
                 titleLabel.AutoSize = true;
                 iconPanel.Controls.Add(titleLabel);
 
-                // 版本信息标签
+                // �汾��Ϣ��ǩ
                 var versionTag = new Panel();
                 versionTag.Size = new Size(140, 24);
                 versionTag.Location = new Point(285, 55);
@@ -3278,32 +3305,32 @@ namespace BrowserHost
                 versionLabel.AutoSize = true;
                 versionTag.Controls.Add(versionLabel);
 
-                // 当前版本信息
+                // ��ǰ�汾��Ϣ
                 var currentVersionLabel = new Label();
-                currentVersionLabel.Text = $"当前版本: {_currentVersion}";
+                currentVersionLabel.Text = $"��ǰ�汾: {_currentVersion}";
                 currentVersionLabel.Font = new Font("Segoe UI", 9f);
                 currentVersionLabel.ForeColor = Color.FromArgb(140, 150, 165);
                 currentVersionLabel.Location = new Point(25, 90);
                 currentVersionLabel.AutoSize = true;
                 cardPanel.Controls.Add(currentVersionLabel);
 
-                // 分隔线
+                // �ָ���
                 var sep = new Panel();
                 sep.Size = new Size(390, 1);
                 sep.Location = new Point(25, 115);
                 sep.BackColor = Color.FromArgb(70, 80, 100);
                 cardPanel.Controls.Add(sep);
 
-                // 更新内容标题
+                // �������ݱ���
                 var changelogTitle = new Label();
-                changelogTitle.Text = "更新内容";
+                changelogTitle.Text = "��������";
                 changelogTitle.Font = new Font("Segoe UI", 11f, FontStyle.Bold);
                 changelogTitle.ForeColor = Color.FromArgb(200, 210, 225);
                 changelogTitle.Location = new Point(25, 125);
                 changelogTitle.AutoSize = true;
                 cardPanel.Controls.Add(changelogTitle);
 
-                // 更新日志内容
+                // ������־����
                 var scrollPanel = new Panel();
                 scrollPanel.Size = new Size(390, 145);
                 scrollPanel.Location = new Point(25, 152);
@@ -3322,24 +3349,24 @@ namespace BrowserHost
                 changelogLabel.MaximumSize = new Size(350, 0);
                 scrollPanel.Controls.Add(changelogLabel);
 
-                // 按钮区域背景
+                // ��ť���򱳾�
                 var buttonPanelBg = new Panel();
                 buttonPanelBg.Size = new Size(440, 65);
                 buttonPanelBg.Location = new Point(0, 315);
                 buttonPanelBg.BackColor = Color.FromArgb(30, 38, 50);
                 cardPanel.Controls.Add(buttonPanelBg);
 
-                // 按钮区域
+                // ��ť����
                 var buttonPanel = new Panel();
                 buttonPanel.Size = new Size(390, 45);
                 buttonPanel.Location = new Point(25, 10);
                 buttonPanel.BackColor = Color.Transparent;
                 buttonPanelBg.Controls.Add(buttonPanel);
 
-                // 稍后更新按钮
+                // �Ժ���°�ť
                 var laterBtn = new Button();
                 laterBtn.Name = "LaterBtn";
-                laterBtn.Text = "稍后更新";
+                laterBtn.Text = "�Ժ����";
                 laterBtn.Size = new Size(110, 38);
                 laterBtn.Location = new Point(0, 4);
                 laterBtn.FlatStyle = FlatStyle.Flat;
@@ -3351,16 +3378,16 @@ namespace BrowserHost
                 laterBtn.FlatAppearance.BorderSize = 1;
                 laterBtn.Click += (s, e) =>
                 {
-                    Console.WriteLine("[UpdateDialogPanel] 稍后更新 clicked");
+                    Console.WriteLine("[UpdateDialogPanel] �Ժ���� clicked");
                     OnLater?.Invoke();
                     this.Visible = false;
                 };
                 buttonPanel.Controls.Add(laterBtn);
 
-                // 立即更新按钮
+                // �������°�ť
                 var updateBtn = new Button();
                 updateBtn.Name = "UpdateBtn";
-                updateBtn.Text = "立即更新";
+                updateBtn.Text = "��������";
                 updateBtn.Size = new Size(120, 38);
                 updateBtn.Location = new Point(270, 4);
                 updateBtn.FlatStyle = FlatStyle.Flat;
@@ -3371,14 +3398,14 @@ namespace BrowserHost
                 updateBtn.FlatAppearance.BorderSize = 0;
                 updateBtn.Click += (s, e) =>
                 {
-                    Console.WriteLine("[UpdateDialogPanel] 立即更新 clicked");
+                    Console.WriteLine("[UpdateDialogPanel] �������� clicked");
                     OnUpdateNow?.Invoke();
-                    // 延迟隐藏，让事件先处理完
+                    // �ӳ����أ����¼��ȴ�����
                     this.Visible = false;
                 };
                 buttonPanel.Controls.Add(updateBtn);
 
-                // 将卡片面板添加到中央
+                // ����Ƭ������ӵ�����
                 this.Controls.Add(cardPanel);
                 this.Resize += (s, e) =>
                 {
@@ -3386,10 +3413,10 @@ namespace BrowserHost
                     int y = (this.Height - cardPanel.Height) / 2;
                     cardPanel.Location = new Point(Math.Max(0, x), Math.Max(0, y));
                 };
-                // 初始居中
+                // ��ʼ����
                 cardPanel.Location = new Point((this.Width - cardPanel.Width) / 2, (this.Height - cardPanel.Height) / 2);
 
-                // 点击背景关闭
+                // ��������ر�
                 this.Click += (s, e) =>
                 {
                     if (s == this)
@@ -3403,7 +3430,7 @@ namespace BrowserHost
             private string FormatChangelog(string changelog)
             {
                 if (string.IsNullOrEmpty(changelog))
-                    return "暂无更新说明";
+                    return "���޸���˵��";
 
                 var lines = changelog.Split('\n');
                 var result = new System.Text.StringBuilder();
@@ -3412,7 +3439,7 @@ namespace BrowserHost
                     var trimmed = line.Trim();
                     if (trimmed.StartsWith("- ") || trimmed.StartsWith("* "))
                     {
-                        result.AppendLine("• " + trimmed.Substring(2));
+                        result.AppendLine("? " + trimmed.Substring(2));
                     }
                     else if (trimmed.StartsWith("##"))
                     {
@@ -3428,11 +3455,11 @@ namespace BrowserHost
 
             public void ShowWithAnimation()
             {
-                // 无动画，直接显示
+                // �޶�����ֱ����ʾ
                 this.Visible = true;
                 this.BringToFront();
 
-                // 居中卡片
+                // ���п�Ƭ
                 var card = this.Controls["CardPanel"];
                 if (card != null)
                 {
@@ -3440,14 +3467,14 @@ namespace BrowserHost
                     int y = (this.Height - card.Height) / 2;
                     card.Location = new Point(Math.Max(0, x), Math.Max(0, y));
                 }
-                Console.WriteLine("[UpdateDialogPanel] 已显示");
+                Console.WriteLine("[UpdateDialogPanel] ����ʾ");
             }
 
             public void HideWithAnimation()
             {
-                // 无动画，直接隐藏
+                // �޶�����ֱ������
                 this.Visible = false;
-                Console.WriteLine("[UpdateDialogPanel] 已隐藏");
+                Console.WriteLine("[UpdateDialogPanel] ������");
             }
         }
     }
